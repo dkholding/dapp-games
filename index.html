@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Incubatore dApp Games</title>
+<meta name="description" content="Tre giochi skill-based su TON e Telegram, costruiti sopra un solo motore economico.">
+<style>
+/* Nessuna dipendenza esterna: è la regola §14 dell'architettura, e vale
+   anche per questa pagina. Font di sistema, usati con una gerarchia vera. */
+:root{
+  --bg:#08090c; --bg2:#0c0e13; --panel:#101319; --panel2:#151a22; --line:#1e242e;
+  --txt:#eef2f7; --dim:#8b96a6; --dim2:#5b6675;
+  --snake:#2dd4bf; --scacchi:#c084fc; --regno:#e0a44a;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
+  line-height:1.5}
+a{color:inherit;text-decoration:none}
+
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+/* ── Testata ────────────────────────────────────── */
+header{padding:64px 0 12px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
+  color:var(--dim2);margin:0 0 18px}
+h1{margin:0;font-size:clamp(38px,7vw,66px);font-weight:800;letter-spacing:-2px;
+  line-height:1.02;text-wrap:balance}
+h1 em{font-style:normal;color:var(--dim2)}
+.lede{margin:20px 0 0;max-width:56ch;font-size:clamp(15px,2.2vw,17.5px);color:var(--dim);
+  line-height:1.65}
+.lede b{color:var(--txt);font-weight:600}
+
+/* ── I giochi ───────────────────────────────────── */
+.games{display:grid;grid-template-columns:1fr;gap:16px;padding:44px 0 8px}
+.game{position:relative;display:flex;flex-direction:column;background:var(--panel);
+  border:1px solid var(--line);border-radius:18px;padding:22px 20px 20px;overflow:hidden;
+  transition:border-color .18s,transform .18s}
+.game::before{content:'';position:absolute;inset:0 0 auto;height:3px;background:var(--k)}
+.mark{font-size:34px;line-height:1;margin-bottom:14px}
+.game h2{margin:0;font-size:21px;font-weight:700;letter-spacing:-.4px}
+.game .pitch{margin:7px 0 0;font-size:13.5px;color:var(--dim);line-height:1.55;flex:1}
+.facts{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 18px}
+.facts span{font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+  color:var(--dim2);background:var(--panel2);border:1px solid var(--line);
+  border-radius:99px;padding:4px 9px}
+.play{display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--k);color:#07090c;border-radius:11px;padding:13px 18px;
+  font-size:14px;font-weight:800;letter-spacing:.2px;min-height:48px;
+  transition:filter .15s,transform .08s}
+.play:active{transform:scale(.985)}
+
+/* ── Il motore condiviso ────────────────────────── */
+.engine{margin:52px 0 0;border-top:1px solid var(--line);padding-top:36px}
+h3{margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:.9px;
+  text-transform:uppercase;color:var(--dim)}
+.engine p{margin:0 0 26px;max-width:62ch;font-size:14px;color:var(--dim);line-height:1.65}
+.engine p b{color:var(--txt);font-weight:600}
+.pillars{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.pillar{background:var(--bg2);padding:18px 18px 20px}
+.pillar b{display:block;font-size:13.5px;font-weight:700;margin-bottom:5px}
+.pillar span{font-size:12.5px;color:var(--dim);line-height:1.55}
+
+footer{padding:44px 0 60px;color:var(--dim2);font-size:12px;line-height:1.7}
+footer b{color:var(--dim);font-weight:600}
+
+/* ── Tablet ─────────────────────────────────────── */
+@media (min-width:720px){
+  .wrap{padding:0 32px}
+  header{padding-top:88px}
+  .games{grid-template-columns:1fr 1fr;gap:18px}
+  .pillars{grid-template-columns:1fr 1fr}
+}
+/* ── Computer ───────────────────────────────────── */
+@media (min-width:1080px){
+  header{padding-top:104px}
+  .games{grid-template-columns:repeat(3,1fr)}
+  .game{padding:26px 24px 24px}
+  .pillars{grid-template-columns:repeat(4,1fr)}
+}
+@media (hover:hover) and (pointer:fine){
+  .game:hover{border-color:var(--k);transform:translateY(-2px)}
+  .play:hover{filter:brightness(1.08)}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important}
+}
+:focus-visible{outline:2px solid var(--snake);outline-offset:3px;border-radius:6px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">TON · Telegram Mini App</p>
+    <h1>Tre giochi.<br><em>Un motore solo.</em></h1>
+    <p class="lede">Ogni gioco è un file unico che si apre e funziona: niente installazioni,
+      niente dipendenze esterne, niente wallet obbligatorio per giocare. Sotto, tutti e tre
+      condividono <b>la stessa economia</b> — ledger a partita doppia, montepremi a somma
+      zero, emissione vincolata ai consumi.</p>
+  </header>
+
+  <main class="games">
+
+    <article class="game" style="--k:var(--regno)">
+      <div class="mark">🏕️</div>
+      <h2>Regno Errante</h2>
+      <p class="pitch">Parti con dodici contadini e un accampamento che cammina. Metti braccia
+        nei campi o metti armi in mano: il grano si esaurisce, e prima o poi devi smontare
+        tutto e andartene.</p>
+      <div class="facts"><span>Strategia</span><span>8 clan</span><span>60 giorni</span></div>
+      <a class="play" href="regno-errante.html">GIOCA</a>
+    </article>
+
+    <article class="game" style="--k:var(--snake)">
+      <div class="mark">🐍</div>
+      <h2>Snake Royale</h2>
+      <p class="pitch">Dieci serpenti, un'arena che si stringe, due minuti. Chi ti uccide
+        assorbe la tua massa. Abilità pura e leggibile: nessuno può dire di aver perso
+        per sfortuna.</p>
+      <div class="facts"><span>Arena</span><span>10 giocatori</span><span>2–4 minuti</span></div>
+      <a class="play" href="snake-royale.html">GIOCA</a>
+    </article>
+
+    <article class="game" style="--k:var(--scacchi)">
+      <div class="mark">♟️</div>
+      <h2>Scacchi Arena</h2>
+      <p class="pitch">Una città che si attraversa a piedi, con i tavoli sparsi per le
+        piazze. Ti siedi davanti a qualcuno, scegli la posta e giochi. Il gioco più vecchio
+        del mondo, con un motore vero dietro.</p>
+      <div class="facts"><span>Scacchi</span><span>1 contro 1</span><span>Posta libera</span></div>
+      <a class="play" href="scacchi-arena.html">GIOCA</a>
+    </article>
+
+  </main>
+
+  <section class="engine">
+    <h3>Cosa hanno in comune</h3>
+    <p>La scommessa dell'incubatore è che il pezzo difficile non sia il gioco, ma
+      <b>l'impianto economico sotto</b>. Quello è costruito una volta e non sa niente del
+      gioco che ha sopra: aggiungere un titolo significa scrivere il gioco, non rifare
+      l'economia.</p>
+    <div class="pillars">
+      <div class="pillar"><b>Somma zero</b><span>Quello che vinci esce dalle quote degli
+        altri, non da token coniati dal nulla.</span></div>
+      <div class="pillar"><b>Partita doppia</b><span>Ogni movimento di valore è una scrittura
+        che somma a zero. Se non quadra, viene rifiutata.</span></div>
+      <div class="pillar"><b>Due valute</b><span>Una scambiabile e una no. I Coins non
+        tornano mai indietro: è la membrana che tiene fuori i bot.</span></div>
+      <div class="pillar"><b>Divertenti a token spento</b><span>Se il gioco non regge senza
+        ricompense, il token non lo salva: ne accelera la morte.</span></div>
+    </div>
+  </section>
+
+  <footer>
+    Prototipi giocabili — economia simulata in locale, nessuna transazione reale.<br>
+    Il wallet, il marketplace e i premi girano su dati finti finché il gioco non supera
+    il collaudo di ritenzione.<br><br>
+    <b>Incubatore dApp Games</b>
+  </footer>
+
+</div>
+
+</body>
+</html>

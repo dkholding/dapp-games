@@ -1,0 +1,3393 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Regno Errante</title>
+<style>
+:root{
+  --bg:#0c0a07; --bg2:#12100b; --panel:#181410; --panel2:#1f1a14; --line:#2b241b;
+  --txt:#f2ece0; --dim:#a5947c; --dim2:#6f6152;
+  --ac:#e0a44a; --gold:#f5d060; --dan:#e0574a; --pur:#b98cf0; --blu:#6cb8e8; --grn:#7cc45f;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  font-variant-numeric:tabular-nums;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:none;background:none;cursor:pointer}
+::-webkit-scrollbar{width:0;height:0}
+
+#app{position:fixed;inset:0;display:flex;flex-direction:column}
+#main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+
+/* ── Header ─────────────────────────────────────── */
+#top{flex:none;display:flex;align-items:center;gap:8px;padding:calc(9px + env(safe-area-inset-top)) 12px 9px;
+  background:var(--bg2);border-bottom:1px solid var(--line);z-index:5}
+.bal{display:flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);
+  border-radius:9px;padding:5px 9px;font-size:12.5px;font-weight:700}
+.bal i{font-style:normal;font-size:13px}
+.bal.snk{color:var(--ac)} .bal.coin{color:var(--gold)}
+#wbtn{margin-left:auto;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  padding:6px 11px;font-size:12px;font-weight:600;color:var(--dim);display:flex;align-items:center;gap:6px}
+#wbtn.on{color:var(--ac);border-color:rgba(224,164,74,.45)}
+#wbtn .dot{width:6px;height:6px;border-radius:50%;background:var(--dim2)}
+#wbtn.on .dot{background:var(--ac);box-shadow:0 0 8px var(--ac)}
+
+/* ── Corpo ──────────────────────────────────────── */
+#body{flex:1;position:relative;overflow:hidden}
+.page{position:absolute;inset:0;overflow-y:auto;padding:14px 12px 18px;display:none;
+  -webkit-overflow-scrolling:touch}
+.page.on{display:block}
+
+/* ── Tab bar ────────────────────────────────────── */
+#tabs{flex:none;display:flex;background:var(--bg2);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.tab{flex:1;padding:9px 2px 8px;text-align:center;color:var(--dim2);font-size:9.5px;font-weight:600;
+  letter-spacing:.2px;transition:color .15s}
+.tab b{display:block;font-size:19px;font-weight:400;margin-bottom:2px;line-height:1}
+.tab.on{color:var(--ac)}
+
+/* ── Tipografia ─────────────────────────────────── */
+h2{margin:0 0 3px;font-size:20px;font-weight:700;letter-spacing:-.3px}
+h3{margin:20px 0 9px;font-size:12px;font-weight:700;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.7px}
+h3:first-child{margin-top:0}
+.sub{margin:0 0 14px;color:var(--dim);font-size:12.5px;line-height:1.55}
+.muted{color:var(--dim);font-size:11.5px;line-height:1.5}
+
+/* ── Componenti ─────────────────────────────────── */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px;margin-bottom:10px}
+.card.flat{background:var(--bg2)}
+.row{display:flex;align-items:center;gap:10px}
+.row+.row{margin-top:9px}
+.grow{flex:1;min-width:0}
+.btn{background:var(--ac);color:#241601;border-radius:10px;padding:11px 18px;font-size:14px;
+  font-weight:700;text-align:center;transition:transform .07s,opacity .15s}
+.btn:active{transform:scale(.975)}
+.btn:disabled{opacity:.38}
+.btn.sm{padding:7px 13px;font-size:12px;border-radius:8px}
+.btn.xs{padding:5px 9px;font-size:11px;border-radius:7px}
+.btn.g{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+.btn.gold{background:var(--gold);color:#2d2200}
+.btn.dan{background:rgba(224,87,74,.15);color:var(--dan);border:1px solid rgba(224,87,74,.35)}
+.btn.wide{width:100%}
+.pill{display:inline-block;padding:2.5px 8px;border-radius:999px;font-size:9.5px;font-weight:700;
+  letter-spacing:.4px;text-transform:uppercase}
+.bar{height:6px;background:#0a0806;border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ac);border-radius:99px;transition:width .4s}
+.kv{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;font-size:13px}
+.kv span{color:var(--dim)}
+.kv b{font-weight:600}
+.empty{text-align:center;color:var(--dim2);font-size:12.5px;padding:26px 10px;line-height:1.6}
+.pos{color:var(--grn)} .neg{color:var(--dan)}
+.seg{display:flex;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;padding:7px 4px;border-radius:7px;font-size:11.5px;font-weight:600;color:var(--dim)}
+.seg button.on{background:var(--panel2);color:var(--txt)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* ── NFT ────────────────────────────────────────── */
+.nft{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;position:relative;overflow:hidden}
+.nft .ico{font-size:26px;line-height:1;margin-bottom:7px}
+.nft .nm{font-size:12.5px;font-weight:700;line-height:1.25;margin-bottom:3px}
+.nft .rr{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.nft.eq{border-color:rgba(224,164,74,.5);box-shadow:0 0 0 1px rgba(224,164,74,.2) inset}
+.nft.brk{opacity:.5}
+.dur{height:3px;background:#0a0806;border-radius:99px;margin-top:7px;overflow:hidden}
+.dur>i{display:block;height:100%;background:var(--grn)}
+.dur>i.lo{background:var(--dan)}
+
+/* ── Modale ─────────────────────────────────────── */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.66);display:none;align-items:flex-end;z-index:60}
+#modal.on{display:flex}
+#mbox{width:100%;max-height:88%;overflow-y:auto;background:var(--bg2);border-top-left-radius:20px;
+  border-top-right-radius:20px;padding:8px 14px calc(18px + env(safe-area-inset-bottom));
+  animation:up .22s cubic-bezier(.2,.9,.3,1)}
+@keyframes up{from{transform:translateY(60px);opacity:.4}to{transform:none;opacity:1}}
+.mgrab{width:36px;height:4px;background:var(--line);border-radius:99px;margin:4px auto 12px}
+
+/* ── Gioco ──────────────────────────────────────── */
+#game{position:fixed;inset:0;display:none;background:#0a0906;z-index:40;touch-action:none}
+#game.on{display:block}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#ghud{position:absolute;inset:0;pointer-events:none;user-select:none}
+#gtop{position:absolute;top:calc(6px + env(safe-area-inset-top));left:8px;right:8px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.gchip{background:rgba(18,15,11,.86);border:1px solid var(--line);border-radius:8px;padding:4px 8px;
+  font-size:11px;font-weight:700;display:flex;align-items:center;gap:4px;backdrop-filter:blur(6px)}
+.gchip small{color:var(--dim2);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.gchip.warn{color:var(--dan);border-color:rgba(224,87,74,.5)}
+#gspeed{pointer-events:auto;margin-left:auto}
+#gfeed{position:absolute;top:calc(62px + env(safe-area-inset-top));right:8px;width:56%;max-width:240px;
+  display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.fev{background:rgba(18,15,11,.82);border:1px solid var(--line);border-radius:7px;padding:3px 7px;
+  font-size:10.5px;color:var(--dim);animation:fin .3s;max-width:100%;text-align:right;line-height:1.35}
+.fev b{color:var(--txt);font-weight:700}
+.fev.war{color:#ffb0a6;border-color:rgba(224,87,74,.4)}
+.fev.good{color:#bfe8a8;border-color:rgba(124,196,95,.35)}
+@keyframes fin{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+#gsel{position:absolute;left:8px;right:8px;bottom:calc(112px + env(safe-area-inset-bottom));
+  pointer-events:auto;display:none}
+#gsel.on{display:block}
+.selbox{background:rgba(18,15,11,.92);border:1px solid rgba(224,164,74,.45);border-radius:11px;
+  padding:8px 10px;display:flex;align-items:center;gap:9px;backdrop-filter:blur(6px)}
+.selbox .t{font-size:12.5px;font-weight:700}
+.selbox .h{font-size:10.5px;color:var(--dim);margin-top:1px;line-height:1.3}
+#gbar{position:absolute;left:0;right:0;bottom:0;padding:7px 8px calc(7px + env(safe-area-inset-bottom));
+  background:linear-gradient(transparent,rgba(10,9,6,.92) 22%);pointer-events:auto;display:flex;gap:6px}
+.gb{flex:1;background:rgba(24,20,16,.94);border:1px solid var(--line);border-radius:11px;padding:7px 2px 6px;
+  text-align:center;font-size:9px;font-weight:700;color:var(--dim);letter-spacing:.2px}
+.gb b{display:block;font-size:18px;font-weight:400;line-height:1.05;margin-bottom:2px}
+.gb.alert{border-color:rgba(224,164,74,.6);color:var(--ac)}
+.gb:active{background:var(--panel2)}
+#sheet{position:absolute;left:0;right:0;bottom:0;max-height:76%;overflow-y:auto;background:var(--bg2);
+  border-top:1px solid var(--line);border-top-left-radius:18px;border-top-right-radius:18px;
+  padding:8px 12px calc(14px + env(safe-area-inset-bottom));pointer-events:auto;display:none;
+  animation:up .2s cubic-bezier(.2,.9,.3,1);z-index:3;user-select:none}
+#sheet.on{display:block}
+.shead{display:flex;align-items:center;gap:8px;margin:2px 0 10px}
+.shead h4{margin:0;font-size:15px;font-weight:700;flex:1}
+.xbtn{width:28px;height:28px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+  font-size:14px;color:var(--dim);line-height:1}
+.unit{display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:8px 10px;margin-bottom:6px}
+.unit .u{font-size:20px;line-height:1;width:24px;text-align:center;flex:none}
+.unit .n{font-size:12.5px;font-weight:700}
+.unit .d{font-size:10.5px;color:var(--dim);margin-top:1px;line-height:1.35}
+.unit.sel{border-color:rgba(224,164,74,.55)}
+.cost{font-size:10.5px;color:var(--dim);font-weight:600}
+.cost.no{color:var(--dan)}
+
+/* ── Risultato ──────────────────────────────────── */
+#res{position:fixed;inset:0;background:rgba(6,5,3,.95);display:none;z-index:70;overflow-y:auto;
+  padding:calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+#res.on{display:block}
+.rwrap{max-width:440px;margin:0 auto}
+.rplace{text-align:center;font-size:52px;font-weight:800;letter-spacing:-2px;line-height:1;margin:6px 0 2px}
+.rsub{text-align:center;color:var(--dim);font-size:13px;margin-bottom:18px}
+.lbrow{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;font-size:12.5px}
+.lbrow.me{background:rgba(224,164,74,.11);border:1px solid rgba(224,164,74,.32)}
+.lbrow .p{width:20px;font-weight:800;color:var(--dim)}
+.lbrow .s{margin-left:auto;font-weight:700}
+
+/* ── Mercato ────────────────────────────────────── */
+.lst{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:10px;margin-bottom:8px}
+.lst .ico{font-size:24px;width:30px;text-align:center}
+.lst .nm{font-size:12.5px;font-weight:700}
+.lst .mt{font-size:10.5px;color:var(--dim);margin-top:2px}
+.lst .pr{margin-left:auto;text-align:right}
+.lst .pr b{display:block;font-size:13.5px;color:var(--ac)}
+
+/* ── Tabella economia ───────────────────────────── */
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+th{color:var(--dim2);font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:calc(78px + env(safe-area-inset-bottom));
+  background:#2a2118;border:1px solid var(--line);color:var(--txt);padding:9px 15px;border-radius:11px;
+  font-size:12.5px;font-weight:600;opacity:0;pointer-events:none;transition:.24s;z-index:90;max-width:88%;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%)}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE — telefono (base) · tablet ≥720 · computer ≥1080
+   La baseline sopra è il telefono e non va toccata.
+   ═══════════════════════════════════════════════════════════════ */
+:root{--col:660px;--gut:12px}
+.brand{display:none}
+
+/* Il mouse merita una barra di scorrimento e uno stato hover */
+@media (pointer:fine){
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;
+    border:3px solid var(--bg)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--dim2)}
+  ::-webkit-scrollbar-track{background:transparent}
+}
+@media (hover:hover) and (pointer:fine){
+  .btn:hover:not(:disabled){filter:brightness(1.09)}
+  .tab:hover{color:var(--txt)}
+  .nft:hover,.lst:hover,.unit:hover{border-color:var(--dim2)}
+  .xbtn:hover{color:var(--txt)}
+}
+
+/* ── TABLET ─────────────────────────────────────── */
+@media (min-width:720px){
+  :root{--gut:20px}
+  #top{padding-left:max(var(--gut),calc((100% - var(--col))/2));
+       padding-right:max(var(--gut),calc((100% - var(--col))/2))}
+  .page{padding:22px max(var(--gut),calc((100% - var(--col))/2)) 32px}
+  h2{font-size:23px}
+  .sub{font-size:13.5px}
+  .card{padding:15px;border-radius:15px;margin-bottom:12px}
+  .grid2{grid-template-columns:repeat(3,1fr)}
+  .grid3{grid-template-columns:repeat(4,1fr)}
+  #tabs{justify-content:center;gap:8px}
+  .tab{flex:0 1 148px;font-size:11px;padding:11px 4px 10px}
+  .tab b{font-size:21px}
+  /* La modale diventa un dialogo centrato, non un foglio che sale */
+  #modal{align-items:center}
+  #mbox{max-width:540px;border-radius:20px;max-height:84vh;
+        padding:18px 20px 22px;animation:fadein .18s ease-out}
+  .mgrab{display:none}
+  .rwrap{max-width:540px}
+  .toast{bottom:calc(94px + env(safe-area-inset-bottom))}
+}
+@keyframes fadein{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+
+/* ── COMPUTER ───────────────────────────────────── */
+@media (min-width:1080px){
+  :root{--col:720px}
+  #app{flex-direction:row}
+  #main{flex:1;min-width:0}
+  #tabs{order:-1;flex:none;width:224px;flex-direction:column;justify-content:flex-start;
+        gap:4px;border-top:none;border-right:1px solid var(--line);
+        padding:16px 12px calc(16px + env(safe-area-inset-bottom))}
+  .tab{flex:none;display:flex;align-items:center;gap:12px;text-align:left;
+       padding:11px 13px;border-radius:11px;font-size:13.5px;letter-spacing:0}
+  .tab b{font-size:20px;margin:0;line-height:1;display:block}
+  .tab.on{background:var(--panel)}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 13px 18px;
+         font-size:15px;font-weight:800;letter-spacing:-.3px;color:var(--txt)}
+  .brand b{font-size:20px;color:var(--ac);font-weight:400}
+  .toast{bottom:30px}
+}
+
+/* ── Telefono coricato ──────────────────────────── */
+@media (max-height:520px) and (orientation:landscape) and (max-width:1079px){
+  #top{padding-top:calc(5px + env(safe-area-inset-top));padding-bottom:5px}
+  .tab{padding:5px 2px 4px;font-size:9px}
+  .tab b{font-size:15px;margin-bottom:0}
+  .page{padding-top:12px}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HUD DI GIOCO — specifico di Regno Errante
+   La tela resta a tutto schermo: è l'interfaccia sopra che si
+   raccoglie verso il centro, così non finisce agli antipodi.
+   ═══════════════════════════════════════════════════════════════ */
+@media (hover:hover) and (pointer:fine){
+  #cv{cursor:grab}
+  #cv.drag{cursor:grabbing}
+  #cv.place{cursor:crosshair}
+  .gb,.gchip,#gspeed,.xbtn,.tab{cursor:pointer}
+  .gb:hover{border-color:var(--dim2);color:var(--txt)}
+  #gspeed:hover{border-color:var(--dim2)}
+}
+
+/* ── HUD · tablet ───────────────────────────────── */
+@media (min-width:720px){
+  #gtop{left:max(14px,calc((100% - 900px)/2));right:max(14px,calc((100% - 900px)/2))}
+  #gfeed{right:max(14px,calc((100% - 900px)/2));width:260px;max-width:260px}
+  #gbar{left:50%;right:auto;transform:translateX(-50%);
+    width:min(640px,calc(100% - 24px));bottom:calc(14px + env(safe-area-inset-bottom));
+    padding:8px;background:rgba(10,9,6,.9);border:1px solid var(--line);border-radius:14px;
+    backdrop-filter:blur(6px)}
+  .gb{font-size:11px;padding:9px 4px 8px}
+  .gb b{font-size:22px}
+  #gsel{left:50%;right:auto;transform:translateX(-50%);
+    width:min(640px,calc(100% - 24px));bottom:calc(106px + env(safe-area-inset-bottom))}
+  #sheet{left:0;right:0;margin-inline:auto;width:min(560px,100%);
+    max-height:70%;bottom:calc(96px + env(safe-area-inset-bottom));
+    border:1px solid var(--line);border-radius:18px;
+    padding:8px 14px 16px}
+  #game.on ~ .toast{bottom:calc(96px + env(safe-area-inset-bottom))}
+}
+
+/* ── HUD · computer ─────────────────────────────── */
+@media (min-width:1080px){
+  #gtop{left:max(14px,calc((100% - 1100px)/2));right:max(14px,calc((100% - 1100px)/2))}
+  #gfeed{right:max(14px,calc((100% - 1100px)/2));width:280px;max-width:280px}
+  .fev{font-size:11.5px;padding:4px 9px}
+  #game.on ~ .toast{bottom:calc(96px + env(safe-area-inset-bottom))}
+}
+
+/* Telefono coricato: la barra torna a piena larghezza (altrimenti
+   restano attive le voci da 148px della regola tablet) */
+@media (max-height:520px) and (orientation:landscape) and (max-width:1079px){
+  #tabs{justify-content:stretch;gap:0}
+  .tab{flex:1}
+  .toast{bottom:calc(58px + env(safe-area-inset-bottom))}
+}
+
+/* Fuoco da tastiera (invisibile al tocco: :focus-visible non scatta) */
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid var(--ac);outline-offset:2px;border-radius:9px}
+#cv:focus,#cv:focus-visible{outline:none}
+
+/* ═══════════════════════════════════════════════════════════════
+   RIFINITURA — seconda passata
+   Tutto ciò che segue vive dentro una @media oppure dietro una
+   classe lay-* messa dal JS: il telefono in verticale non cambia.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Chiusura visibile della modale ─────────────── */
+#mbox{position:relative}
+#mx{display:none;position:absolute;top:10px;right:10px;width:32px;height:32px;
+  border-radius:9px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+  font-size:15px;line-height:1;align-items:center;justify-content:center;z-index:2}
+@media (min-width:720px){#mx{display:flex} #mbox h2{padding-right:38px}}
+@media (hover:hover) and (pointer:fine){#mx:hover{color:var(--txt);border-color:var(--dim2)}}
+
+/* ── Modale larga su richiesta (#mbox.wide) ─────── */
+@media (min-width:1080px){
+  #mbox.wide{max-width:880px}
+  #mbox.wide .mcols{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;align-items:start}
+  #mbox.wide .mcols>div>h3:first-child{margin-top:0}
+}
+
+/* ── Barra di scorrimento anche nei contenitori scuri ─ */
+@media (pointer:fine){
+  #mbox::-webkit-scrollbar-thumb,#sheet::-webkit-scrollbar-thumb{border-color:var(--bg2)}
+  #mbox,#res,.page,#sheet{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+}
+
+/* ── Aree di tocco: mai sotto ~40px quando si tocca col dito ── */
+@media (pointer:coarse){
+  .btn.sm{min-height:40px;padding:9px 14px}
+  .seg button{min-height:40px}
+  .gb{min-height:44px}
+  .gchip,#gspeed{min-height:32px}
+  .selbox .btn{min-height:36px}
+  .xbtn{width:32px;height:32px}
+}
+@media (pointer:coarse) and (max-height:460px) and (orientation:landscape){
+  .gb{min-height:36px;padding:6px 2px 5px}
+}
+
+/* ── Il mouse deve dire cosa è cliccabile ───────── */
+@media (pointer:fine){
+  .nft,.lst,.seg button{cursor:pointer}
+}
+
+/* ── Controlli e stati vuoti che non devono stirarsi ── */
+@media (min-width:720px){
+  .seg{max-width:430px}
+  .seg button{padding:9px 8px;font-size:12.5px}
+  .empty{max-width:520px;margin-left:auto;margin-right:auto;padding:36px 16px;font-size:13.5px}
+  table{max-width:560px}
+}
+
+/* ── Mercato: le inserzioni diventano una griglia ──
+   La soglia è 900 e non 720: una scheda .lst sotto i 330px va a capo
+   male, e a 720 di finestra due colonne starebbero strette. Sotto i
+   900px .lstwrap non ha nessuna regola: resta un div nudo. */
+@media (min-width:900px){
+  .lstwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));
+    gap:9px;align-items:stretch}
+  .lstwrap>.lst{margin-bottom:0;min-width:0}
+  .lst .grow{min-width:0}
+  .lst .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lst .ico{font-size:27px;width:36px}
+}
+@media (min-width:1080px){
+  .lst{padding:12px}
+  .lst .ico{font-size:29px;width:40px}
+  .lst .pr b{font-size:15px}
+}
+
+/* ── Risultato: due colonne dove c'è larghezza ────
+   .rcols/.rcol non hanno regole sotto i 1080px: restano div nudi.
+   La riga qui sotto rimpiazza esattamente il margin-top inline che
+   i due pulsanti avevano prima, così il telefono non cambia. */
+.ractions .btn+.btn{margin-top:8px}
+@media (min-width:720px){
+  .ractions{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+  .ractions .btn+.btn{margin-top:0}
+}
+@media (min-width:1080px){
+  .rwrap{max-width:860px}
+  .rplace{font-size:62px}
+  .rcols{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-items:start}
+  .rcol>.card:first-child{margin-top:0}
+  .ractions{flex-direction:row;justify-content:center;gap:12px;margin-top:18px}
+  .ractions .btn{flex:0 1 260px}
+}
+
+/* ── HUD: telefono coricato con la barra comandi già a pillola ── */
+@media (min-width:720px) and (max-height:520px) and (orientation:landscape){
+  #gbar{width:min(560px,calc(100% - 20px));padding:6px;
+    bottom:calc(8px + env(safe-area-inset-bottom))}
+  .gb{font-size:9.5px;padding:6px 2px 5px}
+  .gb b{font-size:17px}
+  #gsel{width:min(560px,calc(100% - 20px));bottom:calc(72px + env(safe-area-inset-bottom))}
+  #gfeed{top:calc(48px + env(safe-area-inset-top));width:210px;max-width:210px}
+  .fev{font-size:9.5px;padding:2px 6px}
+}
+
+/* ── Telefono coricato: la modale è un dialogo basso, non un tunnel ──
+   Questa query NON ha max-width:1079px: vale anche su un portatile
+   con la finestra molto bassa, ed è il caso peggiore da salvare. */
+@media (max-height:520px) and (orientation:landscape){
+  #modal{align-items:center;padding:10px}
+  #mbox{max-width:640px;border-radius:16px;max-height:94vh;padding:12px 14px}
+  .mgrab{display:none}
+  #mx{display:flex;top:8px;right:8px;width:28px;height:28px}
+  #mbox h2{font-size:17px;padding-right:34px}
+  #mbox .sub{margin-bottom:9px;font-size:12px}
+  #mbox .card{padding:10px;margin-bottom:7px}
+  #mbox h3{margin:12px 0 7px}
+  #res{padding:14px 16px}
+  .rwrap{max-width:860px}
+  .rplace{font-size:32px;margin:0 0 2px}
+  .rsub{font-size:11.5px;margin-bottom:10px}
+  .rcols{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;align-items:start}
+  .ractions{display:flex;flex-direction:row;justify-content:center;gap:10px;margin-top:10px}
+  .ractions .btn{flex:0 1 220px;padding:9px 14px}
+  .ractions .btn+.btn{margin-top:0}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IL PANNELLO DI COMANDO AGGANCIATO  (body.lay-side)
+   #sheet è la vera interfaccia di comando: in verticale è giusto
+   che salga dal basso, ma dove la finestra è più larga che alta
+   coprire metà mappa non ha senso. Diventa una colonna a destra e
+   la mappa si STRINGE di quel tanto (body.dock) invece di finirci
+   sotto: la telecamera resta centrata su ciò che si vede davvero.
+   La condizione è il rapporto d'aspetto, non una larghezza: vale
+   identica sul telefono coricato e sul monitor, con le sole
+   metriche diverse fra .lay-land e .lay-d.
+   ═══════════════════════════════════════════════════════════════ */
+body.lay-side #game{--dock-w:clamp(260px,27vw,340px)}
+body.lay-side.lay-land #game{--dock-w:clamp(190px,32vw,260px)}
+body.lay-side.lay-d #game{--dock-w:clamp(320px,24vw,400px)}
+
+/* Sulla tela serve una LARGHEZZA esplicita, non width:auto con un right:
+   il canvas ha una dimensione intrinseca (gli attributi width/height del
+   bitmap), quindi con width:auto la userebbe e il right verrebbe ignorato. */
+body.lay-side.dock #cv{width:calc(100% - var(--dock-w))}
+body.lay-side.dock #ghud{right:var(--dock-w)}
+
+body.lay-side #sheet{left:auto;right:0;top:0;bottom:0;margin-inline:0;
+  width:var(--dock-w);max-height:none;border:none;border-left:1px solid var(--line);
+  border-radius:0;padding:calc(8px + env(safe-area-inset-top)) 13px
+  calc(14px + env(safe-area-inset-bottom));animation:dockin .2s cubic-bezier(.2,.9,.3,1)}
+@keyframes dockin{from{transform:translateX(28px);opacity:.3}to{transform:none;opacity:1}}
+body.lay-side #sheet .shead{position:sticky;top:0;z-index:2;background:var(--bg2);
+  margin:0 0 10px;padding:6px 0 8px}
+body.lay-side #sheet .unit{flex-wrap:wrap;padding:8px 9px;gap:8px}
+body.lay-side #sheet .unit .grow{min-width:96px}
+
+/* Computer: il pannello può respirare */
+body.lay-side.lay-d #sheet{padding-left:16px;padding-right:16px}
+body.lay-side.lay-d #sheet .shead h4{font-size:16px}
+body.lay-side.lay-d #sheet .unit{padding:10px 11px}
+body.lay-side.lay-d #sheet .unit .n{font-size:13px}
+
+/* Telefono coricato: pannello stretto, tutto di una misura più piccola */
+body.lay-side.lay-land #sheet{padding:calc(6px + env(safe-area-inset-top)) 9px
+  calc(8px + env(safe-area-inset-bottom))}
+body.lay-side.lay-land #sheet .shead{margin-bottom:6px;padding:4px 0 6px}
+body.lay-side.lay-land #sheet .shead h4{font-size:13px}
+body.lay-side.lay-land #sheet h3{margin:11px 0 6px;font-size:10.5px}
+body.lay-side.lay-land #sheet .kv{font-size:11.5px;padding:3px 0}
+body.lay-side.lay-land #sheet .card{padding:9px;margin-bottom:7px}
+body.lay-side.lay-land #sheet .muted{font-size:10px}
+body.lay-side.lay-land #sheet .unit{padding:6px 7px;gap:6px;margin-bottom:5px}
+body.lay-side.lay-land #sheet .unit .u{font-size:16px;width:18px}
+body.lay-side.lay-land #sheet .unit .n{font-size:11px}
+body.lay-side.lay-land #sheet .unit .d{font-size:9.5px}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="main">
+  <div id="top">
+    <div class="bal snk"><i>◈</i><span id="bSnk">0</span></div>
+    <div class="bal coin"><i>●</i><span id="bCoin">0</span></div>
+    <button id="wbtn"><span class="dot"></span><span id="wtxt">Wallet</span></button>
+  </div>
+
+  <div id="body">
+    <div class="page on" id="p-play"></div>
+    <div class="page" id="p-inv"></div>
+    <div class="page" id="p-mkt"></div>
+    <div class="page" id="p-sea"></div>
+    <div class="page" id="p-eco"></div>
+  </div>
+  </div>
+
+  <div id="tabs">
+    <div class="brand"><b>◈</b><span>Regno Errante</span></div>
+    <button class="tab on" data-p="play"><b>🏕️</b>Gioca</button>
+    <button class="tab" data-p="inv"><b>🎒</b>Inventario</button>
+    <button class="tab" data-p="mkt"><b>🛒</b>Mercato</button>
+    <button class="tab" data-p="sea"><b>🏆</b>Stagione</button>
+    <button class="tab" data-p="eco"><b>📊</b>Economia</button>
+  </div>
+</div>
+
+<div id="game">
+  <canvas id="cv"></canvas>
+  <div id="ghud">
+    <div id="gtop">
+      <div class="gchip"><small>Giorno</small><span id="hDay">1</span></div>
+      <div class="gchip" id="cGrano">🌾 <span id="hGrano">0</span></div>
+      <div class="gchip">🪵 <span id="hLegna">0</span></div>
+      <div class="gchip">⛏️ <span id="hFerro">0</span></div>
+      <div class="gchip">👥 <span id="hPop">0</span></div>
+      <button class="gchip" id="gspeed">▶▶ <span id="hSpd">1×</span></button>
+    </div>
+    <div id="gfeed"></div>
+    <div id="gsel"><div class="selbox">
+      <div class="grow"><div class="t" id="selT">—</div><div class="h" id="selH">—</div></div>
+      <button class="btn g xs" id="selX">Annulla</button>
+    </div></div>
+    <div id="gbar">
+      <button class="gb" data-s="popolo"><b>👥</b>Popolo</button>
+      <button class="gb" data-s="campo"><b>🏕️</b>Campo</button>
+      <button class="gb" data-s="fucina"><b>🔨</b>Fucina</button>
+      <button class="gb" data-s="caserma"><b>⚔️</b>Caserma</button>
+      <button class="gb" data-s="sapere"><b>📜</b>Sapere</button>
+    </div>
+  </div>
+  <div id="sheet"></div>
+</div>
+
+<div id="res"><div class="rwrap" id="resIn"></div></div>
+
+<div id="modal"><div id="mbox"><div class="mgrab"></div><button id="mx" aria-label="Chiudi">✕</button><div id="mIn"></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(()=>{
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   0 · UTILITÀ
+   ═══════════════════════════════════════════════════════════════ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const nf=n=>Math.round(n).toLocaleString('it-IT');
+const now=()=>Date.now();
+const DAY=864e5;
+const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function fnv(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);
+  h=Math.imul(h,0x01000193)}return(h>>>0).toString(16).padStart(8,'0')}
+
+function uid(p){return p+'_'+Math.random().toString(36).slice(2,10)}
+
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2400)}
+
+/* ═══════════════════════════════════════════════════════════════
+   1 · CATALOGO NFT
+   Le stesse quattro categorie del §6.2 dell'architettura, tradotte
+   nel linguaggio di questo gioco:
+     stendardi (cosmetici) · dinastie (sidegrade: cambiano COME giochi)
+     sigilli (economici) · reliquie (potenza pura, SOLO in Libera)
+   ═══════════════════════════════════════════════════════════════ */
+const RAR={
+  comune:      {k:1,   c:'#a5947c', n:'Comune'},
+  raro:        {k:2.4, c:'#6cb8e8', n:'Raro'},
+  epico:       {k:5.5, c:'#b98cf0', n:'Epico'},
+  leggendario: {k:13,  c:'#f5d060', n:'Leggendario'}
+};
+const RARORD=['comune','raro','epico','leggendario'];
+
+const DEFS={
+  /* ── STENDARDI · cosmetici, eterni, nessun effetto ─────────── */
+  st_verde:  {cat:'skin',rar:'comune',      name:'Verde Palude',  price:0,    ic:'🏳️',
+              col:'#7cc45f',col2:'#3d6b2c', d:'Lo stendardo con cui parte ogni clan.'},
+  st_cremisi:{cat:'skin',rar:'comune',      name:'Cremisi',       price:180,  ic:'🚩',
+              col:'#e0574a',col2:'#7a1f18', d:'Rosso sangue, si vede da lontano.'},
+  st_azzurro:{cat:'skin',rar:'raro',        name:'Azzurro Gelo',  price:430,  ic:'🏴',
+              col:'#6cb8e8',col2:'#1d4a6b', d:'I colori dei clan del nord.'},
+  st_bosco:  {cat:'skin',rar:'raro',        name:'Corno di Bosco', price:410, ic:'🌿',
+              col:'#8fbf3f',col2:'#2f5218', d:'Foglie intrecciate sull\'asta.'},
+  st_oro:    {cat:'skin',rar:'epico',       name:'Aquila d\'Oro',  price:1450,ic:'🦅',
+              col:'#f5d060',col2:'#8a6710', d:'Rifiniture in foglia d\'oro battuto.'},
+  st_corvo:  {cat:'skin',rar:'leggendario', name:'Corvo Nero',    price:4400, ic:'🐦‍⬛',
+              col:'#b98cf0',col2:'#2a1440', d:'Chi lo vede all\'orizzonte scappa.'},
+
+  /* ── DINASTIE · sidegrade, legali in Esodo, con durabilità ─── */
+  dy_nomadi:  {cat:'ability',rar:'raro', name:'Nomadi',      price:920, dur:100, ic:'🐎',
+               mods:{camp:1.55,cart:1.35,farm:.84},
+               d:'L\'accampamento si sposta molto più in fretta e i carri portano +35% · −16% resa dei campi.'},
+  dy_aratori: {cat:'ability',rar:'raro', name:'Aratori',     price:900, dur:100, ic:'🌾',
+               mods:{farm:1.30,birth:1.10,forge:.82},
+               d:'+30% grano e più nascite · la fucina lavora il 18% più lenta.'},
+  dy_pastori: {cat:'ability',rar:'raro', name:'Pastori',     price:880, dur:100, ic:'🐑',
+               mods:{birth:1.40,upkeep:1.18},
+               d:'+40% natalità · il popolo mangia il 18% in più.'},
+  dy_cacciat: {cat:'ability',rar:'raro', name:'Cacciatori',  price:1000,dur:100, ic:'🏹',
+               mods:{atkArc:1.32,wood:1.18,atkMel:.88},
+               d:'Arcieri +32% e legna +18% · fanteria da mischia −12%.'},
+  dy_fabbri:  {cat:'ability',rar:'epico',name:'Fabbri',      price:2300,dur:100, ic:'🔨',
+               mods:{forge:1.50,iron:1.15,birth:.88},
+               d:'Fucina +50% e ferro +15% · natalità −12%. Poche braccia, molte lame.'},
+  dy_predoni: {cat:'ability',rar:'epico',name:'Predoni',     price:2400,dur:100, ic:'🗡️',
+               mods:{loot:1.55,atkCav:1.22,farm:.82},
+               d:'+55% bottino dai covi e cavalleria +22% · −18% resa dei campi. Si vive di razzia.'},
+  dy_saggi:   {cat:'ability',rar:'epico',name:'Saggi',       price:2200,dur:100, ic:'📜',
+               mods:{know:1.65,sight:1.25,atkMel:.9},
+               d:'Sapere +65% e vista +25%: arrivi alle ere avanzate molto prima.'},
+  dy_montan:  {cat:'ability',rar:'epico',name:'Montanari',   price:2100,dur:100, ic:'⛏️',
+               mods:{iron:1.38,hp:1.14,march:.9},
+               d:'Ferro +38% e truppe più dure · marciano il 10% più lente.'},
+
+  /* ── SIGILLI · economici, non toccano il gameplay ──────────── */
+  si_raccolto:{cat:'charm',rar:'comune',name:'Sigillo del Raccolto', price:350, dur:100, ic:'🌻',
+               eco:{earn:.08},    d:'+8% su tutti i $REG vinti in una spedizione.'},
+  si_conquis: {cat:'charm',rar:'raro',  name:'Sigillo del Conquistatore',price:1100,dur:100,ic:'🏴‍☠️',
+               eco:{conqEarn:.18},d:'+18% sui premi da covo raso al suolo.'},
+  si_corona:  {cat:'charm',rar:'epico', name:'Corona del Fondatore',price:2600,dur:100, ic:'👑',
+               eco:{placeEarn:.22},d:'+22% sui premi di piazzamento.'},
+  si_mercan:  {cat:'charm',rar:'raro',  name:'Pass del Mercante',  price:1250,dur:100, ic:'⚖️',
+               eco:{fee:-.01},    d:'Fee del marketplace dal 5% al 4%.'},
+  si_araldo:  {cat:'charm',rar:'epico', name:'Corno dell\'Araldo', price:2800,dur:100, ic:'📯',
+               eco:{tickets:2},   d:'+2 Ticket gratuiti al giorno.'},
+
+  /* ── RELIQUIE · potenza pura, DISATTIVATE in Esodo ─────────── */
+  rl_calder:  {cat:'core',rar:'raro', name:'Calderone Eterno', price:700, dur:100, ic:'🍲',
+               mods:{farm:1.45,birth:1.3}, d:'+45% grano, +30% natalità. Solo in Libera.'},
+  rl_corno:   {cat:'core',rar:'epico',name:'Corno di Guerra',  price:1900,dur:100, ic:'🐂',
+               mods:{atkMel:1.35,atkArc:1.35,atkCav:1.35}, d:'+35% attacco a tutto l\'esercito. Solo in Libera.'}
+};
+const SLOT={skin:'Stendardo',ability:'Dinastia',charm:'Sigillo',core:'Reliquia'};
+
+/* ═══════════════════════════════════════════════════════════════
+   2 · PERSISTENZA
+   ═══════════════════════════════════════════════════════════════ */
+const KEY='regnoerrante.v1';
+let DB=null;
+
+function fresh(){
+  return {
+    v:1, created:now(),
+    player:{name:'TU',addr:null,level:1,xp:0,mmr:1000,stake:0,kyc:0},
+    accounts:{}, txs:[], entries:[], seq:0,
+    nfts:[], loadout:{ranked:{},casual:{}},
+    market:{listings:[],trades:[],offers:[]},
+    season:{id:1,start:now(),end:now()+56*DAY,bpXp:0,premium:false,claimed:[]},
+    quests:{day:0,daily:[],weekly:[],wkClaimed:0},
+    ach:{},
+    runs:[], replays:[],
+    eco:{minted:0,burned:0,sunk:0,rakeTot:0,week:0,weekSink:0,weekMint:0,hist:[]},
+    risk:{date:0,count:0,flags:[]},
+    withdrawals:[], deposits:[],
+    stats:{played:0,wins:0,top3:0,bestPop:0,conq:0,earned:0,spent:0,era:1,migr:0},
+    tickets:{date:0,left:3,bought:0}
+  };
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}}
+function load(){
+  try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);if(d&&d.v===1)return d}}catch(e){}
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3 · LEDGER A PARTITA DOPPIA          ← identico agli altri titoli
+   Ogni movimento di valore è una transazione le cui scritture
+   sommano a ZERO. Se non quadra, l'operazione viene rifiutata.
+   ═══════════════════════════════════════════════════════════════ */
+const ACC={
+  pSnk:'player:REG', pCoin:'player:COINS',
+  prize:'sys:prize', burn:'sys:burn', treas:'sys:treasury', ops:'sys:ops',
+  crea:'sys:creators', resv:'sys:seasonReserve', emis:'sys:emission',
+  opp:'sys:opponents', ext:'sys:external', mkt:'sys:market',
+  coinSink:'sys:coinsink'
+};
+
+function bal(a){return DB.accounts[a]||0}
+
+function post(type,ref,moves){
+  let s=0;
+  for(const m of moves) s+=m[1];
+  if(Math.abs(s)>1e-6) throw new Error('Transazione sbilanciata: '+type+' → '+s.toFixed(6));
+  const tx={id:'tx_'+(++DB.seq),type,ref:ref||null,at:now()};
+  DB.txs.push(tx);
+  if(DB.txs.length>400) DB.txs.splice(0,DB.txs.length-400);
+  for(const [a,v] of moves){
+    DB.accounts[a]=(DB.accounts[a]||0)+v;
+    DB.entries.push({t:tx.id,a,v});
+  }
+  if(DB.entries.length>2500) DB.entries.splice(0,DB.entries.length-2500);
+  if(DB.accounts[ACC.pSnk]<-1e-6) throw new Error('Saldo $REG negativo');
+  return tx;
+}
+
+function ledgerOk(){
+  let s=0; for(const k in DB.accounts) s+=DB.accounts[k];
+  return Math.abs(s)<1e-6;
+}
+
+const snk=()=>bal(ACC.pSnk), coins=()=>bal(ACC.pCoin);
+
+/* ═══════════════════════════════════════════════════════════════
+   4 · WALLET  (TON Connect simulato)  ← identico agli altri titoli
+   ═══════════════════════════════════════════════════════════════ */
+function connectWallet(){
+  if(DB.player.addr){openWallet();return}
+  const c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+  let a='EQ';for(let i=0;i<46;i++)a+=c[Math.floor(Math.random()*c.length)];
+  DB.player.addr=a; save(); renderTop();
+  toast('Wallet collegato — ora puoi prelevare');
+  openWallet();
+}
+
+function requestWithdraw(amt){
+  if(amt<=0||amt>snk()){toast('Importo non valido');return}
+  let delay,label;
+  if(amt<100){delay=0;label='istantaneo'}
+  else if(amt<1000){delay=36e5;label='coda 1 ora'}
+  else if(amt<10000){delay=DAY;label='coda 24 ore'}
+  else{delay=DAY;label='revisione manuale + KYC'}
+  const risk=riskScore();
+  post('withdrawal_lock','w',[[ACC.pSnk,-amt],[ACC.ext,amt]]);
+  DB.withdrawals.push({id:uid('w'),amt,at:now(),ready:now()+delay,label,risk,
+    st:risk>70?'revisione':'in coda'});
+  save(); toast('Prelievo di '+nf(amt)+' $REG — '+label);
+  openWallet();
+}
+
+function deposit(amt){
+  post('deposit','d',[[ACC.ext,-amt],[ACC.pSnk,amt]]);
+  DB.deposits.push({id:uid('d'),amt,at:now()});
+  save(); renderTop(); toast('Depositati '+nf(amt)+' $REG');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5 · NFT ENGINE                       ← identico agli altri titoli
+   ═══════════════════════════════════════════════════════════════ */
+function mint(defId,src){
+  const d=DEFS[defId];
+  const n={id:uid('nft'),def:defId,cat:d.cat,rar:d.rar,
+    dur:d.dur?d.dur:null,durMax:d.dur||null,
+    at:now(),src:src||'mint',
+    addr:'EQ'+fnv(defId+Math.random()).repeat(2)};
+  DB.nfts.push(n); return n;
+}
+const owned=cat=>DB.nfts.filter(n=>!n.listed&&(!cat||n.cat===cat));
+const nftById=id=>DB.nfts.find(n=>n.id===id);
+const defOf=n=>DEFS[n.def];
+const isBroken=n=>n.dur!==null&&n.dur<=0;
+
+function repairCost(n){
+  const d=defOf(n), missing=(n.durMax-n.dur)/n.durMax;
+  return Math.round(d.price*0.5*missing);
+}
+function repair(id){
+  const n=nftById(id); if(!n||n.dur===null)return;
+  const c=repairCost(n);
+  if(c>snk()){toast('$REG insufficienti');return}
+  post('repair',id,[[ACC.pSnk,-c],[ACC.burn,c]]);
+  DB.eco.burned+=c; DB.eco.sunk+=c; DB.eco.weekSink+=c;
+  n.dur=n.durMax; save(); toast('Riparato per '+nf(c)+' $REG (bruciati)');
+  renderAll();
+}
+
+/** Fusione: 3 NFT stessa rarità e categoria + token → 1 rarità superiore */
+function craftables(){
+  const out={};
+  for(const n of owned()){
+    if(n.rar==='leggendario')continue;
+    const k=n.cat+'|'+n.rar; (out[k]=out[k]||[]).push(n);
+  }
+  return Object.entries(out).filter(([,v])=>v.length>=3);
+}
+function craftCost(rar){return Math.round(400*RAR[rar].k)}
+function craft(cat,rar){
+  const pool=owned().filter(n=>n.cat===cat&&n.rar===rar).slice(0,3);
+  if(pool.length<3)return;
+  const cost=craftCost(rar);
+  if(cost>snk()){toast('$REG insufficienti');return}
+  const up=RARORD[RARORD.indexOf(rar)+1];
+  const cands=Object.keys(DEFS).filter(k=>DEFS[k].cat===cat&&DEFS[k].rar===up);
+  if(!cands.length){toast('Nessuna ricetta disponibile');return}
+  post('craft',cat,[[ACC.pSnk,-cost],[ACC.burn,cost]]);
+  DB.eco.burned+=cost; DB.eco.sunk+=cost; DB.eco.weekSink+=cost;
+  const ids=pool.map(n=>n.id);
+  DB.nfts=DB.nfts.filter(n=>!ids.includes(n.id));
+  for(const s in DB.loadout) for(const k in DB.loadout[s])
+    if(ids.includes(DB.loadout[s][k])) delete DB.loadout[s][k];
+  const got=mint(cands[Math.floor(Math.random()*cands.length)],'craft');
+  save(); closeModal();
+  toast('Fusione riuscita → '+defOf(got).name+' ('+RAR[up].n+')');
+  renderAll();
+}
+
+/* ── Loadout ───────────────────────────────────────────────── */
+function equip(mode,id){
+  const n=nftById(id); if(!n)return;
+  if(n.cat==='core'&&mode==='ranked'){toast('Le Reliquie sono disattivate in Esodo');return}
+  const cur=DB.loadout[mode][n.cat];
+  DB.loadout[mode][n.cat]= cur===id ? undefined : id;
+  save(); renderInv();
+}
+
+const BASEMODS=()=>({march:1,camp:1,cart:1,farm:1,wood:1,iron:1,forge:1,birth:1,
+  upkeep:1,know:1,loot:1,sight:1,atkMel:1,atkArc:1,atkCav:1,hp:1,
+  earn:0,conqEarn:0,placeEarn:0,fee:0,tickets:0,
+  skin:'st_verde',ability:null,used:[]});
+
+/** Aggrega i modificatori del loadout. In Esodo le Reliquie vengono ignorate. */
+function loadoutMods(mode){
+  const m=BASEMODS();
+  const L=DB.loadout[mode]||{};
+  for(const cat in L){
+    const id=L[cat]; if(!id)continue;
+    const n=nftById(id); if(!n)continue;
+    if(n.cat==='core'&&mode==='ranked')continue;
+    if(isBroken(n))continue;
+    const d=defOf(n);
+    if(d.cat==='skin'){m.skin=n.def;continue}
+    m.used.push(n.id);
+    if(d.cat==='ability')m.ability=n.def;
+    if(d.mods)for(const k in d.mods)m[k]*=d.mods[k];
+    if(d.eco)for(const k in d.eco)m[k]+=d.eco[k];
+  }
+  return m;
+}
+const skinCol=m=>DEFS[m.skin]||DEFS.st_verde;
+
+/* ═══════════════════════════════════════════════════════════════
+   6 · MARKETPLACE                      ← identico agli altri titoli
+   Listing a prezzo fisso, aste con anti-sniping.
+   Royalty 5% al creator + fee 5% protocollo (metà bruciata).
+   ═══════════════════════════════════════════════════════════════ */
+const ROY=.05, FEE=.05;
+
+function marketFee(){return Math.max(.01,FEE+loadoutMods('ranked').fee)}
+
+function listNft(id,price,kind,hours){
+  const n=nftById(id); if(!n||n.listed)return;
+  for(const s in DB.loadout) for(const k in DB.loadout[s])
+    if(DB.loadout[s][k]===id) delete DB.loadout[s][k];
+  n.listed=true;
+  DB.market.listings.push({id:uid('lst'),nft:id,defId:n.def,dur:n.dur,mine:true,price,
+    kind:kind||'fixed',bid:kind==='auction'?Math.round(price*.6):null,bidder:null,
+    ends:now()+(hours||24)*36e5,at:now()});
+  save(); toast('Messo in vendita a '+nf(price)+' $REG'); renderAll();
+}
+
+function cancelListing(lid){
+  const i=DB.market.listings.findIndex(l=>l.id===lid); if(i<0)return;
+  const l=DB.market.listings[i];
+  if(l.bidder==='me'){
+    post('bid_refund',lid,[[ACC.mkt,-l.bid],[ACC.pSnk,l.bid]]);
+  }
+  const n=nftById(l.nft); if(n)n.listed=false;
+  DB.market.listings.splice(i,1); save(); toast('Annullato'); renderAll();
+}
+
+function buyListing(lid){
+  const l=DB.market.listings.find(x=>x.id===lid); if(!l)return;
+  if(l.mine){toast('È già tuo');return}
+  if(l.price>snk()){toast('$REG insufficienti');return}
+  const fee=Math.round(l.price*marketFee()), roy=Math.round(l.price*ROY);
+  const net=l.price-fee-roy, burn=Math.round(fee/2);
+  post('market_buy',lid,[
+    [ACC.pSnk,-l.price],[ACC.opp,net],[ACC.crea,roy],
+    [ACC.burn,burn],[ACC.treas,fee-burn]
+  ]);
+  DB.eco.burned+=burn; DB.eco.sunk+=fee; DB.eco.weekSink+=fee;
+  DB.stats.spent+=l.price;
+  const n=mint(l.defId,'market');
+  if(l.dur!==undefined&&l.dur!==null){n.dur=l.dur}
+  DB.market.trades.unshift({at:now(),def:l.defId,price:l.price,side:'buy'});
+  DB.market.listings=DB.market.listings.filter(x=>x.id!==lid);
+  save(); closeModal(); toast('Comprato '+DEFS[l.defId].name); renderAll();
+}
+
+function placeBid(lid,amt){
+  const l=DB.market.listings.find(x=>x.id===lid); if(!l||l.kind!=='auction')return;
+  const min=Math.ceil((l.bid||0)*1.05)+1;
+  if(amt<min){toast('Rilancio minimo '+nf(min)+' $REG');return}
+  if(amt>snk()){toast('$REG insufficienti');return}
+  if(l.bidder==='me') post('bid_refund',lid,[[ACC.mkt,-l.bid],[ACC.pSnk,l.bid]]);
+  post('bid',lid,[[ACC.pSnk,-amt],[ACC.mkt,amt]]);
+  l.bid=amt; l.bidder='me';
+  if(l.ends-now()<18e4){l.ends=now()+18e4;toast('Rilancio accettato — asta estesa di 3 min')}
+  else toast('Rilancio di '+nf(amt)+' $REG');
+  save(); renderAll();
+}
+
+/** Bot di mercato: tiene vivo il mercato fra una sessione e l'altra. */
+function tickMarket(){
+  const L=DB.market.listings;
+  for(const l of [...L]){
+    if(l.kind==='auction'&&now()>l.ends){
+      if(l.bidder==='me'){
+        const fee=Math.round(l.bid*marketFee()), roy=Math.round(l.bid*ROY);
+        const burn=Math.round(fee/2);
+        post('auction_win',l.id,[[ACC.mkt,-l.bid],[ACC.opp,l.bid-fee-roy],
+          [ACC.crea,roy],[ACC.burn,burn],[ACC.treas,fee-burn]]);
+        DB.eco.burned+=burn; DB.eco.sunk+=fee;
+        mint(l.defId,'auction');
+        toast('Asta vinta: '+DEFS[l.defId].name);
+      } else if(l.mine&&l.bidder){
+        const fee=Math.round(l.bid*marketFee()), roy=Math.round(l.bid*ROY);
+        const burn=Math.round(fee/2);
+        post('auction_sold',l.id,[[ACC.opp,-l.bid],[ACC.pSnk,l.bid-fee-roy],
+          [ACC.crea,roy],[ACC.burn,burn],[ACC.treas,fee-burn]]);
+        DB.eco.burned+=burn;
+        DB.nfts=DB.nfts.filter(n=>n.id!==l.nft);
+      } else if(l.mine){
+        const n=nftById(l.nft); if(n)n.listed=false;
+      }
+      DB.market.listings=DB.market.listings.filter(x=>x.id!==l.id);
+    }
+  }
+  for(const l of DB.market.listings){
+    if(l.kind==='auction'&&l.bidder==='me'&&Math.random()<.25&&now()<l.ends-6e4){
+      const up=Math.ceil(l.bid*(1.06+Math.random()*.12));
+      post('bid_refund',l.id,[[ACC.mkt,-l.bid],[ACC.pSnk,l.bid]]);
+      l.bid=up; l.bidder='bot';
+      if(l.ends-now()<18e4) l.ends=now()+18e4;
+    }
+  }
+  for(const l of [...DB.market.listings]){
+    if(l.mine&&l.kind==='fixed'){
+      const d=DEFS[l.defId];
+      const fair=d?d.price:l.price;
+      const p=l.price<=fair*1.1?.30:l.price<=fair*1.6?.10:.02;
+      if(Math.random()<p){
+        const fee=Math.round(l.price*marketFee()), roy=Math.round(l.price*ROY);
+        const burn=Math.round(fee/2);
+        post('market_sold',l.id,[[ACC.opp,-l.price],[ACC.pSnk,l.price-fee-roy],
+          [ACC.crea,roy],[ACC.burn,burn],[ACC.treas,fee-burn]]);
+        DB.eco.burned+=burn; DB.eco.sunk+=fee;
+        DB.stats.earned+=l.price-fee-roy;
+        DB.market.trades.unshift({at:now(),def:l.defId,price:l.price,side:'sell'});
+        DB.nfts=DB.nfts.filter(n=>n.id!==l.nft);
+        DB.market.listings=DB.market.listings.filter(x=>x.id!==l.id);
+        toast('Venduto! +'+nf(l.price-fee-roy)+' $REG');
+      }
+    }
+  }
+  const botL=DB.market.listings.filter(l=>!l.mine);
+  while(botL.length<12){
+    const l=genListing(); DB.market.listings.push(l); botL.push(l);
+  }
+  save();
+}
+
+function genListing(){
+  const keys=Object.keys(DEFS).filter(k=>DEFS[k].price>0);
+  const def=keys[Math.floor(Math.random()*keys.length)];
+  const d=DEFS[def];
+  const auction=Math.random()<.25;
+  const jitter=.72+Math.random()*.7;
+  const price=Math.round(d.price*jitter/10)*10;
+  const dur=d.dur?Math.round(35+Math.random()*65):null;
+  const durAdj=dur?Math.round(price*(.55+.45*dur/100)):price;
+  return {id:uid('lst'),defId:def,mine:false,dur,
+    kind:auction?'auction':'fixed',
+    price:auction?Math.round(durAdj*.7):durAdj,
+    bid:auction?Math.round(durAdj*.55):null,bidder:auction?'bot':null,
+    ends:now()+(auction?(1+Math.random()*8)*36e5:72*36e5),at:now()};
+}
+
+function floorOf(cat){
+  const ls=DB.market.listings.filter(l=>!l.mine&&l.kind==='fixed'&&DEFS[l.defId].cat===cat);
+  return ls.length?Math.min(...ls.map(l=>l.price)):0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   7 · MODALITÀ E MATCHMAKING
+   ─────────────────────────────────────────────────────────────
+   L'Esodo è PvP asincrono a seme condiviso: otto clan ricevono
+   ESATTAMENTE la stessa mappa, le stesse risorse e gli stessi covi,
+   e hanno gli stessi 60 giorni. Non c'è fortuna da spartire: chi
+   finisce più in alto ha giocato meglio quel mondo. È la stessa
+   somma zero di un'arena, senza bisogno di stare online insieme.
+
+   LA MEMBRANA A SENSO UNICO
+   I Coins si guadagnano giocando (rubinetto libero) e non escono
+   MAI verso i $REG. I $REG possono diventare Coins, bruciandosi.
+   ═══════════════════════════════════════════════════════════════ */
+const CLANS=8;                 // partecipanti a un Esodo
+const RUN_DAYS=60;             // durata di una spedizione
+
+const MODES={
+  prova: {key:'prova', name:'Accampamento', cur:'COINS', fee:0,  tk:0, rake:0,   min:1, days:30,
+          d:'Gratis, sempre · 30 giorni · premi in Coins · serve a imparare la terra'},
+  libera:{key:'libera',name:'Libera',       cur:'COINS', fee:0,  tk:1, rake:0,   min:1, days:60,
+          d:'Costa 1 Ticket · 60 giorni · Reliquie attive · premi in Coins molto più alti'},
+  t1:    {key:'t1',    name:'Esodo T1',     cur:'REG',   fee:60, tk:0, rake:.10, min:2, days:60,
+          d:'Quota bassa in $REG · qui si gioca per valore reale'},
+  t2:    {key:'t2',    name:'Esodo T2',     cur:'REG',   fee:150,tk:0, rake:.10, min:4, days:60,
+          d:'La fascia principale'},
+  t3:    {key:'t3',    name:'Esodo T3',     cur:'REG',   fee:600,tk:0, rake:.10, min:8, days:60,
+          d:'Alta posta · richiede livello 8 e stake'}
+};
+const isRanked=k=>MODES[k].cur==='REG';
+
+const TICKET_PRICE=600;      // in Coins
+const TICKET_FREE=3;         // gratuiti al giorno
+const TICKET_MAX=12;         // tetto giornaliero: chiude l'arbitraggio da bot
+
+function ticketsLeft(){
+  const d=Math.floor(now()/DAY);
+  if(DB.tickets.date!==d){
+    DB.tickets.date=d;
+    DB.tickets.left=TICKET_FREE+loadoutMods('ranked').tickets;
+    DB.tickets.bought=0; save();
+  }
+  return DB.tickets.left;
+}
+function ticketCost(){
+  const n=DB.tickets.bought||0;
+  return Math.round(TICKET_PRICE*(1+n*0.35));   // prezzo crescente: freno al farming
+}
+function buyTicket(){
+  const c=ticketCost();
+  if((DB.tickets.bought||0)>=TICKET_MAX){toast('Hai raggiunto il tetto giornaliero di Ticket');return}
+  if(c>coins()){toast('Servono '+nf(c)+' ● Coins');return}
+  post('ticket_buy',null,[[ACC.pCoin,-c],[ACC.coinSink,c]]);
+  DB.tickets.bought=(DB.tickets.bought||0)+1;
+  DB.tickets.left++;
+  save(); toast('Ticket comprato per '+nf(c)+' ● Coins'); renderAll();
+}
+
+/** $REG → Coins, senso unico. Sink puro: i $REG spesi si bruciano. */
+function convertToCoins(amtSnk){
+  if(amtSnk>snk()){toast('$REG insufficienti');return}
+  const got=amtSnk*45;
+  post('convert_reg_coins',null,[[ACC.pSnk,-amtSnk],[ACC.burn,amtSnk],
+    [ACC.emis,-got],[ACC.pCoin,got]]);
+  DB.eco.burned+=amtSnk; DB.eco.sunk+=amtSnk; DB.eco.weekSink+=amtSnk;
+  save(); toast(nf(amtSnk)+' ◈ bruciati → '+nf(got)+' ● Coins'); renderAll();
+}
+
+function canPlay(k){
+  const M=MODES[k];
+  if(k==='prova')return{ok:true};
+  if(M.tk){
+    if(ticketsLeft()<M.tk)return{ok:false,why:'Serve un Ticket',needTicket:true};
+    return{ok:true};
+  }
+  if(DB.player.level<M.min)return{ok:false,why:'Serve il livello '+M.min};
+  if(k==='t3'&&DB.player.stake<2000)return{ok:false,why:'Serve uno stake di 2.000 $REG'};
+  if(snk()<M.fee)return{ok:false,why:'Servono '+nf(M.fee)+' $REG'};
+  return{ok:true};
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   8 · CURVA DEI PREMI  (§11.4 dell'architettura)
+   Tariffa FISSA per covo raso al suolo: il residuo dei covi che
+   nessuno ha conquistato viene BRUCIATO, non redistribuito.
+   Motivo (§5.2): una conquista deve valere sempre lo stesso, o il
+   giocatore non può più calcolare se gli conviene rischiare
+   l'esercito invece di coltivare.
+   ═══════════════════════════════════════════════════════════════ */
+const SPLIT={1:.40,2:.24,3:.16,4:.11,5:.06,6:.03};
+const PLACE_SHARE=.65, CONQ_SHARE=.35, MAX_CONQ=6;
+
+/** Premi in Coins: rubinetto libero, nessun montepremi da bilanciare. */
+const COIN_PAY={prova:{base:120,place:26,conq:70},libera:{base:400,place:150,conq:210}};
+
+function computePayout(modeKey,place,conq,eco){
+  const M=MODES[modeKey];
+  conq=Math.min(conq,MAX_CONQ);
+  if(M.cur==='COINS'){
+    const c=COIN_PAY[modeKey]||COIN_PAY.prova;
+    let p=Math.round(c.base+c.place*Math.max(0,CLANS+1-place)*(place<=3?1.7:1));
+    let k=Math.round(c.conq*conq);
+    if(eco){p=Math.round(p*(1+eco.earn));k=Math.round(k*(1+eco.earn))}
+    return {place:p,conq:k,fee:0,pool:0,dist:0,cur:'COINS'};
+  }
+  const pool=M.fee*CLANS, dist=pool*(1-M.rake);
+  let p=Math.round(dist*PLACE_SHARE*(SPLIT[place]||0));
+  let k=Math.round(dist*CONQ_SHARE/MAX_CONQ*conq);
+  if(eco){
+    if(place<=3)p=Math.round(p*(1+eco.placeEarn));
+    k=Math.round(k*(1+eco.conqEarn));
+    p=Math.round(p*(1+eco.earn)); k=Math.round(k*(1+eco.earn));
+  }
+  return {place:p,conq:k,fee:M.fee,pool,dist,cur:'REG'};
+}
+
+/** Rendimenti decrescenti oltre 18 spedizioni/giorno — anti-bot §13 */
+function diminish(){
+  const d=Math.floor(now()/DAY);
+  if(DB.risk.date!==d){DB.risk.date=d;DB.risk.count=0}
+  const n=DB.risk.count;
+  return n<=18?1:Math.pow(.85,Math.min(20,n-18));
+}
+function riskScore(){
+  let s=0;
+  if(DB.risk.count>30)s+=35;
+  if(DB.risk.count>55)s+=30;
+  if(!DB.player.addr)s+=5;
+  return Math.min(100,s);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   9 · PROGRESSIONE · BATTLE PASS · QUEST · ACHIEVEMENT
+   ═══════════════════════════════════════════════════════════════ */
+const lvlNeed=l=>Math.round(140*Math.pow(l,1.35));
+function addXp(n){
+  DB.player.xp+=n; DB.season.bpXp+=n;
+  let up=0;
+  while(DB.player.xp>=lvlNeed(DB.player.level)){
+    DB.player.xp-=lvlNeed(DB.player.level); DB.player.level++; up++;
+  }
+  return up;
+}
+
+const BP_TIERS=50, BP_STEP=300, BP_PRICE=1200;
+const bpTier=()=>Math.min(BP_TIERS,Math.floor(DB.season.bpXp/BP_STEP));
+function bpReward(t){
+  if(t%10===0)return{type:'nft',v:t>=40?'epico':t>=20?'raro':'comune'};
+  if(t%5===0)return{type:'snk',v:60+t*8};
+  return{type:'coins',v:120+t*14};
+}
+function bpClaim(t){
+  if(DB.season.claimed.includes(t))return;
+  if(t>bpTier()){toast('Livello non ancora raggiunto');return}
+  DB.season.claimed.push(t);
+  give(bpReward(t),'battlepass');
+  if(DB.season.premium){
+    const prem=t%5===0?{type:'snk',v:110+t*14}:{type:'coins',v:200+t*20};
+    give(prem,'battlepass_premium');
+  }
+  save(); renderSeason(); renderTop();
+}
+function buyBP(){
+  if(BP_PRICE>snk()){toast('Servono '+nf(BP_PRICE)+' $REG');return}
+  const burn=Math.round(BP_PRICE*.6);
+  post('battlepass',null,[[ACC.pSnk,-BP_PRICE],[ACC.burn,burn],[ACC.treas,BP_PRICE-burn]]);
+  DB.eco.burned+=burn; DB.eco.sunk+=BP_PRICE; DB.eco.weekSink+=BP_PRICE;
+  DB.season.premium=true; save(); toast('Cronaca Premium attivata');
+  renderSeason(); renderTop();
+}
+
+function give(r,src){
+  if(r.type==='coins'){post('reward_coins',src,[[ACC.emis,-r.v],[ACC.pCoin,r.v]])}
+  else if(r.type==='snk'){
+    post('reward_reg',src,[[ACC.resv,-r.v],[ACC.pSnk,r.v]]);
+    DB.eco.minted+=r.v; DB.eco.weekMint+=r.v;
+  }
+  else if(r.type==='nft'){
+    const c=Object.keys(DEFS).filter(k=>DEFS[k].rar===r.v&&DEFS[k].price>0);
+    const got=mint(c[Math.floor(Math.random()*c.length)],src);
+    toast('Ricevuto: '+defOf(got).name);
+  }
+}
+
+const QPOOL=[
+  {id:'q_run3',  t:'Guida 3 spedizioni',           n:3, k:'played', r:{type:'coins',v:280}},
+  {id:'q_conq4', t:'Rade al suolo 4 covi',         n:4, k:'conq',   r:{type:'coins',v:440}},
+  {id:'q_top3',  t:'Chiudi 2 volte nei primi 3',   n:2, k:'top3',   r:{type:'snk',v:70}},
+  {id:'q_win',   t:'Vinci un Esodo',               n:1, k:'wins',   r:{type:'snk',v:120}},
+  {id:'q_pop',   t:'Arriva a 90 anime nel popolo', n:1, k:'pop90',  r:{type:'coins',v:360}},
+  {id:'q_era',   t:'Raggiungi l\'Era della Spada', n:1, k:'era3',   r:{type:'coins',v:320}},
+  {id:'q_migr',  t:'Sposta l\'accampamento 3 volte',n:3,k:'migr',   r:{type:'coins',v:250}},
+  {id:'q_esodo2',t:'Gioca 2 Esodi in $REG',        n:2, k:'ranked', r:{type:'snk',v:55}}
+];
+function refreshQuests(){
+  const d=Math.floor(now()/DAY);
+  if(DB.quests.day===d)return;
+  DB.quests.day=d;
+  const sh=[...QPOOL].sort(()=>Math.random()-.5);
+  DB.quests.daily=sh.slice(0,3).map(q=>({...q,p:0,done:false}));
+  if(!DB.quests.weekly.length||DB.quests.wkClaimed<d-6){
+    DB.quests.wkClaimed=d;
+    DB.quests.weekly=sh.slice(3,5).map(q=>({...q,n:q.n*4,p:0,done:false,
+      r:{type:q.r.type,v:q.r.v*4}}));
+  }
+  save();
+}
+function questProgress(keys){
+  for(const list of [DB.quests.daily,DB.quests.weekly])
+    for(const q of list){
+      if(q.done)continue;
+      const inc=keys[q.k]||0; if(!inc)continue;
+      q.p=Math.min(q.n,q.p+inc);
+      if(q.p>=q.n)q.done=true;
+    }
+}
+function claimQuest(id){
+  for(const list of [DB.quests.daily,DB.quests.weekly]){
+    const q=list.find(x=>x.id===id&&x.done&&!x.taken);
+    if(q){q.taken=true;give(q.r,'quest');save();renderSeason();renderTop();
+      toast('Incarico completato')}
+  }
+}
+
+const ACHS=[
+  {id:'a_first', t:'Primo sangue',    d:'Rade al suolo il tuo primo covo',   c:s=>s.conq>=1},
+  {id:'a_win',   t:'Fondatore',       d:'Vinci un Esodo',                    c:s=>s.wins>=1},
+  {id:'a_win10', t:'Dinastia',        d:'Vinci 10 Esodi',                    c:s=>s.wins>=10},
+  {id:'a_c30',   t:'Flagello',        d:'30 covi rasi al suolo in totale',   c:s=>s.conq>=30},
+  {id:'a_pop',   t:'Nazione',         d:'Porta il popolo a 200 anime',       c:s=>s.bestPop>=200},
+  {id:'a_p20',   t:'Veterano',        d:'Guida 20 spedizioni',               c:s=>s.played>=20},
+  {id:'a_era',   t:'Armaiolo',        d:'Raggiungi l\'Era della Balestra',   c:s=>s.era>=5},
+  {id:'a_migr',  t:'Popolo errante',  d:'Sposta l\'accampamento 25 volte',   c:s=>s.migr>=25},
+  {id:'a_earn',  t:'Investitore',     d:'Guadagna 5.000 $REG in totale',     c:s=>s.earned>=5000},
+  {id:'a_top3',  t:'Costante',        d:'15 podi',                           c:s=>s.top3>=15}
+];
+function checkAch(){
+  for(const a of ACHS){
+    if(!DB.ach[a.id]&&a.c(DB.stats)){
+      DB.ach[a.id]=now();
+      give({type:'coins',v:500},'achievement');
+      toast('🏅 '+a.t);
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   10 · ECONOMIA · EMISSION GOVERNOR  (§5.4)
+   E_w = min(CAP_w , k × SINK_(w-1))  — l'emissione non può mai
+   superare i consumi della settimana precedente.
+   ═══════════════════════════════════════════════════════════════ */
+const SUPPLY=1e9, K_FACTOR=.7, WEEK_CAP=2.4e6;
+function governor(){
+  const prevSink=DB.eco.hist.length?DB.eco.hist[DB.eco.hist.length-1].sink:DB.eco.weekSink;
+  const allowed=Math.min(WEEK_CAP,K_FACTOR*Math.max(prevSink,1));
+  return {allowed,used:DB.eco.weekMint,prevSink,
+    ratio:DB.eco.weekMint?DB.eco.weekSink/DB.eco.weekMint:Infinity};
+}
+function rollWeek(){
+  DB.eco.hist.push({w:DB.eco.week,sink:DB.eco.weekSink,mint:DB.eco.weekMint});
+  if(DB.eco.hist.length>12)DB.eco.hist.shift();
+  DB.eco.week++; DB.eco.weekSink=0; DB.eco.weekMint=0; save();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   11 · IL MONDO
+   Generato interamente dal seme: stesso seme = stessa terra, per
+   tutti gli otto clan dell'Esodo. Nessuna asimmetria, nessuna
+   fortuna da spartire.
+   ═══════════════════════════════════════════════════════════════ */
+const W=1400, H=1400;      // dimensione del mondo
+const CELL=50;             // cella di fertilità e di nebbia
+const GW=W/CELL|0, GH=H/CELL|0;
+
+/* ── Unità ─────────────────────────────────────────────────────
+   Il triangolo: lancieri battono cavalieri, cavalieri battono
+   arcieri, arcieri battono lancieri. Guerrieri e balestrieri sono
+   il ramo "costoso": più forti in assoluto, ma il ferro è scarso.
+   ───────────────────────────────────────────────────────────── */
+const UNIT={
+  contadino:{n:'Contadino', pl:'Contadini',  ic:'🧑‍🌾',atk:.25,hp:1.0, spd:52,cls:'mel',up:1,   ord:0},
+  lanciere: {n:'Lanciere',  pl:'Lancieri',   ic:'🔱', atk:.75,hp:1.6, spd:50,cls:'mel',up:1.5, ord:1,
+             vs:{cavaliere:2.3}},
+  arciere:  {n:'Arciere',   pl:'Arcieri',    ic:'🏹', atk:1.05,hp:.95,spd:52,cls:'arc',up:1.5, ord:5,
+             vs:{lanciere:1.6,contadino:1.4}},
+  guerriero:{n:'Guerriero', pl:'Guerrieri',  ic:'⚔️', atk:1.55,hp:2.3, spd:46,cls:'mel',up:1.8, ord:2,
+             vs:{arciere:1.4}},
+  cavaliere:{n:'Cavaliere', pl:'Cavalieri',  ic:'🐎', atk:2.0, hp:2.1, spd:88,cls:'cav',up:2.4, ord:3,
+             vs:{arciere:2.2,balestriere:2.2}},
+  balestriere:{n:'Balestriere',pl:'Balestrieri',ic:'🎯',atk:2.4,hp:1.15,spd:46,cls:'arc',up:2.2,ord:6,
+             vs:{guerriero:1.7}}
+};
+const UORD=Object.keys(UNIT).sort((a,b)=>UNIT[a].ord-UNIT[b].ord);   // ordine in cui si muore
+
+/* ── Armi ────────────────────────────────────────────────────── */
+const ARMS={
+  lancia:  {n:'Lancia',   ic:'🔱', c:{legna:3},           u:'lanciere',   era:1},
+  arco:    {n:'Arco',     ic:'🏹', c:{legna:4,ferro:1},   u:'arciere',    era:2},
+  spada:   {n:'Spada',    ic:'⚔️', c:{ferro:5,legna:1},   u:'guerriero',  era:3},
+  cavallo: {n:'Cavallo',  ic:'🐎', c:{grano:12,legna:4},  u:'cavaliere',  era:4},
+  balestra:{n:'Balestra', ic:'🎯', c:{ferro:6,legna:5},   u:'balestriere',era:5}
+};
+/** Il cavaliere è l'unica unità che consuma DUE armi: cavallo + spada. */
+const RECIPE={
+  lanciere:   {lancia:1},
+  arciere:    {arco:1},
+  guerriero:  {spada:1},
+  cavaliere:  {cavallo:1,spada:1},
+  balestriere:{balestra:1}
+};
+
+const ERAS=[
+  {n:1,name:'Era del Legno',    need:0,   d:'Lance di legno indurito al fuoco.'},
+  {n:2,name:'Era dell\'Arco',   need:35,  d:'Archi lunghi: colpisci prima di essere colpito.'},
+  {n:3,name:'Era della Spada',  need:100, d:'Il ferro battuto cambia la guerra.'},
+  {n:4,name:'Era del Cavallo',  need:200, d:'Cavalleria: velocità e sfondamento.'},
+  {n:5,name:'Era della Balestra',need:330,d:'La lama non serve più: basta un dito.'}
+];
+
+/* ── Edifici del campo ────────────────────────────────────────
+   Sono tende e carri, non pietra: si smontano e viaggiano.
+   ───────────────────────────────────────────────────────────── */
+const BLD={
+  capanne:{n:'Capanne',  ic:'🛖', d:'+20 anime di capienza',        c:{legna:26},          g:1.55},
+  granaio:{n:'Granaio',  ic:'🏚️', d:'+260 di scorta di grano',      c:{legna:22,ferro:4},  g:1.5},
+  fucina: {n:'Fucina',   ic:'🔨', d:'+0,7 armi forgiate al giorno',c:{legna:34,ferro:14}, g:1.65},
+  caserma:{n:'Caserma',  ic:'⚔️', d:'+7% vigore a tutte le truppe', c:{legna:30,ferro:18}, g:1.7},
+  torre:  {n:'Torre',    ic:'🗼', d:'+9 di difesa dell\'accampamento',c:{legna:28,ferro:9},g:1.6},
+  carri:  {n:'Carri',    ic:'🛒', d:'+55 di carico e campo più veloce',c:{legna:24},       g:1.5},
+  tenda:  {n:'Tenda del Sapere',ic:'📜',d:'+1,2 sapere al giorno',  c:{legna:26,ferro:3},  g:1.6}
+};
+function bldCost(k,lv){
+  const o={};
+  for(const r in BLD[k].c) o[r]=Math.round(BLD[k].c[r]*Math.pow(BLD[k].g,lv));
+  return o;
+}
+
+/* ── Rumore di valore per la fertilità ───────────────────────── */
+function makeFert(rnd){
+  const A=9, B=19;
+  const g1=[],g2=[];
+  for(let i=0;i<A*A;i++)g1.push(rnd());
+  for(let i=0;i<B*B;i++)g2.push(rnd());
+  const smp=(g,S,u,v)=>{
+    const x=u*(S-1), y=v*(S-1);
+    const x0=Math.floor(x), y0=Math.floor(y);
+    const x1=Math.min(S-1,x0+1), y1=Math.min(S-1,y0+1);
+    const fx=x-x0, fy=y-y0;
+    const sx=fx*fx*(3-2*fx), sy=fy*fy*(3-2*fy);
+    const a=g[y0*S+x0]*(1-sx)+g[y0*S+x1]*sx;
+    const b=g[y1*S+x0]*(1-sx)+g[y1*S+x1]*sx;
+    return a*(1-sy)+b*sy;
+  };
+  const f=new Float32Array(GW*GH);
+  for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){
+    const u=i/(GW-1), v=j/(GH-1);
+    let n=smp(g1,A,u,v)*.72+smp(g2,B,u,v)*.28;
+    // I bordi del mondo sono terra povera: spinge il popolo verso il centro
+    const edge=Math.min(u,v,1-u,1-v);
+    n*= .55+.45*Math.min(1,edge*5.5);
+    f[j*GW+i]=clamp(n*1.28-.08,0,1);
+  }
+  return f;
+}
+const fertAt=(G,x,y)=>{
+  const i=clamp(x/CELL|0,0,GW-1), j=clamp(y/CELL|0,0,GH-1);
+  return G.fert[j*GW+i];
+};
+
+const NODE={
+  campo:{n:'Campo',   ic:'🌾', res:'grano', rate:3.2, ic2:'🌾'},
+  bosco:{n:'Bosco',   ic:'🌲', res:'legna', rate:2.6, ic2:'🪵'},
+  ferro:{n:'Vena di ferro',ic:'⛰️',res:'ferro',rate:1.7,ic2:'⛏️'},
+  rovina:{n:'Rovina', ic:'🏛️', res:null,    rate:0,   ic2:'📜'}
+};
+
+function genWorld(seed,mode){
+  const rnd=mulberry32(seed);
+  const G={
+    seed, mode, rnd,
+    fert:null, seen:new Uint8Array(GW*GH),
+    nodes:[], camps:[], bands:[], fx:[],
+    day:1, t:0, speedV:1, over:false, settled:false,
+    sapere:0, era:1, conq:0, migr:0, ruins:0,
+    stock:{grano:95,legna:45,ferro:12},
+    arms:{lancia:0,arco:0,spada:0,cavallo:0,balestra:0},
+    blds:{capanne:1,granaio:1,fucina:1,caserma:1,torre:0,carri:1,tenda:1},
+    free:12, forgeSel:'lancia', forgeP:0, birthAcc:0, starve:0, morale:1,
+    nextRaid:14, log:[], peak:0, lost:0, born:0,
+    camp:{x:0,y:0,state:'fermo',tx:0,ty:0,prog:0},
+    days:MODES[mode].days
+  };
+  G.fert=makeFert(rnd);
+
+  const far=(x,y,arr,d)=>!arr.some(o=>dist(x,y,o.x,o.y)<d);
+
+  // Punto di partenza: terra grassa con almeno due campi e un bosco vicini
+  let best=null;
+  for(let k=0;k<400;k++){
+    const x=180+rnd()*(W-360), y=180+rnd()*(H-360);
+    const f=fertAt(G,x,y);
+    let s=f*3;
+    for(let a=0;a<10;a++){
+      const ax=x+(rnd()-.5)*260, ay=y+(rnd()-.5)*260;
+      s+=fertAt(G,ax,ay);
+    }
+    if(!best||s>best.s)best={x,y,s};
+  }
+  G.camp.x=best.x; G.camp.y=best.y;
+
+  // Risorse, con quote fisse: la mappa è diversa, l'abbondanza no
+  const quota=[['campo',36],['bosco',28],['ferro',18],['rovina',7]];
+  for(const [type,q] of quota){
+    let placed=0, tries=0;
+    while(placed<q&&tries<4000){
+      tries++;
+      const x=40+rnd()*(W-80), y=40+rnd()*(H-80);
+      const f=fertAt(G,x,y);
+      if(type==='campo'&&f<.5)continue;
+      if(type==='bosco'&&(f<.3||f>.85))continue;
+      if(type==='ferro'&&f>.42)continue;
+      if(!far(x,y,G.nodes,58))continue;
+      if(type!=='campo'&&dist(x,y,G.camp.x,G.camp.y)<70)continue;
+      const cap=type==='campo'?Math.round(150+260*f)
+              :type==='bosco'?Math.round(220+180*rnd())
+              :type==='ferro'?Math.round(140+130*rnd()):0;
+      G.nodes.push({id:'n'+G.nodes.length,type,x,y,r:type==='rovina'?15:17,
+        cap,left:cap,fert:f,used:false,workers:0});
+      placed++;
+    }
+  }
+
+  // Covi di banditi e clan rivali
+  const eraGar=(pw,r)=>{
+    const u={};
+    let left=pw;
+    const pool=['lanciere','arciere','guerriero'];
+    while(left>0){
+      const t=pool[Math.floor(r()*pool.length)];
+      u[t]=(u[t]||0)+1; left--;
+    }
+    return u;
+  };
+  for(let i=0;i<9;i++){
+    let x,y,tries=0;
+    do{ x=70+rnd()*(W-140); y=70+rnd()*(H-140); tries++ }
+    while(tries<900&&(dist(x,y,G.camp.x,G.camp.y)<230||!far(x,y,G.camps,175)));
+    const pw=4+Math.round(rnd()*6);
+    G.camps.push({id:'c'+i,kind:'covo',x,y,r:20,u:eraGar(pw,rnd),razed:false,
+      loot:{grano:Math.round(40+rnd()*90),legna:Math.round(30+rnd()*70),ferro:Math.round(20+rnd()*45)},
+      regrow:0,aggr:.55+rnd()*.5});
+  }
+  for(let i=0;i<3;i++){
+    let x,y,tries=0;
+    do{ x=100+rnd()*(W-200); y=100+rnd()*(H-200); tries++ }
+    while(tries<900&&(dist(x,y,G.camp.x,G.camp.y)<400||!far(x,y,G.camps,240)));
+    const pw=12+Math.round(rnd()*8);
+    G.camps.push({id:'k'+i,kind:'clan',x,y,r:26,u:eraGar(pw,rnd),razed:false,
+      loot:{grano:Math.round(120+rnd()*140),legna:Math.round(90+rnd()*110),ferro:Math.round(70+rnd()*80)},
+      regrow:0,aggr:.8+rnd()*.6,name:['Corvi Grigi','Figli del Guado','Orda di Vhar'][i]});
+  }
+
+  reveal(G,G.camp.x,G.camp.y,4.2);
+  return G;
+}
+
+/** Nebbia di guerra: si scopre solo ciò che qualcuno ha visto davvero. */
+function reveal(G,x,y,cells){
+  const ci=x/CELL|0, cj=y/CELL|0, r=Math.ceil(cells);
+  for(let j=cj-r;j<=cj+r;j++)for(let i=ci-r;i<=ci+r;i++){
+    if(i<0||j<0||i>=GW||j>=GH)continue;
+    if(Math.hypot(i-ci,j-cj)<=cells)G.seen[j*GW+i]=1;
+  }
+}
+const isSeen=(G,x,y)=>{
+  const i=clamp(x/CELL|0,0,GW-1), j=clamp(y/CELL|0,0,GH-1);
+  return G.seen[j*GW+i]===1;
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   12 · SIMULAZIONE
+   Un giorno di gioco = 1,4 s reali a velocità 1×. Tutto è
+   continuo: produzione, fame, nascite, marce, battaglie.
+   ═══════════════════════════════════════════════════════════════ */
+const DAYMS=1400;
+const COMBAT_K=.85;
+const HARV_D=230;             // distanza a cui il trasporto rende la metà
+const EAT=.35;                // grano al giorno per anima
+
+const bandN=b=>{let s=0;for(const t in b.u)s+=b.u[t];return s};
+const isPeasant=b=>{for(const t in b.u)if(b.u[t]>0&&t!=='contadino')return false;return true};
+const bandSpd=(b,m)=>{
+  let s=99;
+  for(const t in b.u) if(b.u[t]>0) s=Math.min(s,UNIT[t].spd);
+  return s*(m?m.march:1);
+};
+const RAID_ATK=.75;           // i banditi sono ciurmaglia, non soldati
+function bandPow(u,foeU,m,scale){
+  let p=0;
+  for(const t in u){
+    const n=u[t]; if(!n)continue;
+    const U=UNIT[t];
+    const mul=m?(U.cls==='arc'?m.atkArc:U.cls==='cav'?m.atkCav:m.atkMel):1;
+    // Il bonus di contrasto pesa quanto la quota del bersaglio nell'esercito nemico
+    let cm=1;
+    if(U.vs&&foeU){
+      let tot=0,hit=0;
+      for(const k in foeU){tot+=foeU[k];if(U.vs[k])hit+=foeU[k]*U.vs[k]}
+      if(tot>0)cm=(tot-Object.keys(U.vs).reduce((a,k)=>a+(foeU[k]||0),0)+hit)/tot;
+    }
+    p+=n*U.atk*mul*cm;
+  }
+  return p*(scale===undefined?1:scale);
+}
+function bandHpPool(u,m){
+  let h=0;
+  for(const t in u) h+=(u[t]||0)*UNIT[t].hp*(m?m.hp:1);
+  return h;
+}
+/** Toglie `pts` punti di vita a una composizione: muore prima la prima linea. */
+function applyLoss(u,pts,m){
+  let dead=0;
+  for(const t of UORD){
+    if(pts<=0)break;
+    let n=u[t]||0; if(!n)continue;
+    const per=UNIT[t].hp*(m?m.hp:1);
+    const kill=Math.min(n,pts/per);
+    u[t]=n-kill; pts-=kill*per;
+    dead+=kill;
+    if(u[t]<1e-4)u[t]=0;
+  }
+  return dead;
+}
+/** Le perdite sono continue: dentro la simulazione un reparto può valere
+    3,4 uomini. Arrotondare a ogni tick cancellerebbe l'attrito — si
+    arrotonda solo quando si mostra il numero. Qui si toglie solo la polvere. */
+const cleanU=u=>{const o={};for(const t in u)if(u[t]>.02)o[t]=u[t];return o};
+
+function newBand(G,side,u,x,y,extra){
+  const b={id:uid('b'),side,u,x,y,tx:null,ty:null,job:null,fight:0,...extra};
+  G.bands.push(b); return b;
+}
+const myBands=G=>G.bands.filter(b=>b.side==='me'&&bandN(b)>=.4);
+const foeBands=G=>G.bands.filter(b=>b.side==='foe'&&bandN(b)>=.4);
+
+function popCount(G){
+  let p=G.free;
+  for(const b of myBands(G))p+=bandN(b);
+  return p;
+}
+function popCap(G){return 18+G.blds.capanne*20}
+function granaryCap(G){return 300+G.blds.granaio*260}
+function armyPow(G){
+  let p=0;
+  for(const b of myBands(G))for(const t in b.u)
+    if(t!=='contadino')p+=b.u[t]*(UNIT[t].atk*2+UNIT[t].hp);
+  return p;
+}
+function campSpeed(G,m){return (34+G.blds.carri*4)*m.camp}
+function cartCap(G,m){return Math.round((160+G.blds.carri*55)*m.cart)}
+
+function feed(G,txt,cls){
+  G.log.unshift({t:txt,c:cls||'',d:G.day});
+  if(G.log.length>7)G.log.pop();
+  renderFeed();
+}
+
+/* ── Costruzione ─────────────────────────────────────────────── */
+/** L'addestramento della caserma è vigore in più su TUTTE le truppe. */
+function syncTrain(G){G.mods.hp=G.baseHp*(1+.07*G.blds.caserma)}
+
+function canPay(G,c){for(const r in c)if(G.stock[r]<c[r])return false;return true}
+function pay(G,c){for(const r in c)G.stock[r]-=c[r]}
+function build(k){
+  const G=RUN; if(!G||G.over)return;
+  if(G.camp.state!=='fermo'){toast('Il campo è in viaggio');return}
+  const c=bldCost(k,G.blds[k]);
+  if(!canPay(G,c)){toast('Materiali insufficienti');return}
+  pay(G,c); G.blds[k]++; syncTrain(G);
+  feed(G,BLD[k].ic+' <b>'+BLD[k].n+'</b> al livello '+G.blds[k],'good');
+  renderSheet(); renderHud();
+}
+
+/* ── Fucina e caserma ────────────────────────────────────────── */
+function recruit(type,qty){
+  const G=RUN; if(!G||G.over)return;
+  const rec=RECIPE[type];
+  let max=Math.floor(G.free);
+  for(const a in rec) max=Math.min(max,Math.floor(G.arms[a]/rec[a]));
+  const n=Math.min(qty,max);
+  if(n<1){toast('Servono contadini liberi e armi');return}
+  for(const a in rec)G.arms[a]-=rec[a]*n;
+  G.free-=n;
+  const h=homeBand(G,false);
+  h.u[type]=(h.u[type]||0)+n;
+  feed(G,'⚔️ Arruolati <b>'+n+' '+(n>1?UNIT[type].pl:UNIT[type].n)+'</b>');
+  renderSheet(); renderHud();
+}
+/** Banda "di casa": quella ferma all'accampamento. La crea se non c'è. */
+function homeBand(G,peasant){
+  const c=G.camp;
+  let b=myBands(G).find(b=>!b.job&&b.tx===null&&dist(b.x,b.y,c.x,c.y)<26&&isPeasant(b)===!!peasant);
+  if(!b)b=newBand(G,'me',peasant?{contadino:0}:{},c.x+(Math.random()-.5)*18,c.y+(Math.random()-.5)*18);
+  return b;
+}
+function detach(n){
+  const G=RUN; if(!G||G.over)return;
+  n=Math.min(n,Math.floor(G.free));
+  if(n<1){toast('Nessun contadino libero');return}
+  G.free-=n;
+  const b=homeBand(G,true);
+  b.u.contadino=(b.u.contadino||0)+n;
+  feed(G,'🧑‍🌾 <b>'+n+'</b> contadini pronti a partire');
+  renderSheet(); renderHud(); select(b,true);
+}
+function recallAll(){
+  const G=RUN; if(!G||G.over)return;
+  for(const b of myBands(G))orderMove(b,G.camp.x,G.camp.y,null);
+  feed(G,'📯 Richiamo generale');
+  renderSheet();
+}
+
+/* ── Ordini ──────────────────────────────────────────────────── */
+function orderMove(b,x,y,job){
+  b.tx=clamp(x,10,W-10); b.ty=clamp(y,10,H-10); b.job=job||null;
+  // Solo chi è stato mandato a casa rientra nel popolo: chi è appena
+  // stato staccato resta una banda, in attesa di ordini.
+  b.ret=!job&&RUN&&dist(b.tx,b.ty,RUN.camp.x,RUN.camp.y)<26;
+}
+function orderHarvest(b,node){
+  if(!isPeasant(b)){toast('Solo i contadini raccolgono');return}
+  if(node.type==='rovina'){orderMove(b,node.x,node.y,{k:'ruin',n:node.id});return}
+  orderMove(b,node.x+(Math.random()-.5)*14,node.y+(Math.random()-.5)*14,{k:'harv',n:node.id});
+}
+function orderAttack(b,camp){
+  orderMove(b,camp.x,camp.y,{k:'raid',c:camp.id});
+}
+
+/* ── Movimento del campo: il cuore del gioco ─────────────────── */
+function startMigration(x,y){
+  const G=RUN; if(!G||G.over)return;
+  const c=G.camp;
+  if(c.state!=='fermo'){toast('Il campo è già in movimento');return}
+  const m=G.mods, cap=cartCap(G,m);
+  let tot=G.stock.grano+G.stock.legna+G.stock.ferro;
+  c.state='pack'; c.tx=clamp(x,30,W-30); c.ty=clamp(y,30,H-30); c.prog=0;
+  const d=dist(c.x,c.y,c.tx,c.ty);
+  feed(G,'🏕️ Si smonta il campo · '+Math.round(d)+' passi di marcia');
+  if(tot>cap)feed(G,'⚠️ I carri portano solo '+nf(cap)+' di scorte: il resto va perduto','war');
+  renderSheet(); renderHud();
+}
+function migrationStep(G,dt,m){
+  const c=G.camp;
+  if(c.state==='fermo')return;
+  if(c.state==='pack'){
+    c.prog+=dt;
+    if(c.prog>=1){
+      c.prog=0; c.state='move';
+      // I carri hanno un limite: ciò che eccede resta a marcire sul posto
+      const cap=cartCap(G,m);
+      let tot=G.stock.grano+G.stock.legna+G.stock.ferro;
+      if(tot>cap){
+        const k=cap/tot;
+        const lost=Math.round(tot-cap);
+        for(const r in G.stock)G.stock[r]=Math.floor(G.stock[r]*k);
+        feed(G,'📦 Abbandonati <b>'+nf(lost)+'</b> di scorte','war');
+      }
+      // Chi lavorava lontano molla il lavoro e segue il popolo
+      for(const b of myBands(G))if(b.job&&b.job.k==='harv'){b.job=null;b.tx=c.tx;b.ty=c.ty}
+    }
+    return;
+  }
+  if(c.state==='move'){
+    const sp=campSpeed(G,m)*dt;
+    const d=dist(c.x,c.y,c.tx,c.ty);
+    if(d<=sp){ c.x=c.tx; c.y=c.ty; c.state='unpack'; c.prog=0 }
+    else { c.x+=(c.tx-c.x)/d*sp; c.y+=(c.ty-c.y)/d*sp }
+    reveal(G,c.x,c.y,3.4*m.sight);
+    return;
+  }
+  if(c.state==='unpack'){
+    c.prog+=dt;
+    if(c.prog>=1){
+      c.state='fermo'; c.prog=0; G.migr++;
+      reveal(G,c.x,c.y,4.2*m.sight);
+      feed(G,'🏕️ <b>Nuovo accampamento</b> · terra al '+Math.round(fertAt(G,c.x,c.y)*100)+'% di fertilità','good');
+    }
+  }
+}
+
+/* ── Il tick: un frazione di giorno ──────────────────────────── */
+function simTick(G,dt){
+  const m=G.mods;
+  migrationStep(G,dt,m);
+  const moving=G.camp.state==='move'||G.camp.state==='pack';
+
+  /* 1 · Marce e arrivi */
+  for(const b of myBands(G)){
+    if(b.tx===null)continue;
+    const sp=bandSpd(b,m)*dt;
+    const d=dist(b.x,b.y,b.tx,b.ty);
+    if(d<=sp){
+      b.x=b.tx; b.y=b.ty; b.tx=null; b.ty=null;
+      if(b.job&&b.job.k==='ruin'){
+        const nd=G.nodes.find(n=>n.id===b.job.n);
+        if(nd&&!nd.used){
+          nd.used=true; G.ruins++; G.sapere+=30;
+          reveal(G,nd.x,nd.y,6);
+          feed(G,'🏛️ <b>Rovina esplorata</b> · +30 sapere','good');
+        }
+        b.job=null;
+      }
+    } else { b.x+=(b.tx-b.x)/d*sp; b.y+=(b.ty-b.y)/d*sp }
+    reveal(G,b.x,b.y,2.3*m.sight);
+  }
+  reveal(G,G.camp.x,G.camp.y,3.6*m.sight);
+
+  /* 2 · Raccolta — la resa crolla con la distanza dal campo */
+  for(const n of G.nodes)n.workers=0;
+  for(const b of myBands(G)){
+    if(!b.job||b.job.k!=='harv')continue;
+    const nd=G.nodes.find(x=>x.id===b.job.n);
+    if(!nd){b.job=null;continue}
+    if(dist(b.x,b.y,nd.x,nd.y)>34)continue;
+    if(nd.left<=.5){
+      b.job=null;
+      feed(G,NODE[nd.type].ic+' Risorsa <b>esaurita</b>','war');
+      continue;
+    }
+    const w=b.u.contadino||0; if(!w)continue;
+    nd.workers+=w;
+    const eff=(1/(1+dist(nd.x,nd.y,G.camp.x,G.camp.y)/HARV_D))*(moving?.3:1);
+    const km=nd.type==='campo'?m.farm*nd.fert*1.35:nd.type==='bosco'?m.wood:m.iron;
+    let got=w*NODE[nd.type].rate*km*eff*dt;
+    got=Math.min(got,nd.left);
+    nd.left-=got;
+    const r=NODE[nd.type].res;
+    G.stock[r]+=got;
+  }
+  // I campi si riprendono, molto lentamente. Boschi e vene, mai.
+  for(const n of G.nodes)
+    if(n.type==='campo'&&n.left<n.cap)n.left=Math.min(n.cap,n.left+n.cap*.006*dt);
+  if(G.stock.grano>granaryCap(G))G.stock.grano=granaryCap(G);
+
+  /* 3 · Fucina */
+  if(!moving){
+    G.forgeP+=G.blds.fucina*.7*m.forge*dt;
+    const A=ARMS[G.forgeSel];
+    G.forgeStuck=false;
+    while(G.forgeP>=1){
+      if(A.era>G.era){G.forgeP=1;break}
+      if(!canPay(G,A.c)){G.forgeP=1;G.forgeStuck=true;break}
+      pay(G,A.c); G.arms[G.forgeSel]++; G.forgeP-=1;
+    }
+  }
+
+  /* 4 · Sapere ed ere */
+  if(!moving)G.sapere+=(.4+G.blds.tenda*1.2)*m.know*dt;
+  while(G.era<5&&G.sapere>=ERAS[G.era].need){
+    G.era++;
+    feed(G,'📜 <b>'+ERAS[G.era-1].name+'</b> · '+ERAS[G.era-1].d,'good');
+  }
+
+  /* 5 · Fame e nascite */
+  let eat=G.free*EAT;
+  for(const b of myBands(G))for(const t in b.u)eat+=b.u[t]*EAT*UNIT[t].up;
+  eat*=m.upkeep*dt;
+  const pop=popCount(G);
+  if(G.stock.grano>=eat){
+    G.stock.grano-=eat;
+    G.starve=Math.max(0,G.starve-dt*2);
+    const cap=popCap(G);
+    if(G.stock.grano>pop*1.4&&pop<cap){
+      G.birthAcc+=pop*.09*m.birth*(1-pop/cap)*dt;
+      while(G.birthAcc>=1){G.birthAcc-=1;G.free++;G.born++}
+    }
+  } else {
+    G.stock.grano=0;
+    G.starve+=dt;
+    let deaths=pop*.07*dt;
+    if(G.free>=deaths)G.free-=deaths;
+    else{
+      deaths-=G.free; G.free=0;
+      for(const b of myBands(G)){
+        if(deaths<=0)break;
+        const n=bandN(b), k=Math.min(n,deaths);
+        applyLoss(b.u,k*1.2,m); deaths-=k;
+      }
+    }
+    G.lost+=1;
+    if(G.starve>.6){G.starve=0;feed(G,'💀 <b>Carestia</b> · il popolo muore di fame','war')}
+  }
+  if(G.free<0)G.free=0;
+  G.peak=Math.max(G.peak,popCount(G));
+
+  /* 6 · Battaglie */
+  battles(G,dt,m);
+
+  /* 7 · Il mondo reagisce */
+  worldAI(G,dt,m);
+
+  /* 8 · Pulizia delle bande annientate */
+  for(const b of G.bands){b.u=cleanU(b.u)}
+  G.bands=G.bands.filter(b=>bandN(b)>=.4);
+
+  /* 9 · Fusione automatica delle bande ferme sullo stesso punto */
+  const mine=myBands(G);
+  for(let i=0;i<mine.length;i++)for(let j=i+1;j<mine.length;j++){
+    const a=mine[i],b=mine[j];
+    if(!a.u||!b.u)continue;
+    if(a.tx!==null||b.tx!==null)continue;
+    if(a.job||b.job)continue;
+    if(isPeasant(a)!==isPeasant(b))continue;
+    if(dist(a.x,a.y,b.x,b.y)>16)continue;
+    for(const t in b.u)a.u[t]=(a.u[t]||0)+b.u[t];
+    b.u={};
+    if(SEL===b.id)SEL=a.id;
+  }
+  G.bands=G.bands.filter(b=>bandN(b)>=.4);
+
+  /* 10 · I contadini che tornano a casa rientrano nel popolo */
+  for(const b of myBands(G)){
+    if(isPeasant(b)&&b.ret&&!b.job&&b.tx===null&&dist(b.x,b.y,G.camp.x,G.camp.y)<20&&G.camp.state==='fermo'){
+      G.free+=bandN(b); b.u={};
+    }
+  }
+  G.bands=G.bands.filter(b=>bandN(b)>=.4);
+}
+
+/* ── Battaglie ───────────────────────────────────────────────── */
+function battles(G,dt,m){
+  for(const b of G.bands)b.fight=Math.max(0,(b.fight||0)-dt*3);
+
+  /* a) Le mie bande contro i covi */
+  for(const b of myBands(G)){
+    if(!b.job||b.job.k!=='raid')continue;
+    const C=G.camps.find(c=>c.id===b.job.c);
+    if(!C||C.razed){b.job=null;continue}
+    if(dist(b.x,b.y,C.x,C.y)>C.r+16)continue;
+    b.fight=1; C.fight=1;
+    const defBonus=C.kind==='clan'?1.25:1.12;      // combattono in casa
+    const pMe=bandPow(b.u,C.u,m);
+    const pFoe=bandPow(C.u,b.u,null)*defBonus;
+    applyLoss(C.u,pMe*COMBAT_K*dt,null);
+    applyLoss(b.u,pFoe*COMBAT_K*dt,m);
+    C.u=cleanU(C.u);
+    if(bandN({u:C.u})<.4){
+      C.razed=true; G.conq++;
+      const loot={};
+      for(const r in C.loot){
+        const q=Math.round(C.loot[r]*m.loot);
+        G.stock[r]+=q; loot[r]=q;
+      }
+      G.sapere+=C.kind==='clan'?26:10;
+      b.job=null;
+      feed(G,'🔥 <b>'+(C.kind==='clan'?'Clan annientato':'Covo raso al suolo')+'</b> · +'+
+        nf(loot.grano)+'🌾 +'+nf(loot.legna)+'🪵 +'+nf(loot.ferro)+'⛏️','good');
+    }
+    if(bandN(b)<.4)feed(G,'☠️ La spedizione è stata annientata','war');
+  }
+
+  /* b) Le incursioni contro di me */
+  const camp=G.camp;
+  for(const F of foeBands(G)){
+    const near=myBands(G).filter(b=>dist(b.x,b.y,F.x,F.y)<34);
+    const atCamp=dist(F.x,F.y,camp.x,camp.y)<36;
+    if(!near.length&&!atCamp)continue;
+    F.fight=1;
+    let allU={};
+    for(const b of near){for(const t in b.u)allU[t]=(allU[t]||0)+b.u[t]}
+    if(atCamp)allU.contadino=(allU.contadino||0)+G.free;
+    let pMe=0, pool=0;
+    for(const b of near){pMe+=bandPow(b.u,F.u,m); pool+=bandHpPool(b.u,m); b.fight=1}
+    let campPool=0;
+    if(atCamp){
+      // Chi resta al campo prende il forcone: poco, ma non zero.
+      pMe+=G.blds.torre*11*m.hp+G.free*.34;
+      campPool=G.free*1.0+G.blds.torre*5;
+      pool+=campPool;
+    }
+    const pFoe=bandPow(F.u,allU,null,RAID_ATK);
+    applyLoss(F.u,pMe*COMBAT_K*dt,null);
+    let inc=pFoe*COMBAT_K*dt;
+    if(pool>0){
+      for(const b of near){
+        const share=inc*(bandHpPool(b.u,m)/pool);
+        applyLoss(b.u,share,m);
+      }
+      if(atCamp&&campPool>0){
+        const share=inc*(campPool/pool);
+        G.free=Math.max(0,G.free-share*.45);
+      }
+    }
+    // Se non c'è più nessuno a difendere, saccheggiano
+    if(atCamp&&pMe<bandN(F)*.25&&F.going!=='home'){
+      let tot=0;
+      for(const r in G.stock){
+        const q=Math.min(G.stock[r],bandN(F)*2.2*dt);
+        G.stock[r]-=q; tot+=q;
+      }
+      F.loot=(F.loot||0)+tot;
+      F.stay=(F.stay||0)+dt;
+      if(F.loot>45||F.stay>3){
+        F.tx=F.hx; F.ty=F.hy; F.going='home';
+        feed(G,'📦 I razziatori se ne vanno con <b>'+nf(F.loot)+'</b> di scorte','war');
+      }
+    }
+    if(bandN(F)<.4)feed(G,'🛡️ <b>Incursione respinta</b>','good');
+  }
+
+  /* c) Movimento delle bande nemiche */
+  for(const F of foeBands(G)){
+    if(F.going!=='home'){F.tx=camp.x;F.ty=camp.y}
+    if(F.tx===null)continue;
+    const sp=bandSpd(F,null)*dt*.92;
+    const d=dist(F.x,F.y,F.tx,F.ty);
+    if(d<=sp){
+      F.x=F.tx;F.y=F.ty;
+      if(F.going==='home'){F.u={}}     // rientrano al covo e spariscono
+    } else {F.x+=(F.tx-F.x)/d*sp; F.y+=(F.ty-F.y)/d*sp}
+  }
+}
+
+/* ── Il mondo che vive ───────────────────────────────────────── */
+function worldAI(G,dt,m){
+  // Le guarnigioni dei covi si ricostituiscono
+  for(const C of G.camps){
+    if(C.razed)continue;
+    C.regrow+=(C.kind==='clan'?.07:.035)*dt;
+    while(C.regrow>=1){
+      C.regrow-=1;
+      const pool=G.day<20?['lanciere','arciere']:G.day<38?['lanciere','arciere','guerriero']
+        :['lanciere','arciere','guerriero','cavaliere'];
+      const t=pool[Math.floor(Math.random()*pool.length)];
+      const tot=bandN({u:C.u});
+      if(tot<(C.kind==='clan'?28:16))C.u[t]=(C.u[t]||0)+1;
+    }
+  }
+  // Incursioni: cadenza che stringe, forza che cresce col tuo esercito
+  if(G.day>=G.nextRaid){
+    const live=G.camps.filter(c=>!c.razed);
+    if(live.length){
+      live.sort((a,b)=>dist(a.x,a.y,G.camp.x,G.camp.y)-dist(b.x,b.y,G.camp.x,G.camp.y));
+      const C=live[Math.floor(Math.random()*Math.min(3,live.length))];
+      let pw=2.5+G.day*.20+G.conq*1.4;
+      pw=Math.max(pw,armyPow(G)*.16);
+      pw=Math.min(pw,40)*C.aggr;
+      const u={};
+      const pool=G.day<16?['lanciere','arciere']:G.day<34?['lanciere','arciere','guerriero']
+        :['lanciere','arciere','guerriero','cavaliere'];
+      let left=Math.max(2,Math.round(pw));
+      while(left>0){const t=pool[Math.floor(Math.random()*pool.length)];u[t]=(u[t]||0)+1;left--}
+      const F=newBand(G,'foe',u,C.x,C.y,{hx:C.x,hy:C.y,going:'raid',loot:0});
+      F.tx=G.camp.x; F.ty=G.camp.y;
+      const d=dist(C.x,C.y,G.camp.x,G.camp.y);
+      feed(G,'⚠️ <b>'+Math.round(bandN(F))+' razziatori</b> in marcia · '+
+        Math.round(d/(bandSpd(F,null)*.92))+' giorni','war');
+    }
+    G.nextRaid=G.day+Math.max(5,11-G.day*.07);
+  }
+}
+
+/* ── Punteggio ───────────────────────────────────────────────── */
+function scoreOf(G){
+  const pop=popCount(G);
+  const st=G.stock.grano/12+G.stock.legna/10+G.stock.ferro/7;
+  return Math.round(pop*12+armyPow(G)*7+st+G.conq*230+G.sapere*1.5+(G.era-1)*90);
+}
+function scoreParts(G){
+  return [
+    ['Popolo',            Math.round(popCount(G)*12)],
+    ['Esercito',          Math.round(armyPow(G)*7)],
+    ['Scorte',            Math.round(G.stock.grano/12+G.stock.legna/10+G.stock.ferro/7)],
+    ['Covi rasi al suolo',Math.round(G.conq*230)],
+    ['Sapere',            Math.round(G.sapere*1.5)],
+    ['Era raggiunta',     Math.round((G.era-1)*90)]
+  ];
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   13 · DISEGNO DELLA MAPPA
+   ═══════════════════════════════════════════════════════════════ */
+let RUN=null, SEL=null, PLACE=null, MODE='prova';
+let cv,ctx,cw,ch,DPR=1;
+const CAM={x:0,y:0,z:1.15};
+let MM={x:0,y:0,s:0};        // rettangolo della minimappa
+
+function fitCanvas(){
+  cv=$('#cv'); ctx=cv.getContext('2d');
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  cw=cv.clientWidth; ch=cv.clientHeight;
+  cv.width=cw*DPR; cv.height=ch*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const mid=cw>=720, wide=cw>=1080;
+  MM.s=Math.min(wide?168:mid?124:96, cw*.26, ch*.34);
+  // Stessa formula di rientro dei chip dell'HUD: l'angolo si raccoglie
+  // verso il centro invece di finire agli antipodi su un monitor.
+  MM.x=cw-MM.s-Math.max(mid?16:10,(cw-1100)/2);
+  MM.y=ch-MM.s-(mid?96:66);
+}
+const s2w=(sx,sy)=>({x:(sx-cw/2)/CAM.z+CAM.x, y:(sy-ch/2)/CAM.z+CAM.y});
+const w2s=(wx,wy)=>({x:(wx-CAM.x)*CAM.z+cw/2, y:(wy-CAM.y)*CAM.z+ch/2});
+
+function cellColor(f,seen){
+  if(!seen)return '#0a0906';
+  const h=38+f*60, l=10+f*11, s=16+f*16;
+  return 'hsl('+h.toFixed(0)+','+s.toFixed(0)+'%,'+l.toFixed(0)+'%)';
+}
+
+function draw(){
+  const G=RUN; if(!G)return;
+  ctx.clearRect(0,0,cw,ch);
+  ctx.fillStyle='#080705'; ctx.fillRect(0,0,cw,ch);
+
+  const tl=s2w(0,0), br=s2w(cw,ch);
+  const i0=clamp(tl.x/CELL-1|0,0,GW-1), i1=clamp(br.x/CELL+1|0,0,GW-1);
+  const j0=clamp(tl.y/CELL-1|0,0,GH-1), j1=clamp(br.y/CELL+1|0,0,GH-1);
+  const cs=CELL*CAM.z+1;
+
+  /* Terreno */
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+    const p=w2s(i*CELL,j*CELL);
+    ctx.fillStyle=cellColor(G.fert[j*GW+i],G.seen[j*GW+i]);
+    ctx.fillRect(p.x,p.y,cs,cs);
+  }
+
+  const m=G.mods;
+  const bn=skinCol(m);
+
+  /* Risorse */
+  for(const n of G.nodes){
+    if(!isSeen(G,n.x,n.y))continue;
+    const p=w2s(n.x,n.y), r=n.r*CAM.z;
+    const frac=n.cap?n.left/n.cap:1;
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7);
+    ctx.fillStyle=n.type==='rovina'?(n.used?'#231d33':'#2e2544')
+      :n.type==='campo'?'#3d4a1e':n.type==='bosco'?'#1f3a22':'#3a3630';
+    ctx.fill();
+    if(n.type!=='rovina'){
+      ctx.beginPath(); ctx.arc(p.x,p.y,r+2.5,-1.57,-1.57+6.283*clamp(frac,0,1));
+      ctx.strokeStyle=frac>.5?'#7cc45f':frac>.2?'#e0a44a':'#e0574a';
+      ctx.lineWidth=2.2; ctx.stroke();
+    }
+    ctx.font=(r*1.15|0)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(NODE[n.type].ic,p.x,p.y+1);
+    if(n.workers>0){
+      ctx.fillStyle='#f2ece0'; ctx.font='bold '+(9*Math.min(1.4,CAM.z))+'px sans-serif';
+      ctx.fillText('🧑‍🌾'+Math.round(n.workers),p.x,p.y-r-7);
+    }
+  }
+
+  /* Covi e clan */
+  for(const C of G.camps){
+    if(!isSeen(G,C.x,C.y))continue;
+    const p=w2s(C.x,C.y), r=C.r*CAM.z;
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7);
+    ctx.fillStyle=C.razed?'#231a17':C.kind==='clan'?'#4a1d2a':'#3a201a';
+    ctx.fill();
+    ctx.strokeStyle=C.razed?'#3a2f28':'#e0574a'; ctx.lineWidth=1.6; ctx.stroke();
+    ctx.font=(r*1.1|0)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(C.razed?'🔥':C.kind==='clan'?'🏰':'⛺',p.x,p.y+1);
+    if(!C.razed){
+      const n=Math.round(bandN({u:C.u}));
+      ctx.fillStyle='#ffb0a6'; ctx.font='bold '+(10*Math.min(1.4,CAM.z))+'px sans-serif';
+      ctx.fillText('⚔'+n,p.x,p.y-r-7);
+    }
+  }
+
+  /* Accampamento */
+  const c=G.camp;
+  if(c.state==='move'||c.state==='pack'){
+    const a=w2s(c.x,c.y), b=w2s(c.tx,c.ty);
+    ctx.setLineDash([5,5]); ctx.strokeStyle='rgba(224,164,74,.55)'; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); ctx.setLineDash([]);
+  }
+  {
+    const p=w2s(c.x,c.y), r=26*CAM.z;
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7);
+    ctx.fillStyle=bn.col2; ctx.fill();
+    ctx.strokeStyle=bn.col; ctx.lineWidth=2.4; ctx.stroke();
+    // Raggio di trasporto conveniente
+    ctx.beginPath(); ctx.arc(p.x,p.y,HARV_D*CAM.z,0,7);
+    ctx.strokeStyle='rgba(224,164,74,.14)'; ctx.lineWidth=1.2; ctx.setLineDash([4,7]);
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.font=(r*1.05|0)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(c.state==='fermo'?'🏕️':'🐎',p.x,p.y+1);
+    ctx.fillStyle=bn.col; ctx.font='bold '+(10*Math.min(1.4,CAM.z))+'px sans-serif';
+    ctx.fillText('🧑‍🌾'+Math.round(G.free),p.x,p.y-r-8);
+  }
+
+  /* Bande */
+  for(const b of G.bands){
+    const n=bandN(b); if(n<.5)continue;
+    if(b.side==='foe'&&!isSeen(G,b.x,b.y))continue;
+    const p=w2s(b.x,b.y);
+    if(b.tx!==null&&b.side==='me'){
+      const q=w2s(b.tx,b.ty);
+      ctx.strokeStyle='rgba(242,236,224,.20)'; ctx.lineWidth=1.2;
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); ctx.stroke();
+    }
+    let top=null,tn=0;
+    for(const t in b.u)if(b.u[t]>tn){tn=b.u[t];top=t}
+    if(!top)continue;
+    const r=(12+Math.min(9,Math.sqrt(n)*2.4))*CAM.z;
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7);
+    ctx.fillStyle=b.side==='me'?bn.col2:'#4a1a16';
+    ctx.fill();
+    ctx.strokeStyle=b.fight>.1?'#ff6a55':(b.side==='me'?bn.col:'#e0574a');
+    ctx.lineWidth=b.id===SEL?3:1.7; ctx.stroke();
+    ctx.font=(r*1.05|0)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(UNIT[top].ic,p.x,p.y+1);
+    ctx.fillStyle=b.side==='me'?'#f2ece0':'#ffb0a6';
+    ctx.font='bold '+(10*Math.min(1.4,CAM.z))+'px sans-serif';
+    ctx.fillText(Math.round(n)+'',p.x,p.y-r-7);
+    if(b.id===SEL){
+      ctx.beginPath(); ctx.arc(p.x,p.y,r+6,0,7);
+      ctx.strokeStyle='rgba(224,164,74,.75)'; ctx.lineWidth=2; ctx.stroke();
+    }
+    if(b.fight>.1){
+      ctx.font=(13*CAM.z|0)+'px serif';
+      ctx.fillText('💥',p.x+r*.8,p.y-r*.8);
+    }
+  }
+
+  /* Cursore di spostamento del campo */
+  if(PLACE==='camp'){
+    ctx.fillStyle='rgba(224,164,74,.10)'; ctx.fillRect(0,0,cw,ch);
+  }
+
+  drawMinimap(G,bn);
+}
+
+function drawMinimap(G,bn){
+  const {x,y,s}=MM, k=s/W;
+  ctx.fillStyle='rgba(10,9,6,.9)'; ctx.fillRect(x-2,y-2,s+4,s+4);
+  ctx.strokeStyle='#2b241b'; ctx.lineWidth=1; ctx.strokeRect(x-2,y-2,s+4,s+4);
+  const cs=s/GW;
+  for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){
+    if(!G.seen[j*GW+i])continue;
+    ctx.fillStyle=cellColor(G.fert[j*GW+i],1);
+    ctx.fillRect(x+i*cs,y+j*cs,cs+.6,cs+.6);
+  }
+  for(const C of G.camps){
+    if(C.razed||!isSeen(G,C.x,C.y))continue;
+    ctx.fillStyle='#e0574a'; ctx.fillRect(x+C.x*k-1.5,y+C.y*k-1.5,3,3);
+  }
+  for(const b of G.bands){
+    if(bandN(b)<.5)continue;
+    if(b.side==='foe'&&!isSeen(G,b.x,b.y))continue;
+    ctx.fillStyle=b.side==='me'?bn.col:'#ff6a55';
+    ctx.fillRect(x+b.x*k-1,y+b.y*k-1,2,2);
+  }
+  ctx.fillStyle=bn.col; ctx.fillRect(x+G.camp.x*k-2.5,y+G.camp.y*k-2.5,5,5);
+  // riquadro della vista
+  const tl=s2w(0,0), br=s2w(cw,ch);
+  ctx.strokeStyle='rgba(242,236,224,.45)'; ctx.lineWidth=1;
+  ctx.strokeRect(x+clamp(tl.x,0,W)*k,y+clamp(tl.y,0,H)*k,
+    (clamp(br.x,0,W)-clamp(tl.x,0,W))*k,(clamp(br.y,0,H)-clamp(tl.y,0,H))*k);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   14 · CONTROLLI
+   Un dito trascina la mappa, un tocco dà l'ordine. Due dita
+   zoomano. Aprire un pannello mette in pausa: su mobile devi
+   poter pensare senza che il mondo ti passi addosso.
+   ═══════════════════════════════════════════════════════════════ */
+let PTR=new Map(), DRAG=null, PINCH=null;
+
+function bindInput(){
+  const el=$('#cv');
+  el.addEventListener('pointerdown',e=>{
+    el.setPointerCapture(e.pointerId);
+    el.classList.add('drag');
+    PTR.set(e.pointerId,{x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t:now(),moved:0});
+    if(PTR.size===2){
+      const [a,b]=[...PTR.values()];
+      PINCH={d:Math.hypot(a.x-b.x,a.y-b.y),z:CAM.z};
+    }
+  });
+  el.addEventListener('pointermove',e=>{
+    const p=PTR.get(e.pointerId); if(!p)return;
+    const dx=e.clientX-p.x, dy=e.clientY-p.y;
+    p.moved+=Math.hypot(dx,dy); p.x=e.clientX; p.y=e.clientY;
+    if(PTR.size===2&&PINCH){
+      const [a,b]=[...PTR.values()];
+      const d=Math.hypot(a.x-b.x,a.y-b.y);
+      CAM.z=clamp(PINCH.z*(d/PINCH.d),.55,2.6);
+      return;
+    }
+    if(PTR.size===1){
+      CAM.x-=dx/CAM.z; CAM.y-=dy/CAM.z;
+      clampCam();
+    }
+  });
+  const up=e=>{
+    const p=PTR.get(e.pointerId);
+    PTR.delete(e.pointerId);
+    if(PTR.size<2)PINCH=null;
+    if(!PTR.size)el.classList.remove('drag');
+    if(!p)return;
+    if(p.moved<9&&now()-p.t<420)tap(p.x0,p.y0,e);
+  };
+  el.addEventListener('pointerup',up);
+  el.addEventListener('pointercancel',e=>{PTR.delete(e.pointerId);PINCH=null;if(!PTR.size)el.classList.remove('drag')});
+  el.addEventListener('wheel',e=>{
+    e.preventDefault();
+    CAM.z=clamp(CAM.z*(e.deltaY>0?.9:1.11),.55,2.6);
+  },{passive:false});
+
+  /* Tastiera: l'equivalente da computer, senza togliere nulla al dito */
+  window.addEventListener('keydown',e=>{
+    const t=e.target;
+    if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+    // Le scorciatoie del browser (zoom, salva, cambio scheda) restano del browser
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    const k=e.key, modal=$('#modal').classList.contains('on');
+    const inGame=$('#game').classList.contains('on');
+    if(k==='Escape'){
+      if(modal)closeModal();
+      else if(SHEET)closeSheet();
+      else if(PLACE||SEL){SEL=null;PLACE=null;updateSel()}
+      return;
+    }
+    if(modal)return;
+    if($('#res').classList.contains('on'))return;
+    if(!inGame){
+      if(k>='1'&&k<='5'){const b=$$('.tab')[+k-1];if(b)b.click()}
+      return;
+    }
+    const ae=document.activeElement;
+    if(k===' '||k==='Spacebar'){
+      if(ae&&ae.tagName==='BUTTON')return;
+      e.preventDefault(); setSpeed(); return;
+    }
+    if(k>='1'&&k<='5'){const b=$$('.gb')[+k-1];if(b)b.click();return}
+    if(k==='+'||k==='='){e.preventDefault();CAM.z=clamp(CAM.z*1.11,.55,2.6);return}
+    if(k==='-'||k==='_'){e.preventDefault();CAM.z=clamp(CAM.z*.9,.55,2.6);return}
+    const st=40/CAM.z; let dx=0,dy=0;
+    if(k==='ArrowLeft'||k==='a'||k==='A')dx=-st;
+    else if(k==='ArrowRight'||k==='d'||k==='D')dx=st;
+    else if(k==='ArrowUp'||k==='w'||k==='W')dy=-st;
+    else if(k==='ArrowDown'||k==='s'||k==='S')dy=st;
+    if(dx||dy){e.preventDefault();CAM.x+=dx;CAM.y+=dy;clampCam()}
+  });
+}
+function clampCam(){
+  CAM.x=clamp(CAM.x,-200,W+200); CAM.y=clamp(CAM.y,-200,H+200);
+}
+function centerOn(x,y){CAM.x=x;CAM.y=y;clampCam()}
+
+function tap(sx,sy,ev){
+  const G=RUN; if(!G||G.over)return;
+  const r=cv.getBoundingClientRect();
+  sx-=r.left; sy-=r.top;
+
+  // Minimappa: salto immediato di visuale
+  if(sx>=MM.x-4&&sx<=MM.x+MM.s+4&&sy>=MM.y-4&&sy<=MM.y+MM.s+4){
+    centerOn((sx-MM.x)/MM.s*W,(sy-MM.y)/MM.s*H);
+    return;
+  }
+  const w=s2w(sx,sy);
+
+  if(PLACE==='camp'){
+    PLACE=null; $('#gsel').classList.remove('on');
+    startMigration(w.x,w.y); updateSel();
+    return;
+  }
+
+  // 1 · Una mia banda — toccarla la sceglie, non le dà mai un ordine
+  let hit=null,hd=1e9;
+  for(const b of myBands(G)){
+    const d=dist(w.x,w.y,b.x,b.y);
+    if(d<Math.max(26,34/CAM.z)&&d<hd){hd=d;hit=b}
+  }
+  if(hit){if(hit.id!==SEL)select(hit);return}
+
+  const sel=SEL?G.bands.find(b=>b.id===SEL):null;
+
+  // 2 · Un covo
+  for(const C of G.camps){
+    if(!isSeen(G,C.x,C.y))continue;
+    if(dist(w.x,w.y,C.x,C.y)<Math.max(28,36/CAM.z)){
+      if(C.razed){toast('Covo già raso al suolo');return}
+      if(!sel){toast('Scegli prima una banda');return}
+      if(isPeasant(sel)){toast('I contadini non assaltano i covi');return}
+      orderAttack(sel,C);
+      feed(G,'🗡️ Assalto a '+(C.kind==='clan'?(C.name||'un clan'):'un covo'));
+      return;
+    }
+  }
+  // 3 · Una risorsa
+  for(const n of G.nodes){
+    if(!isSeen(G,n.x,n.y))continue;
+    if(dist(w.x,w.y,n.x,n.y)<Math.max(24,32/CAM.z)){
+      if(!sel){toast('Scegli prima una banda');return}
+      if(n.type==='rovina'){
+        if(n.used){toast('Rovina già esplorata');return}
+        orderMove(sel,n.x,n.y,{k:'ruin',n:n.id});
+        toast('In marcia verso la rovina'); updateSel(); return;
+      }
+      if(!isPeasant(sel)){toast('Solo i contadini raccolgono');return}
+      if(n.left<=.5){toast('Risorsa esaurita');return}
+      orderHarvest(sel,n); updateSel(); return;
+    }
+  }
+  // 4 · L'accampamento
+  if(dist(w.x,w.y,G.camp.x,G.camp.y)<Math.max(30,38/CAM.z)){
+    if(sel){orderMove(sel,G.camp.x,G.camp.y,null);toast('Rientro all\'accampamento');updateSel()}
+    else openSheet('campo');
+    return;
+  }
+  // 5 · Terra libera
+  if(sel){orderMove(sel,w.x,w.y,null);updateSel()}
+  else{SEL=null;updateSel()}
+}
+
+function select(b,center){
+  SEL=b?b.id:null;
+  if(b&&center)centerOn(b.x,b.y);
+  updateSel();
+}
+function updateSel(){
+  const G=RUN;
+  if(cv)cv.classList.toggle('place',PLACE==='camp');
+  const b=G&&SEL?G.bands.find(x=>x.id===SEL):null;
+  const box=$('#gsel');
+  if(PLACE==='camp'){
+    box.classList.add('on');
+    $('#selT').textContent='Dove portiamo il popolo?';
+    $('#selH').textContent='Tocca la mappa. Servono 1 giorno per smontare, la marcia, e 1 per rimontare.';
+    return;
+  }
+  if(!b){box.classList.remove('on');return}
+  box.classList.add('on');
+  const parts=[];
+  for(const t of UORD)if(b.u[t]>=.5)parts.push(Math.round(b.u[t])+' '+(b.u[t]>1.5?UNIT[t].pl:UNIT[t].n));
+  $('#selT').textContent=parts.join(' · ')||'—';
+  let h='Tocca una risorsa, un covo o la terra per dare l\'ordine';
+  if(b.job&&b.job.k==='harv'){
+    const n=G.nodes.find(x=>x.id===b.job.n);
+    if(n)h='Raccoglie '+NODE[n.type].n.toLowerCase()+' · resa '+
+      Math.round(100/(1+dist(n.x,n.y,G.camp.x,G.camp.y)/HARV_D))+'% per la distanza';
+  }
+  else if(b.job&&b.job.k==='raid')h='In marcia verso il covo';
+  else if(b.job&&b.job.k==='ruin')h='In marcia verso la rovina';
+  else if(b.tx!==null)h='In marcia';
+  $('#selH').textContent=h;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   15 · CICLO DI GIOCO
+   ═══════════════════════════════════════════════════════════════ */
+let RAF=null, LAST=0;
+const SPEEDS=[1,2,4];
+
+function startRun(mode){
+  MODE=mode;
+  const M=MODES[mode];
+  const chk=canPlay(mode);
+  if(!chk.ok){toast(chk.why);return}
+
+  // Pagamento della quota: entra nel montepremi, non sparisce
+  let ticket=false;
+  if(M.tk){DB.tickets.left-=M.tk;ticket=true;save()}
+  else if(M.cur==='REG'&&M.fee>0){
+    post('entry_fee',mode,[[ACC.pSnk,-M.fee],[ACC.prize,M.fee]]);
+    post('entry_fee_opponents',mode,[[ACC.opp,-M.fee*(CLANS-1)],[ACC.prize,M.fee*(CLANS-1)]]);
+    DB.stats.spent+=M.fee; save();
+  }
+
+  const seed=(Math.random()*4294967296)>>>0;
+  RUN=genWorld(seed,mode);
+  RUN.mods=loadoutMods(isRanked(mode)?'ranked':'casual');
+  RUN.baseHp=RUN.mods.hp; syncTrain(RUN);
+  RUN.ticket=ticket;
+  RUN.mmr0=DB.player.mmr;
+  SEL=null; PLACE=null;
+  CAM.z=1.15; centerOn(RUN.camp.x,RUN.camp.y);
+  $('#game').classList.add('on');
+  $('#res').classList.remove('on');
+  closeSheet();
+  fitCanvas();
+  CAM.z=clamp(1.15*(Math.min(cw,ch)/700),1.15,2.4);
+  feed(RUN,'🏕️ Il popolo si accampa · '+M.days+' giorni per farsi un regno');
+  LAST=performance.now();
+  if(RAF)cancelAnimationFrame(RAF);
+  RAF=requestAnimationFrame(loop);
+  renderHud(); renderFeed(); updateSel();
+  setTimeout(()=>{if(RUN&&!RUN.over)openSheet('popolo')},650);
+}
+
+function loop(ts){
+  RAF=requestAnimationFrame(loop);
+  const G=RUN; if(!G)return;
+  let el=Math.min(80,ts-LAST); LAST=ts;
+  const paused=$('#sheet').classList.contains('on')||$('#modal').classList.contains('on');
+  if(!G.over&&!paused){
+    const step=el/DAYMS*(G.speedV||1);
+    // Passi piccoli: la simulazione resta stabile anche a 4×
+    let left=step;
+    while(left>1e-4){
+      const d=Math.min(.06,left);
+      simTick(G,d); G.t+=d; left-=d;
+      const nd=Math.floor(G.t)+1;
+      if(nd!==G.day){G.day=nd;onNewDay(G)}
+      if(G.t>=G.days){endRun();break}
+    }
+    renderHud();
+  }
+  draw();
+}
+
+function onNewDay(G){
+  if(G.day===Math.round(G.days*.5))feed(G,'⏳ Metà del tempo è passata');
+  if(G.day===G.days-9)feed(G,'⏳ <b>Nove giorni</b> alla fine','war');
+}
+
+function setSpeed(){
+  const G=RUN; if(!G)return;
+  const i=SPEEDS.indexOf(G.speedV||1);
+  G.speedV=SPEEDS[(i+1)%SPEEDS.length];
+  $('#hSpd').textContent=G.speedV+'×';
+}
+
+function renderHud(){
+  const G=RUN; if(!G)return;
+  $('#hDay').textContent=G.day+'/'+G.days;
+  $('#hGrano').textContent=nf(G.stock.grano);
+  $('#hLegna').textContent=nf(G.stock.legna);
+  $('#hFerro').textContent=nf(G.stock.ferro);
+  $('#hPop').textContent=Math.round(popCount(G))+'/'+popCap(G);
+  $('#cGrano').classList.toggle('warn',G.stock.grano<12);
+  $('#hSpd').textContent=(G.speedV||1)+'×';
+  $('#gbar').querySelector('[data-s="caserma"]').classList
+    .toggle('alert',G.free>=1&&Object.keys(RECIPE).some(t=>{
+      const r=RECIPE[t];
+      return Object.keys(r).every(a=>G.arms[a]>=r[a]&&ARMS[a].era<=G.era);
+    }));
+  // Braccia ferme: è il richiamo più importante della schermata
+  const idle=myBands(G).some(b=>!b.job&&b.tx===null&&isPeasant(b))||G.free>=4;
+  $('#gbar').querySelector('[data-s="popolo"]').classList.toggle('alert',idle);
+}
+function renderFeed(){
+  const G=RUN; if(!G)return;
+  $('#gfeed').innerHTML=G.log.map(l=>'<div class="fev '+l.c+'">'+l.t+'</div>').join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   16 · PANNELLI DI COMANDO
+   Mentre un pannello è aperto il tempo si ferma: su un telefono
+   devi poter decidere senza che il mondo ti passi addosso.
+   ═══════════════════════════════════════════════════════════════ */
+let SHEET=null;
+function openSheet(k){SHEET=k;renderSheet();$('#sheet').classList.add('on');syncDock()}
+function closeSheet(){SHEET=null;$('#sheet').classList.remove('on');syncDock()}
+
+const resLine=c=>Object.keys(c).map(r=>
+  (r==='grano'?'🌾':r==='legna'?'🪵':'⛏️')+c[r]).join(' ');
+
+function renderSheet(){
+  const G=RUN; if(!G||!SHEET)return;
+  const m=G.mods;
+  let h='';
+
+  if(SHEET==='popolo'){
+    const bands=myBands(G);
+    h+=head('Il popolo');
+    h+=`<div class="card flat">
+      <div class="kv"><span>Anime</span><b>${Math.round(popCount(G))} / ${popCap(G)}</b></div>
+      <div class="kv"><span>Contadini liberi al campo</span><b>${Math.round(G.free)}</b></div>
+      <div class="kv"><span>Nati · perduti</span><b>${G.born} · ${Math.round(G.lost)}</b></div>
+      <div class="muted" style="margin-top:6px">Le anime crescono solo se c'è grano in scorta e capanne libere.</div>
+    </div>`;
+    h+=`<h3>Stacca contadini</h3>
+    <div class="row" style="gap:6px">
+      ${[1,5,10].map(n=>`<button class="btn g sm grow" onclick="__app.detach(${n})">+${n}</button>`).join('')}
+      <button class="btn g sm grow" onclick="__app.detach(999)">Tutti</button>
+    </div>
+    <div class="muted" style="margin-top:6px">Poi tocca un campo, un bosco o una vena sulla mappa: andranno a raccogliere.</div>`;
+    h+=`<h3>Bande sul campo · ${bands.length}</h3>`;
+    if(!bands.length)h+=`<div class="empty">Nessuno fuori dall'accampamento.</div>`;
+    for(const b of bands){
+      const parts=UORD.filter(t=>b.u[t]>=.5).map(t=>UNIT[t].ic+Math.round(b.u[t])).join(' ');
+      let job='Ferma';
+      if(b.job&&b.job.k==='harv'){
+        const n=G.nodes.find(x=>x.id===b.job.n);
+        job=n?'Raccoglie '+NODE[n.type].n.toLowerCase()+' · resa '+
+          Math.round(100/(1+dist(n.x,n.y,G.camp.x,G.camp.y)/HARV_D))+'%':'Raccoglie';
+      }
+      else if(b.job&&b.job.k==='raid')job='Assalta un covo';
+      else if(b.job&&b.job.k==='ruin')job='Verso una rovina';
+      else if(b.tx!==null)job='In marcia';
+      h+=`<div class="unit ${b.id===SEL?'sel':''}">
+        <div class="u">${isPeasant(b)?'🧑‍🌾':'⚔️'}</div>
+        <div class="grow"><div class="n">${parts}</div><div class="d">${job}</div></div>
+        <button class="btn g xs" onclick="__app.pick('${b.id}')">Scegli</button>
+        <button class="btn g xs" onclick="__app.home('${b.id}')">Rientro</button>
+      </div>`;
+    }
+    if(bands.length)h+=`<button class="btn g wide sm" style="margin-top:6px" onclick="__app.recall()">📯 Richiamo generale</button>`;
+  }
+
+  if(SHEET==='campo'){
+    const c=G.camp, f=fertAt(G,c.x,c.y);
+    h+=head('L\'accampamento');
+    const stato=c.state==='fermo'?'Fermo':c.state==='pack'?'Si smonta ('+Math.round(c.prog*100)+'%)'
+      :c.state==='move'?'In marcia · '+Math.round(dist(c.x,c.y,c.tx,c.ty))+' passi'
+      :'Si rimonta ('+Math.round(c.prog*100)+'%)';
+    h+=`<div class="card flat">
+      <div class="kv"><span>Stato</span><b>${stato}</b></div>
+      <div class="kv"><span>Fertilità sotto il campo</span><b>${Math.round(f*100)}%</b></div>
+      <div class="kv"><span>Carico dei carri</span><b>${nf(G.stock.grano+G.stock.legna+G.stock.ferro)} / ${nf(cartCap(G,m))}</b></div>
+      <div class="kv"><span>Scorta di grano</span><b>${nf(G.stock.grano)} / ${nf(granaryCap(G))}</b></div>
+      <div class="muted" style="margin-top:6px">La resa di ogni raccolta cala con la distanza dal campo: a ${HARV_D} passi è già dimezzata. Quando la terra intorno è esausta, si parte.</div>
+    </div>`;
+    h+=`<button class="btn wide" onclick="__app.moveCamp()" ${c.state!=='fermo'?'disabled':''}>🏕️ Sposta l'accampamento</button>`;
+    h+=`<h3>Costruzioni</h3>`;
+    for(const k in BLD){
+      const cst=bldCost(k,G.blds[k]), ok=canPay(G,cst)&&c.state==='fermo';
+      h+=`<div class="unit">
+        <div class="u">${BLD[k].ic}</div>
+        <div class="grow"><div class="n">${BLD[k].n} · liv. ${G.blds[k]}</div>
+          <div class="d">${BLD[k].d}</div>
+          <div class="cost ${ok?'':'no'}" style="margin-top:3px">${resLine(cst)}</div></div>
+        <button class="btn ${ok?'':'g'} xs" ${ok?'':'disabled'} onclick="__app.build('${k}')">Costruisci</button>
+      </div>`;
+    }
+    h+=`<button class="btn dan wide sm" style="margin-top:12px" onclick="__app.giveUp()">Termina la spedizione ora</button>`;
+  }
+
+  if(SHEET==='fucina'){
+    h+=head('La fucina');
+    const rate=(G.blds.fucina*.7*m.forge);
+    h+=`<div class="card flat">
+      <div class="kv"><span>Ritmo</span><b>${rate.toFixed(2)} armi al giorno</b></div>
+      <div class="kv"><span>In lavorazione</span><b>${ARMS[G.forgeSel].ic} ${ARMS[G.forgeSel].n} · ${Math.round(G.forgeP*100)}%</b></div>
+      ${G.forgeStuck?`<div class="muted" style="color:var(--dan)">Manca il materiale: la fucina è ferma.</div>`:''}
+      <div class="muted" style="margin-top:6px">Si forgia una sola arma per volta. Scegli cosa serve davvero: il ferro non ricresce.</div>
+    </div>`;
+    h+=`<h3>Cosa forgiare</h3>`;
+    for(const k in ARMS){
+      const A=ARMS[k], lock=A.era>G.era, sel=G.forgeSel===k;
+      h+=`<div class="unit ${sel?'sel':''}" ${lock?'style="opacity:.45"':''}>
+        <div class="u">${A.ic}</div>
+        <div class="grow"><div class="n">${A.n} · in magazzino ${Math.floor(G.arms[k])}</div>
+          <div class="d">${lock?'Serve la '+ERAS[A.era-1].name:'Arma per '+UNIT[A.u].pl.toLowerCase()}</div>
+          <div class="cost" style="margin-top:3px">${resLine(A.c)} per arma</div></div>
+        <button class="btn ${sel?'':'g'} xs" ${lock?'disabled':''} onclick="__app.forge('${k}')">${sel?'In corso':'Forgia'}</button>
+      </div>`;
+    }
+  }
+
+  if(SHEET==='caserma'){
+    h+=head('La caserma');
+    h+=`<div class="card flat">
+      <div class="kv"><span>Contadini liberi</span><b>${Math.round(G.free)}</b></div>
+      <div class="kv"><span>Armi in magazzino</span><b>${Object.keys(ARMS).map(k=>ARMS[k].ic+Math.floor(G.arms[k])).join(' ')}</b></div>
+      <div class="muted" style="margin-top:6px">Un soldato è un contadino con un'arma in mano: arruolare toglie braccia ai campi. Il cavaliere ne consuma due, cavallo e spada.</div>
+    </div>`;
+    for(const t in RECIPE){
+      const rec=RECIPE[t], U=UNIT[t];
+      const eraOk=Object.keys(rec).every(a=>ARMS[a].era<=G.era);
+      let max=Math.floor(G.free);
+      for(const a in rec)max=Math.min(max,Math.floor(G.arms[a]/rec[a]));
+      const ok=eraOk&&max>=1;
+      const vs=U.vs?'batte '+Object.keys(U.vs).map(k=>UNIT[k].pl.toLowerCase()).join(' e '):'nessun bonus di contrasto';
+      h+=`<div class="unit" ${eraOk?'':'style="opacity:.45"'}>
+        <div class="u">${U.ic}</div>
+        <div class="grow"><div class="n">${U.pl}</div>
+          <div class="d">atk ${U.atk} · vigore ${U.hp} · passo ${U.spd} — ${vs}</div>
+          <div class="cost ${ok?'':'no'}" style="margin-top:3px">🧑‍🌾1 + ${Object.keys(rec).map(a=>ARMS[a].ic+rec[a]).join(' ')}${eraOk?'':' · '+ERAS[Math.max(...Object.keys(rec).map(a=>ARMS[a].era))-1].name}</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button class="btn ${ok?'':'g'} xs" ${ok?'':'disabled'} onclick="__app.recruit('${t}',1)">+1</button>
+          <button class="btn g xs" ${ok?'':'disabled'} onclick="__app.recruit('${t}',999)">Max ${max>0?'('+max+')':''}</button>
+        </div>
+      </div>`;
+    }
+  }
+
+  if(SHEET==='sapere'){
+    h+=head('Il sapere');
+    const cur=ERAS[G.era-1], nxt=ERAS[G.era];
+    const rate=(.4+G.blds.tenda*1.2)*m.know;
+    h+=`<div class="card flat">
+      <div class="kv"><span>Sapere</span><b>${Math.round(G.sapere)}</b></div>
+      <div class="kv"><span>Al giorno</span><b>+${rate.toFixed(2)}</b></div>
+      <div class="kv"><span>Rovine esplorate</span><b>${G.ruins} · +30 ciascuna</b></div>
+      ${nxt?`<div style="margin-top:9px"><div class="kv" style="padding-bottom:3px">
+        <span>Prossima era</span><b>${nxt.name}</b></div>
+        <div class="bar"><i style="width:${clamp((G.sapere-cur.need)/(nxt.need-cur.need)*100,0,100)}%"></i></div>
+        <div class="muted" style="margin-top:5px">${Math.round(nxt.need-G.sapere)} sapere · circa ${Math.ceil((nxt.need-G.sapere)/Math.max(.01,rate))} giorni</div>
+      </div>`:`<div class="muted" style="margin-top:6px">Hai raggiunto l'ultima era.</div>`}
+    </div>`;
+    h+=`<h3>Le ere</h3>`;
+    for(const e of ERAS){
+      const got=G.era>=e.n;
+      const arm=Object.keys(ARMS).find(k=>ARMS[k].era===e.n);
+      h+=`<div class="unit" ${got?'':'style="opacity:.5"'}>
+        <div class="u">${ARMS[arm].ic}</div>
+        <div class="grow"><div class="n">${e.name} ${got?'✓':'· '+e.need+' sapere'}</div>
+          <div class="d">${e.d} Sblocca: ${ARMS[arm].n} → ${UNIT[ARMS[arm].u].pl}.</div></div>
+      </div>`;
+    }
+    h+=`<div class="muted" style="margin-top:10px">Le rovine 🏛️ sparse per la mappa valgono 30 sapere ciascuna: mandarci una banda è spesso più veloce che costruire tende.</div>`;
+  }
+
+  $('#sheet').innerHTML=h;
+}
+function head(t){
+  return `<div class="shead"><h4>${t}</h4><button class="xbtn" onclick="__app.closeSheet()">✕</button></div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   17 · CHIUSURA E SETTLEMENT
+   Il montepremi si azzera esattamente: premi + rake + residuo
+   bruciato. Nessun token nasce dal nulla.
+   ═══════════════════════════════════════════════════════════════ */
+function hashWorld(G){
+  let s=G.seed+'|';
+  for(const n of G.nodes)s+=n.type[0]+(n.x|0)+','+(n.y|0)+';';
+  for(const c of G.camps)s+=c.kind[0]+(c.x|0)+','+(c.y|0)+';';
+  return fnv(s);
+}
+
+/** Gli altri sette clan: stesso seme, stessa terra, bravura diversa. */
+function ghosts(G,myScore){
+  const r=mulberry32(G.seed^0x9e3779b9);
+  const tier={prova:-420,libera:-220,t1:0,t2:230,t3:500}[G.mode]||0;
+  const mu=1150+(DB.player.mmr-1000)*1.05+tier;
+  const out=[];
+  const NAMES=['Clan del Guado','Figli di Brann','Erranti di Kel','Popolo del Sale',
+    'Orda Bianca','Gente di Mora','Stirpe di Torv','Nomadi del Vento','Casa Ferrara'];
+  const used=new Set();
+  for(let i=0;i<CLANS-1;i++){
+    // Somma di tre uniformi ≈ normale: distribuzione credibile senza librerie
+    const z=(r()+r()+r()-1.5)*1.9;
+    const sc=Math.max(240,Math.round(mu+z*460));
+    let nm; do{nm=NAMES[Math.floor(r()*NAMES.length)]}while(used.has(nm));
+    used.add(nm);
+    out.push({name:nm,score:sc,conq:clamp(Math.round((sc-620)/620),0,MAX_CONQ)});
+  }
+  return out;
+}
+
+function endRun(){
+  const G=RUN; if(!G||G.over)return;
+  G.over=true;
+  settle();
+}
+function giveUp(){
+  const G=RUN; if(!G||G.over)return;
+  openModal(`<h2>Terminare adesso?</h2>
+    <div class="sub">La spedizione viene chiusa al giorno ${G.day} di ${G.days} e il punteggio è quello attuale. La quota non torna indietro.</div>
+    <button class="btn dan wide" onclick="__app.confirmGiveUp()">Sì, si torna a casa</button>
+    <button class="btn g wide" style="margin-top:8px" onclick="__app.closeModal()">No, continuo</button>`);
+}
+
+function settle(){
+  const G=RUN;
+  // Idempotenza (§11.1): una spedizione si liquida UNA volta sola.
+  if(!G||G.settled)return;
+  G.settled=true; G.over=true;
+  closeSheet();
+
+  const myScore=scoreOf(G);
+  const gs=ghosts(G,myScore);
+  const board=[...gs.map(g=>({...g,me:false})),
+    {name:'Il tuo popolo',score:myScore,conq:Math.min(G.conq,MAX_CONQ),me:true}]
+    .sort((a,b)=>b.score-a.score);
+  const place=board.findIndex(x=>x.me)+1;
+  const M0=MODES[MODE], lm=G.mods, dim=diminish();
+
+  const base=computePayout(MODE,place,G.conq,null);
+  const eco=computePayout(MODE,place,G.conq,lm);
+  const baseMine=Math.round((base.place+base.conq)*dim);
+  const ecoMine=Math.round((eco.place+eco.conq)*dim);
+  const bonus=Math.max(0,ecoMine-baseMine);
+  let mine=baseMine+bonus, coinPay=0, burnRes=0;
+
+  if(M0.cur==='COINS'){
+    mine=0;
+    coinPay=eco.place+eco.conq;
+    post('run_reward_coins',MODE,[[ACC.emis,-coinPay],[ACC.pCoin,coinPay]]);
+  } else {
+    const pool=M0.fee*CLANS, rake=Math.round(pool*M0.rake), distrib=pool-rake;
+    let others=0;
+    for(let i=0;i<board.length;i++){
+      if(board[i].me)continue;
+      const q=computePayout(MODE,i+1,board[i].conq,null);
+      others+=q.place+q.conq;
+    }
+    // I covi che nessuno ha raso al suolo lasciano una quota senza destinatario:
+    // si brucia, non si redistribuisce (§5.2).
+    burnRes=Math.max(0,distrib-baseMine-others);
+
+    const bRake=Math.round(rake*.4), res=Math.round(rake*.3),
+          ops=Math.round(rake*.2), cre=rake-bRake-res-ops;
+    const moves=[
+      [ACC.prize,-pool],
+      [ACC.pSnk,baseMine+bonus],[ACC.opp,others],
+      [ACC.burn,bRake+burnRes],[ACC.resv,res-bonus],[ACC.ops,ops],[ACC.crea,cre]
+    ];
+    const sum=moves.reduce((a,x)=>a+x[1],0);
+    if(Math.abs(sum)>1e-6)moves.push([ACC.burn,-sum]);   // arrotondamenti → burn
+    post('run_settle',MODE,moves);
+
+    DB.eco.burned+=bRake+burnRes; DB.eco.sunk+=rake+burnRes;
+    DB.eco.weekSink+=rake+burnRes; DB.eco.rakeTot+=rake;
+    DB.stats.earned+=mine;
+  }
+
+  // Progressione
+  const xp=Math.round(30+G.conq*40+(CLANS+1-place)*18+(place===1?110:0)+G.era*12);
+  const ups=addXp(xp);
+  DB.player.mmr=clamp(Math.round(DB.player.mmr+(4.5-place)*8*(isRanked(MODE)?1:.3)),600,2400);
+
+  DB.stats.played++; DB.stats.conq+=G.conq; DB.stats.migr+=G.migr;
+  if(place===1)DB.stats.wins++;
+  if(place<=3)DB.stats.top3++;
+  DB.stats.bestPop=Math.max(DB.stats.bestPop,Math.round(G.peak));
+  DB.stats.era=Math.max(DB.stats.era,G.era);
+  DB.risk.count++;
+
+  questProgress({played:1,conq:G.conq,wins:place===1?1:0,top3:place<=3?1:0,
+    pop90:G.peak>=90?1:0,era3:G.era>=3?1:0,migr:G.migr,ranked:isRanked(MODE)?1:0});
+  checkAch();
+
+  // Durabilità: si consuma solo in Esodo
+  if(isRanked(MODE))for(const id of lm.used){
+    const n=nftById(id);
+    if(n&&n.dur!==null)n.dur=Math.max(0,n.dur-1);
+  }
+
+  const rep={id:uid('rep'),seed:G.seed,mode:MODE,days:G.days,lasted:G.day,
+    score:myScore,hash:hashWorld(G),at:now()};
+  DB.replays.unshift(rep); if(DB.replays.length>12)DB.replays.pop();
+  DB.runs.unshift({at:now(),mode:MODE,place,score:myScore,conq:G.conq,
+    pop:Math.round(popCount(G)),era:G.era,
+    net:M0.cur==='COINS'?0:mine-(G.ticket?0:M0.fee),xp,rep:rep.id});
+  if(DB.runs.length>40)DB.runs.pop();
+
+  if(!ledgerOk())console.error('LEDGER SBILANCIATO');
+  save();
+
+  showResult({board,place,myScore,eco,mine,coinPay,burnRes,dim,xp,ups,M0,rep,G});
+  $('#game').classList.remove('on');
+  renderAll();
+}
+
+function showResult(o){
+  const {board,place,myScore,eco,mine,coinPay,burnRes,dim,xp,ups,M0,rep,G}=o;
+  const fee=M0.cur==='COINS'?0:M0.fee;
+  const net=M0.cur==='COINS'?coinPay:mine-fee;
+  const parts=scoreParts(G);
+
+  $('#resIn').innerHTML=`
+    <div class="rplace" style="color:${place===1?'var(--gold)':'var(--txt)'}">${place}°</div>
+    <div class="rsub">${place===1?'Il tuo popolo ha fondato il regno più grande'
+      :'su '+CLANS+' clan · '+M0.name} · <b>${nf(myScore)}</b> punti</div>
+
+    <div class="rcols"><div class="rcol">
+    <div class="card">
+      <h3 style="margin-top:0">Come hai fatto punti</h3>
+      ${parts.map(([k,v])=>`<div class="kv"><span>${k}</span><b>${nf(v)}</b></div>`).join('')}
+      <div class="kv" style="border-top:1px solid var(--line);margin-top:6px;padding-top:9px">
+        <span>Totale</span><b style="font-size:16px">${nf(myScore)}</b></div>
+      <div class="muted" style="margin-top:8px">
+        ${G.day<G.days?'Chiusa al giorno '+G.day+' di '+G.days+'. ':''}
+        Popolo ${Math.round(popCount(G))} · covi rasi ${G.conq} · migrazioni ${G.migr} · ${ERAS[G.era-1].name}.</div>
+    </div>
+
+    <div class="card flat">
+      <h3 style="margin-top:0">Gli otto clan</h3>
+      ${board.map((b,i)=>`<div class="lbrow ${b.me?'me':''}">
+        <div class="p">${i+1}</div><div class="grow">${b.name}</div>
+        <div class="s">${nf(b.score)}</div></div>`).join('')}
+      <div class="muted" style="margin-top:8px">Stessa mappa, stesso seme, stessi ${G.days} giorni per tutti.</div>
+    </div>
+    </div><div class="rcol">
+    <div class="card">
+      ${M0.cur==='COINS'?`
+        <div class="kv"><span>Ingresso</span><b>${G.ticket?'1 Ticket':'gratis'}</b></div>
+        <div class="kv"><span>Premio piazzamento</span><b class="pos">+${nf(eco.place)} ●</b></div>
+        <div class="kv"><span>Premio conquiste</span><b class="pos">+${nf(eco.conq)} ●</b></div>
+        <div class="kv" style="border-top:1px solid var(--line);margin-top:7px;padding-top:11px">
+          <span>Totale</span><b class="pos" style="font-size:18px">+${nf(coinPay)} ● Coins</b></div>
+        <div class="muted" style="margin-top:8px">I Coins non sono scambiabili: servono per i Ticket e le riparazioni.</div>
+      `:`
+        <div class="kv"><span>Quota d'ingresso</span><b class="neg">−${nf(fee)} ◈</b></div>
+        <div class="kv"><span>Premio piazzamento</span><b class="pos">+${nf(eco.place)} ◈</b></div>
+        <div class="kv"><span>Premio conquiste (${Math.min(G.conq,MAX_CONQ)} ${Math.min(G.conq,MAX_CONQ)===1?'covo':'covi'})</span><b class="pos">+${nf(eco.conq)} ◈</b></div>
+        ${dim<1?`<div class="kv"><span>Rendimenti decrescenti</span><b class="neg">×${dim.toFixed(2)}</b></div>`:''}
+        <div class="kv" style="border-top:1px solid var(--line);margin-top:7px;padding-top:11px">
+          <span>Risultato netto</span><b class="${net>=0?'pos':'neg'}" style="font-size:18px">${net>=0?'+':''}${nf(net)} ◈</b></div>
+      `}
+    </div>
+
+    <div class="card flat">
+      <div class="kv"><span>Esperienza</span><b class="pos">+${xp} XP${ups?' · LIVELLO '+DB.player.level+'!':''}</b></div>
+      ${burnRes>0?`<div class="kv"><span>Bruciato dal montepremi</span><b>${nf(burnRes)} ◈</b></div>`:''}
+      <div class="kv"><span>Rating</span><b>${DB.player.mmr}</b></div>
+    </div>
+
+    <div class="card flat">
+      <div class="row">
+        <div class="grow">
+          <div style="font-size:12px;font-weight:700;margin-bottom:2px">Mondo verificabile</div>
+          <div class="muted">seme ${rep.seed} · impronta ${rep.hash}</div>
+        </div>
+        <button class="btn g sm" onclick="__app.verify('${rep.id}')">Verifica</button>
+      </div>
+      <div id="vres" class="muted" style="margin-top:8px"></div>
+    </div>
+    </div></div>
+
+    <div class="ractions">
+      <button class="btn wide" onclick="__app.again()">NUOVA SPEDIZIONE</button>
+      <button class="btn g wide" onclick="__app.toHub()">Torna al menu</button>
+    </div>
+  `;
+  $('#res').classList.add('on');
+}
+
+/** Ricostruisce il mondo dal seme e confronta l'impronta: la stessa
+    verifica che il server farebbe su un risultato contestato. */
+function verify(id){
+  const r=DB.replays.find(x=>x.id===id); if(!r)return;
+  const el=$('#vres'); el.textContent='Ricostruzione del mondo dal seme…';
+  setTimeout(()=>{
+    const G2=genWorld(r.seed,r.mode);
+    const h=hashWorld(G2);
+    el.innerHTML=h===r.hash
+      ?'<span style="color:var(--grn)">✓ Impronta identica ('+h+') — la terra era la stessa per tutti gli otto clan.</span>'
+      :'<span style="color:var(--dan)">✗ Impronta diversa: '+h+' ≠ '+r.hash+'</span>';
+  },260);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   18 · INTERFACCIA
+   ═══════════════════════════════════════════════════════════════ */
+function renderTop(){
+  $('#bSnk').textContent=nf(snk());
+  $('#bCoin').textContent=nf(coins());
+  const w=$('#wbtn');
+  w.classList.toggle('on',!!DB.player.addr);
+  $('#wtxt').textContent=DB.player.addr?DB.player.addr.slice(0,4)+'…'+DB.player.addr.slice(-3):'Wallet';
+}
+
+function renderPlay(){
+  const p=DB.player, need=lvlNeed(p.level);
+  let h=`<h2>Regno Errante</h2>
+  <p class="sub">Parti con dodici contadini e un accampamento che cammina. In ${RUN_DAYS} giorni devi farne un popolo — e decidere ogni volta se quelle braccia servono al grano o a un'arma.</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="grow">
+        <div style="font-size:13px;font-weight:700">Livello ${p.level}</div>
+        <div class="muted">${nf(p.xp)} / ${nf(need)} XP · rating ${p.mmr}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:var(--ac)">${ticketsLeft()} 🎟️</div>
+        <div class="muted">Ticket oggi</div>
+      </div>
+    </div>
+    <div class="bar" style="margin-top:9px"><i style="width:${clamp(p.xp/need*100,0,100)}%"></i></div>
+  </div>`;
+
+  h+=`<h3>Spedizioni</h3>`;
+  for(const k in MODES){
+    const M=MODES[k], c=canPlay(k);
+    h+=`<div class="card">
+      <div class="row">
+        <div class="grow">
+          <div style="font-size:14.5px;font-weight:700">${M.name}
+            ${M.cur==='REG'?`<span class="pill" style="background:rgba(224,164,74,.15);color:var(--ac);margin-left:5px">${nf(M.fee)} ◈</span>`
+              :M.tk?`<span class="pill" style="background:rgba(245,208,96,.15);color:var(--gold);margin-left:5px">1 🎟️</span>`
+              :`<span class="pill" style="background:rgba(124,196,95,.15);color:var(--grn);margin-left:5px">GRATIS</span>`}
+          </div>
+          <div class="muted" style="margin-top:3px">${M.d}</div>
+          ${!c.ok?`<div class="muted" style="color:var(--dan);margin-top:4px">${c.why}</div>`:''}
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        ${c.needTicket?`<button class="btn g grow sm" onclick="__app.buyTicket()">Compra Ticket · ${nf(ticketCost())} ●</button>`:''}
+        <button class="btn grow ${c.ok?'':'g'}" ${c.ok?'':'disabled'} onclick="__app.start('${k}')">Parti</button>
+      </div>
+      ${M.cur==='REG'?`<div class="muted" style="margin-top:8px">Montepremi ${nf(M.fee*CLANS)} ◈ · rake 10% · 1° posto ${nf(Math.round(M.fee*CLANS*.9*PLACE_SHARE*SPLIT[1]))} ◈ + conquiste</div>`:''}
+    </div>`;
+  }
+
+  h+=`<h3>Come si vince</h3>
+  <div class="card flat">
+    <div class="kv"><span>🌾 Contadini</span><b>raccolgono, ma la resa cala con la distanza</b></div>
+    <div class="kv"><span>🏕️ L'accampamento</span><b>si sposta: la terra si esaurisce</b></div>
+    <div class="kv"><span>🔨 Fucina</span><b>legna e ferro diventano armi</b></div>
+    <div class="kv"><span>⚔️ Caserma</span><b>contadino + arma = soldato</b></div>
+    <div class="kv"><span>📜 Sapere</span><b>apre arco, spada, cavallo, balestra</b></div>
+    <div class="muted" style="margin-top:8px">
+      Il triangolo: <b>lancieri</b> battono <b>cavalieri</b>, i cavalieri battono gli <b>arcieri</b>, gli arcieri battono i lancieri.
+      Guerrieri e balestrieri sono più forti in assoluto ma costano ferro, e il ferro non ricresce mai.</div>
+  </div>`;
+
+  if(DB.runs.length){
+    h+=`<h3>Ultime spedizioni</h3>`;
+    for(const r of DB.runs.slice(0,7)){
+      h+=`<div class="card flat" style="padding:10px">
+        <div class="row">
+          <div class="grow">
+            <div style="font-size:12.5px;font-weight:700">${r.place}° · ${MODES[r.mode].name}</div>
+            <div class="muted">${nf(r.score)} punti · ${r.pop} anime · ${r.conq} covi · era ${r.era}</div>
+          </div>
+          <div style="text-align:right;font-size:12.5px;font-weight:700"
+            class="${r.net>0?'pos':r.net<0?'neg':''}">${r.net?(r.net>0?'+':'')+nf(r.net)+' ◈':'—'}</div>
+        </div>
+      </div>`;
+    }
+  }
+  $('#p-play').innerHTML=h;
+}
+
+let INVTAB='ranked';
+function renderInv(){
+  const mode=INVTAB;
+  const L=DB.loadout[mode]||{};
+  let h=`<h2>Inventario</h2>
+  <p class="sub">Gli oggetti sono NFT su TON. Le Dinastie cambiano <b>come</b> giochi, non quanto sei forte; le Reliquie danno potenza pura e per questo valgono solo in Libera.</p>
+  <div class="seg">
+    <button class="${mode==='ranked'?'on':''}" onclick="__app.invTab('ranked')">Esodo</button>
+    <button class="${mode==='casual'?'on':''}" onclick="__app.invTab('casual')">Libera</button>
+  </div>`;
+
+  h+=`<h3>Equipaggiamento</h3><div class="grid2">`;
+  for(const cat of ['skin','ability','charm','core']){
+    const id=L[cat], n=id?nftById(id):null, d=n?defOf(n):null;
+    const locked=cat==='core'&&mode==='ranked';
+    h+=`<div class="card" style="margin:0;${locked?'opacity:.45':''}">
+      <div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px">${SLOT[cat]}</div>
+      <div style="font-size:22px;margin:5px 0 3px">${d?d.ic:'—'}</div>
+      <div style="font-size:12px;font-weight:700">${d?d.name:(locked?'Non ammesse':'Vuoto')}</div>
+      ${n&&n.dur!==null?`<div class="dur"><i class="${n.dur<25?'lo':''}" style="width:${n.dur}%"></i></div>`:''}
+    </div>`;
+  }
+  h+=`</div>`;
+
+  const mods=loadoutMods(mode);
+  const shown=[['farm','Resa dei campi'],['wood','Legna'],['iron','Ferro'],['forge','Fucina'],
+    ['birth','Natalità'],['camp','Velocità del campo'],['cart','Carico dei carri'],
+    ['march','Passo delle truppe'],['atkMel','Fanteria'],['atkArc','Tiratori'],['atkCav','Cavalleria'],
+    ['hp','Vigore'],['know','Sapere'],['loot','Bottino'],['sight','Vista'],['upkeep','Consumo di grano']];
+  const diff=shown.filter(([k])=>Math.abs(mods[k]-1)>.001);
+  if(diff.length){
+    h+=`<div class="card flat"><h3 style="margin-top:0">Effetto sul popolo</h3>`;
+    for(const [k,lab] of diff){
+      const v=(mods[k]-1)*100, good=k==='upkeep'?v<0:v>0;
+      h+=`<div class="kv"><span>${lab}</span><b style="color:${good?'var(--grn)':'var(--dan)'}">${v>0?'+':''}${v.toFixed(0)}%</b></div>`;
+    }
+    h+=`</div>`;
+  }
+
+  for(const cat of ['ability','charm','core','skin']){
+    const list=owned(cat);
+    h+=`<h3>${SLOT[cat]} · ${list.length}</h3>`;
+    if(!list.length){h+=`<div class="empty">Niente qui. Il Mercato è pieno.</div>`;continue}
+    h+=`<div class="grid2">`;
+    for(const n of list){
+      const d=defOf(n), eq=L[cat]===n.id;
+      h+=`<div class="nft ${eq?'eq':''} ${isBroken(n)?'brk':''}" onclick="__app.nft('${n.id}')">
+        <div class="ico">${d.ic}</div>
+        <div class="nm">${d.name}</div>
+        <div class="rr" style="color:${RAR[n.rar].c}">${RAR[n.rar].n}</div>
+        ${n.dur!==null?`<div class="dur"><i class="${n.dur<25?'lo':''}" style="width:${n.dur}%"></i></div>`:''}
+      </div>`;
+    }
+    h+=`</div>`;
+  }
+
+  const cr=craftables();
+  if(cr.length){
+    h+=`<h3>Fusione</h3>
+    <div class="muted" style="margin-bottom:9px">Tre oggetti della stessa categoria e rarità + $REG → uno di rarità superiore. I tre oggetti vengono distrutti, i token bruciati.</div>`;
+    for(const [k,v] of cr){
+      const [cat,rar]=k.split('|');
+      h+=`<div class="card flat"><div class="row">
+        <div class="grow"><div style="font-size:12.5px;font-weight:700">3 ${SLOT[cat]} ${RAR[rar].n} → 1 ${RAR[RARORD[RARORD.indexOf(rar)+1]].n}</div>
+        <div class="muted">ne hai ${v.length} · costo ${nf(craftCost(rar))} ◈ bruciati</div></div>
+        <button class="btn sm" onclick="__app.craft('${cat}','${rar}')">Fondi</button>
+      </div></div>`;
+    }
+  }
+  $('#p-inv').innerHTML=h;
+}
+
+let MKTTAB='all';
+function renderMkt(){
+  let h=`<h2>Mercato</h2>
+  <p class="sub">Escrow on-chain, royalty 5% al creator, fee ${(marketFee()*100).toFixed(0)}% al protocollo — metà bruciata.</p>
+  <div class="grid2" style="margin-bottom:12px">
+    ${['ability','charm','core','skin'].map(c=>`<div class="card flat" style="margin:0;padding:10px">
+      <div class="muted" style="font-size:10px;text-transform:uppercase">${SLOT[c]}</div>
+      <div style="font-size:14px;font-weight:700;color:var(--ac)">${floorOf(c)?nf(floorOf(c))+' ◈':'—'}</div>
+      <div class="muted">prezzo minimo</div></div>`).join('')}
+  </div>
+  <div class="seg">
+    ${[['all','Tutto'],['ability','Dinastie'],['charm','Sigilli'],['skin','Stendardi']]
+      .map(([k,l])=>`<button class="${MKTTAB===k?'on':''}" onclick="__app.mktTab('${k}')">${l}</button>`).join('')}
+  </div>`;
+
+  const mineL=DB.market.listings.filter(l=>l.mine);
+  if(mineL.length){
+    h+=`<h3>Le tue inserzioni</h3><div class="lstwrap">`;
+    for(const l of mineL){
+      const d=DEFS[l.defId];
+      h+=`<div class="lst"><div class="ico">${d.ic}</div>
+        <div class="grow"><div class="nm">${d.name}</div>
+        <div class="mt">${l.kind==='auction'?'Asta · offerta '+nf(l.bid)+' ◈ · '+hLeft(l.ends):'Prezzo fisso'}</div></div>
+        <button class="btn g xs" onclick="__app.cancel('${l.id}')">Ritira</button>
+        <div class="pr"><b>${nf(l.price)} ◈</b></div></div>`;
+    }
+    h+=`</div>`;
+  }
+
+  const list=DB.market.listings.filter(l=>!l.mine&&(MKTTAB==='all'||DEFS[l.defId].cat===MKTTAB));
+  h+=`<h3>In vendita · ${list.length}</h3>`;
+  if(!list.length)h+=`<div class="empty">Nessuna inserzione.</div>`;
+  else h+=`<div class="lstwrap">`;
+  for(const l of list.slice(0,26)){
+    const d=DEFS[l.defId];
+    h+=`<div class="lst" onclick="__app.listing('${l.id}')">
+      <div class="ico">${d.ic}</div>
+      <div class="grow"><div class="nm">${d.name}</div>
+        <div class="mt" style="color:${RAR[d.rar].c}">${RAR[d.rar].n} · ${SLOT[d.cat]}${l.dur!==null&&l.dur!==undefined?' · usura '+l.dur+'%':''}</div>
+        ${l.kind==='auction'?`<div class="mt">Asta · ${hLeft(l.ends)}</div>`:''}</div>
+      <div class="pr"><b>${nf(l.kind==='auction'?l.bid:l.price)} ◈</b>
+        <div class="mt">${l.kind==='auction'?'offerta':'compra'}</div></div></div>`;
+  }
+  if(list.length)h+=`</div>`;
+  $('#p-mkt').innerHTML=h;
+}
+function hLeft(t){
+  const d=t-now();
+  if(d<=0)return 'scaduta';
+  const hh=Math.floor(d/36e5), mm=Math.floor(d/6e4)%60;
+  return hh?hh+'h '+mm+'m':mm+'m';
+}
+
+function renderSeason(){
+  refreshQuests();
+  const s=DB.season, t=bpTier();
+  let h=`<h2>Stagione ${s.id}</h2>
+  <p class="sub">Otto settimane. La Cronaca premia chi gioca, non chi paga: la parte gratuita dà token, quella premium ne dà di più.</p>
+  <div class="card">
+    <div class="row"><div class="grow">
+      <div style="font-size:13px;font-weight:700">Cronaca del Regno · livello ${t}/${BP_TIERS}</div>
+      <div class="muted">${nf(s.bpXp%BP_STEP)} / ${nf(BP_STEP)} XP al prossimo</div>
+    </div>${s.premium?`<span class="pill" style="background:rgba(245,208,96,.15);color:var(--gold)">PREMIUM</span>`
+      :`<button class="btn gold sm" onclick="__app.buyBP()">${nf(BP_PRICE)} ◈</button>`}</div>
+    <div class="bar" style="margin-top:9px"><i style="width:${(s.bpXp%BP_STEP)/BP_STEP*100}%"></i></div>
+  </div>
+  <div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px">`;
+  for(let i=1;i<=BP_TIERS;i++){
+    const r=bpReward(i), got=s.claimed.includes(i), can=i<=t&&!got;
+    h+=`<button onclick="__app.bp(${i})" style="flex:none;width:62px;padding:8px 4px;border-radius:10px;
+      background:${can?'rgba(224,164,74,.16)':'var(--panel)'};border:1px solid ${can?'var(--ac)':'var(--line)'};
+      opacity:${i<=t?1:.42};text-align:center">
+      <div style="font-size:9px;color:var(--dim2);font-weight:700">LIV ${i}</div>
+      <div style="font-size:17px;margin:3px 0">${r.type==='nft'?'🎁':r.type==='snk'?'◈':'●'}</div>
+      <div style="font-size:10px;font-weight:700">${r.type==='nft'?RAR[r.v].n:nf(r.v)}</div>
+      ${got?`<div style="font-size:9px;color:var(--grn)">preso</div>`:''}
+    </button>`;
+  }
+  h+=`</div>`;
+
+  h+=`<h3>Incarichi del giorno</h3>`;
+  for(const q of DB.quests.daily)h+=questCard(q);
+  h+=`<h3>Incarichi della settimana</h3>`;
+  for(const q of DB.quests.weekly)h+=questCard(q);
+
+  h+=`<h3>Imprese</h3><div class="grid2">`;
+  for(const a of ACHS){
+    const got=DB.ach[a.id];
+    h+=`<div class="card" style="margin:0;${got?'':'opacity:.5'}">
+      <div style="font-size:20px">${got?'🏅':'🔒'}</div>
+      <div style="font-size:12px;font-weight:700;margin-top:4px">${a.t}</div>
+      <div class="muted">${a.d}</div></div>`;
+  }
+  h+=`</div>`;
+  $('#p-sea').innerHTML=h;
+}
+function questCard(q){
+  return `<div class="card flat"><div class="row">
+    <div class="grow"><div style="font-size:12.5px;font-weight:700">${q.t}</div>
+      <div class="bar" style="margin-top:6px"><i style="width:${q.p/q.n*100}%"></i></div>
+      <div class="muted" style="margin-top:4px">${q.p}/${q.n} · premio ${q.r.type==='snk'?nf(q.r.v)+' ◈':nf(q.r.v)+' ●'}</div></div>
+    ${q.done&&!q.taken?`<button class="btn sm" onclick="__app.quest('${q.id}')">Riscuoti</button>`
+      :q.taken?`<span class="pill" style="background:rgba(124,196,95,.15);color:var(--grn)">Preso</span>`:''}
+  </div></div>`;
+}
+
+function renderEco(){
+  const g=governor();
+  const circ=snk()+bal(ACC.opp)+bal(ACC.mkt)+bal(ACC.prize);
+  let h=`<h2>Economia</h2>
+  <p class="sub">Due valute con ruoli separati: <b>$REG</b> vive on-chain ed è scambiabile, i <b>Coins</b> no. I Coins non tornano mai indietro verso $REG — è la membrana che tiene fuori i bot.</p>
+
+  <div class="card">
+    <h3 style="margin-top:0">Emission Governor</h3>
+    <div class="kv"><span>Consumi settimana scorsa</span><b>${nf(g.prevSink)} ◈</b></div>
+    <div class="kv"><span>Emissione consentita (k=0,7)</span><b>${nf(g.allowed)} ◈</b></div>
+    <div class="kv"><span>Emesso questa settimana</span><b class="${g.used>g.allowed?'neg':'pos'}">${nf(g.used)} ◈</b></div>
+    <div class="bar" style="margin-top:8px"><i style="width:${clamp(g.used/Math.max(1,g.allowed)*100,0,100)}%;
+      background:${g.used>g.allowed?'var(--dan)':'var(--grn)'}"></i></div>
+    <div class="muted" style="margin-top:8px">L'emissione non può superare i consumi della settimana precedente. Se il gioco rallenta, il rubinetto si chiude da solo.</div>
+  </div>
+
+  <div class="card flat">
+    <div class="kv"><span>Bruciati in totale</span><b style="color:var(--dan)">${nf(DB.eco.burned)} ◈</b></div>
+    <div class="kv"><span>Coniati in totale</span><b>${nf(DB.eco.minted)} ◈</b></div>
+    <div class="kv"><span>Rake incassato</span><b>${nf(DB.eco.rakeTot)} ◈</b></div>
+    <div class="kv"><span>Rapporto sink/mint</span><b>${DB.eco.minted?(DB.eco.sunk/DB.eco.minted).toFixed(2)+'×':'∞'}</b></div>
+  </div>
+
+  <h3>Dove finiscono i token</h3>
+  <div class="card flat" style="padding:6px 10px">
+  <table><tr><th>Conto</th><th class="n">Saldo</th></tr>
+  ${[[ACC.pSnk,'Tu'],[ACC.opp,'Altri clan'],[ACC.prize,'Montepremi'],[ACC.burn,'Bruciato'],
+     [ACC.treas,'Tesoreria'],[ACC.resv,'Riserva stagionale'],[ACC.ops,'Operations'],
+     [ACC.crea,'Creator'],[ACC.mkt,'Escrow mercato'],[ACC.emis,'Emissione Coins']]
+    .map(([a,l])=>`<tr><td>${l}</td><td class="n">${nf(bal(a))}</td></tr>`).join('')}
+  </table></div>
+  <div class="muted" style="margin-top:6px">Partita doppia: la somma di tutti i conti è ${nf(Object.values(DB.accounts).reduce((a,b)=>a+b,0))} — deve essere zero, sempre. ${ledgerOk()?'✓':'✗ SBILANCIATO'}</div>
+
+  <h3>Converti</h3>
+  <div class="card">
+    <div class="muted" style="margin-bottom:9px">1 ◈ $REG = 45 ● Coins. I $REG convertiti vengono <b>bruciati</b>: è un sink puro, e il percorso inverso non esiste.</div>
+    <div class="row">
+      ${[10,50,200].map(v=>`<button class="btn g sm grow" onclick="__app.conv(${v})">${v} ◈</button>`).join('')}
+    </div>
+  </div>
+
+  <h3>Prelievi</h3>
+  <div class="card flat">
+    ${DB.withdrawals.length?DB.withdrawals.slice(-5).reverse().map(w=>`
+      <div class="kv"><span>${nf(w.amt)} ◈ · ${w.label}</span>
+      <b>${now()>=w.ready?'pronto':'in coda'}</b></div>`).join('')
+      :`<div class="muted">Nessun prelievo. La coda scala con l'importo: sotto 100 ◈ è istantanea, sopra 10.000 passa in revisione.</div>`}
+  </div>
+
+  <h3>Statistiche</h3>
+  <div class="card flat">
+    <div class="kv"><span>Spedizioni</span><b>${DB.stats.played}</b></div>
+    <div class="kv"><span>Vittorie · podi</span><b>${DB.stats.wins} · ${DB.stats.top3}</b></div>
+    <div class="kv"><span>Covi rasi al suolo</span><b>${DB.stats.conq}</b></div>
+    <div class="kv"><span>Popolo più grande</span><b>${DB.stats.bestPop} anime</b></div>
+    <div class="kv"><span>Migrazioni</span><b>${DB.stats.migr}</b></div>
+    <div class="kv"><span>$REG guadagnati · spesi</span><b>${nf(DB.stats.earned)} · ${nf(DB.stats.spent)}</b></div>
+  </div>`;
+  $('#p-eco').innerHTML=h;
+}
+
+/* ── Modali ──────────────────────────────────────────────────── */
+function openModal(h,opt){
+  opt=opt||{};
+  const b=$('#mbox');
+  b.classList.toggle('wide',!!opt.wide);
+  $('#mIn').innerHTML=h;
+  b.scrollTop=0;                 // riaprendo, la modale ripartiva a metà
+  $('#modal').classList.add('on');
+}
+function closeModal(){$('#modal').classList.remove('on')}
+
+function openNft(id){
+  const n=nftById(id); if(!n)return;
+  const d=defOf(n);
+  const eqR=DB.loadout.ranked[n.cat]===id, eqC=DB.loadout.casual[n.cat]===id;
+  openModal(`
+    <div style="text-align:center;font-size:40px">${d.ic}</div>
+    <h2 style="text-align:center">${d.name}</h2>
+    <div class="rsub" style="color:${RAR[n.rar].c}">${RAR[n.rar].n} · ${SLOT[n.cat]}</div>
+    <div class="card flat"><div class="muted">${d.d}</div></div>
+    ${n.dur!==null?`<div class="card flat">
+      <div class="kv"><span>Integrità</span><b class="${n.dur<25?'neg':''}">${n.dur}%</b></div>
+      <div class="dur"><i class="${n.dur<25?'lo':''}" style="width:${n.dur}%"></i></div>
+      <div class="muted" style="margin-top:8px">Si consuma di 1 punto a Esodo. La riparazione brucia i token: chi guadagna di più, brucia di più.</div>
+      ${n.dur<100?`<button class="btn g wide sm" style="margin-top:9px" onclick="__app.repair('${id}')">Ripara · ${nf(repairCost(n))} ◈</button>`:''}
+    </div>`:`<div class="card flat"><div class="muted">Cosmetico puro: non si consuma mai e non tocca il gioco.</div></div>`}
+    <div class="card flat"><div class="muted" style="word-break:break-all">Indirizzo NFT: ${n.addr.slice(0,26)}…</div></div>
+    <div class="row">
+      <button class="btn ${eqR?'g':''} grow sm" onclick="__app.equip('ranked','${id}')">${eqR?'Togli da Esodo':'Equipaggia · Esodo'}</button>
+      <button class="btn ${eqC?'g':''} grow sm" onclick="__app.equip('casual','${id}')">${eqC?'Togli da Libera':'Equipaggia · Libera'}</button>
+    </div>
+    <button class="btn g wide sm" style="margin-top:8px" onclick="__app.sell('${id}')">Metti in vendita</button>
+  `);
+}
+function openSell(id){
+  const n=nftById(id); if(!n)return;
+  const d=defOf(n), sug=Math.round(d.price*(n.dur!==null?(.55+.45*n.dur/100):1));
+  openModal(`<h2>Vendere ${d.name}</h2>
+    <div class="sub">Prezzo di riferimento ${nf(sug)} ◈. Fee ${(marketFee()*100).toFixed(0)}% + royalty 5%.</div>
+    <input id="sp" type="number" value="${sug}" style="width:100%;padding:11px;border-radius:10px;
+      background:var(--panel);border:1px solid var(--line);color:var(--txt);font-size:15px;font-weight:700">
+    <div class="row" style="margin-top:10px">
+      <button class="btn grow" onclick="__app.doList('${id}','fixed')">Prezzo fisso</button>
+      <button class="btn g grow" onclick="__app.doList('${id}','auction')">Asta 6h</button>
+    </div>`);
+}
+function openListing(lid){
+  const l=DB.market.listings.find(x=>x.id===lid); if(!l)return;
+  const d=DEFS[l.defId];
+  openModal(`
+    <div style="text-align:center;font-size:40px">${d.ic}</div>
+    <h2 style="text-align:center">${d.name}</h2>
+    <div class="rsub" style="color:${RAR[d.rar].c}">${RAR[d.rar].n} · ${SLOT[d.cat]}</div>
+    <div class="card flat"><div class="muted">${d.d}</div></div>
+    ${l.dur!==null&&l.dur!==undefined?`<div class="card flat">
+      <div class="kv"><span>Integrità</span><b>${l.dur}%</b></div>
+      <div class="dur"><i style="width:${l.dur}%"></i></div></div>`:''}
+    ${l.kind==='auction'?`
+      <div class="card flat">
+        <div class="kv"><span>Offerta più alta</span><b>${nf(l.bid)} ◈ ${l.bidder==='me'?'(tua)':''}</b></div>
+        <div class="kv"><span>Scade fra</span><b>${hLeft(l.ends)}</b></div>
+        <div class="muted" style="margin-top:6px">Un rilancio negli ultimi 3 minuti estende l'asta: niente sniping.</div>
+      </div>
+      <button class="btn wide" onclick="__app.bid('${lid}')">Rilancia · ${nf(Math.ceil(l.bid*1.05)+1)} ◈</button>`
+    :`<button class="btn wide" onclick="__app.buy('${lid}')">Compra · ${nf(l.price)} ◈</button>`}
+  `);
+}
+function openWallet(){
+  const p=DB.player;
+  /* Su un monitor la colonna sola lasciava metà dialogo vuoto: saldi a
+     sinistra, movimenti a destra. Sotto i 1080px .mcols è un div nudo e
+     l'ordine di lettura resta esattamente quello di prima. */
+  const wLeft=`${p.addr?`<div class="card flat"><div class="muted" style="word-break:break-all">${p.addr}</div></div>`
+      :`<div class="sub">Nessun wallet collegato. Puoi giocare lo stesso: la blockchain serve solo per portare fuori il valore.</div>
+        <button class="btn wide" onclick="__app.connect()">Collega TON Wallet</button>`}
+    <div class="card flat">
+      <div class="kv"><span>$REG</span><b style="color:var(--ac)">${nf(snk())} ◈</b></div>
+      <div class="kv"><span>Coins</span><b style="color:var(--gold)">${nf(coins())} ●</b></div>
+      <div class="kv"><span>In stake</span><b>${nf(p.stake)} ◈</b></div>
+    </div>`;
+  const wRight=`${p.addr?`
+      <h3>Deposita (simulato)</h3>
+      <div class="row">${[100,500,2000].map(v=>`<button class="btn g sm grow" onclick="__app.dep(${v})">+${v} ◈</button>`).join('')}</div>
+      <h3>Preleva</h3>
+      <div class="row">${[50,500,5000].map(v=>`<button class="btn g sm grow" onclick="__app.wd(${v})">${nf(v)} ◈</button>`).join('')}</div>
+      <div class="muted" style="margin-top:8px">Sotto 100 ◈ istantaneo · fino a 1.000 coda di 1 ora · fino a 10.000 coda di 24 ore · oltre, revisione manuale.</div>
+      <h3>Stake</h3>
+      <div class="row">
+        <button class="btn g sm grow" onclick="__app.stake(2000)">Metti 2.000 ◈</button>
+        <button class="btn g sm grow" onclick="__app.unstake()">Ritira</button>
+      </div>
+      <div class="muted" style="margin-top:8px">Lo stake è il requisito per l'Esodo T3: alza il costo di creare identità usa e getta.</div>
+    `:''}`;
+  openModal(`<h2>Wallet</h2>`+
+    (p.addr?`<div class="mcols"><div>${wLeft}</div><div>${wRight}</div></div>`:wLeft),
+    {wide:!!p.addr});
+}
+
+function renderAll(){renderTop();renderPlay();renderInv();renderMkt();renderSeason();renderEco()}
+
+/* ═══════════════════════════════════════════════════════════════
+   19 · CONTROLLORE DI LAYOUT — unica sorgente di verità
+   Le @media del foglio di stile e queste classi usano le STESSE
+   soglie (720 / 1080 / landscape<=520): non possono divergere.
+   .lay-side non è una soglia di larghezza ma di rapporto d'aspetto:
+   dove la finestra è più larga che alta c'è posto per agganciare il
+   pannello di comando a destra invece di coprirci la mappa.
+   ═══════════════════════════════════════════════════════════════ */
+const MQ={
+  t   :matchMedia('(min-width:720px)'),
+  d   :matchMedia('(min-width:1080px)'),
+  land:matchMedia('(orientation:landscape) and (max-height:520px)'),
+  side:matchMedia('(min-aspect-ratio:13/10)'),
+  fine:matchMedia('(hover:hover) and (pointer:fine)')
+};
+let LAY='';
+function applyLayout(){
+  const c=document.body.classList;
+  const d=MQ.d.matches, t=MQ.t.matches&&!d;
+  c.toggle('lay-d',d);
+  c.toggle('lay-t',t);
+  c.toggle('lay-land',MQ.land.matches);
+  c.toggle('lay-side',MQ.side.matches);
+  c.toggle('lay-fine',MQ.fine.matches);
+  const n=(d?'D':t?'T':'M')+(MQ.land.matches?'L':'')+(MQ.side.matches?'S':'');
+  const changed=n!==LAY; LAY=n;
+  return changed;
+}
+
+/* Il pannello di comando è un foglio dal basso in verticale e una
+   colonna agganciata a destra dove c'è larghezza. La classe .dock sul
+   body è ciò che dice alla tela di stringersi di quel tanto: senza,
+   metà mappa resterebbe sotto il pannello e la telecamera inquadrerebbe
+   un centro che il giocatore non vede. */
+function syncDock(){
+  const on=document.body.classList.contains('lay-side')&&$('#sheet').classList.contains('on');
+  const had=document.body.classList.contains('dock');
+  document.body.classList.toggle('dock',on);
+  if(on!==had&&$('#game').classList.contains('on')){fitCanvas();if(RUN)draw()}
+}
+
+/* Un solo punto d'ingresso per QUALSIASI cambio di viewport: la tela si
+   rimisura subito (altrimenti resta della misura vecchia finché non si
+   muove qualcosa), il resto aspetta 90ms per non far partire una raffica
+   di ricotture mentre si trascina il bordo della finestra. */
+let vpT=0;
+function onViewportChange(){
+  const changed=applyLayout();
+  if(changed)syncDock();
+  const inGame=$('#game').classList.contains('on');
+  if(inGame){fitCanvas();if(RUN)draw()}
+  clearTimeout(vpT);
+  vpT=setTimeout(()=>{
+    if($('#game').classList.contains('on')){fitCanvas();if(RUN)draw()}
+    if(SHEET)renderSheet();
+  },90);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   20 · ROUTER E AVVIO
+   ═══════════════════════════════════════════════════════════════ */
+function boot(){
+  DB=load();
+  if(!DB){
+    DB=fresh();
+    post('genesis_coins',null,[[ACC.emis,-2500],[ACC.pCoin,2500]]);
+    post('airdrop',null,[[ACC.resv,-320],[ACC.pSnk,320]]);
+    DB.eco.minted+=320;
+    const s=mint('st_verde','genesis');
+    DB.loadout.ranked.skin=s.id; DB.loadout.casual.skin=s.id;
+    save();
+  }
+  refreshQuests(); ticketsLeft(); tickMarket();
+
+  $$('.tab').forEach(b=>b.onclick=()=>{
+    $$('.tab').forEach(x=>x.classList.toggle('on',x===b));
+    $$('.page').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p));
+  });
+  $('#wbtn').onclick=()=>{DB.player.addr?openWallet():connectWallet()};
+  $('#mx').addEventListener('click',closeModal);
+  /* La chiusura sullo sfondo vale solo se ANCHE la pressione è partita
+     dallo sfondo: col mouse, selezionare il prezzo dentro il campo #sp
+     e rilasciare fuori dal riquadro chiudeva la modale per sbaglio. */
+  let mDownBg=false;
+  $('#modal').addEventListener('pointerdown',e=>{mDownBg=(e.target.id==='modal')});
+  $('#modal').addEventListener('click',e=>{
+    if(e.target.id==='modal'&&mDownBg)closeModal();
+    mDownBg=false;
+  });
+  $('#gspeed').onclick=setSpeed;
+  $('#selX').onclick=()=>{SEL=null;PLACE=null;updateSel()};
+  $$('.gb').forEach(b=>b.onclick=()=>{
+    if(SHEET===b.dataset.s)closeSheet(); else openSheet(b.dataset.s);
+  });
+  applyLayout();
+  window.addEventListener('resize',onViewportChange);
+  window.addEventListener('orientationchange',()=>setTimeout(onViewportChange,240));
+  if(window.visualViewport)visualViewport.addEventListener('resize',onViewportChange);
+  for(const k in MQ)MQ[k].addEventListener('change',onViewportChange);
+
+  fitCanvas(); bindInput(); renderAll();
+  setInterval(()=>{tickMarket();renderMkt();renderTop()},45e3);
+}
+
+window.__app={
+  start:startRun, again:()=>{$('#res').classList.remove('on');startRun(MODE)},
+  toHub:()=>{$('#res').classList.remove('on');RUN=null;if(RAF)cancelAnimationFrame(RAF);RAF=null},
+  verify, giveUp, confirmGiveUp:()=>{closeModal();settle()},
+  detach, recruit, build, recall:recallAll, closeSheet,
+  forge:k=>{if(RUN){RUN.forgeSel=k;RUN.forgeP=Math.min(RUN.forgeP,.999);renderSheet()}},
+  moveCamp:()=>{closeSheet();PLACE='camp';SEL=null;updateSel();toast('Tocca il punto dove portare il popolo')},
+  pick:id=>{const b=RUN.bands.find(x=>x.id===id);if(b){closeSheet();select(b,true)}},
+  home:id=>{const b=RUN.bands.find(x=>x.id===id);if(b){b.job=null;orderMove(b,RUN.camp.x,RUN.camp.y);renderSheet()}},
+  nft:openNft, sell:openSell, listing:openListing, closeModal,
+  equip:(m,id)=>{equip(m,id);closeModal()},
+  repair:id=>{repair(id);closeModal()},
+  craft, buy:buyListing, cancel:cancelListing,
+  bid:lid=>{const l=DB.market.listings.find(x=>x.id===lid);if(l)placeBid(lid,Math.ceil(l.bid*1.05)+1)},
+  doList:(id,kind)=>{
+    const v=parseInt($('#sp').value,10);
+    if(!v||v<1){toast('Prezzo non valido');return}
+    listNft(id,v,kind,kind==='auction'?6:72); closeModal();
+  },
+  invTab:t=>{INVTAB=t;renderInv()}, mktTab:t=>{MKTTAB=t;renderMkt()},
+  buyTicket, conv:convertToCoins, buyBP, bp:bpClaim, quest:claimQuest,
+  connect:connectWallet, dep:deposit, wd:requestWithdraw,
+  stake:v=>{
+    if(v>snk()){toast('$REG insufficienti');return}
+    post('stake',null,[[ACC.pSnk,-v],[ACC.treas,v]]);
+    DB.player.stake+=v; save(); openWallet(); renderTop(); toast('Stake attivo');
+  },
+  unstake:()=>{
+    const v=DB.player.stake; if(!v){toast('Nessuno stake');return}
+    post('unstake',null,[[ACC.treas,-v],[ACC.pSnk,v]]);
+    DB.player.stake=0; save(); openWallet(); renderTop(); toast('Stake ritirato');
+  }
+};
+
+boot();
+})();
+</script>
+</body>
+</html>

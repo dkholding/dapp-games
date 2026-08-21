@@ -1,0 +1,2863 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Snake Royale</title>
+<style>
+:root{
+  --bg:#0a0e13; --bg2:#0e141d; --panel:#121924; --panel2:#161f2c; --line:#1f2a3a;
+  --txt:#e8eef7; --dim:#8b9bb0; --dim2:#5f7285;
+  --ac:#2dd4bf; --gold:#f5c451; --dan:#ef5a5a; --pur:#c084fc; --blu:#38bdf8; --grn:#4ade80;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  font-variant-numeric:tabular-nums;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:none;background:none;cursor:pointer}
+::-webkit-scrollbar{width:0;height:0}
+
+#app{position:fixed;inset:0;display:flex;flex-direction:column}
+#main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+
+/* ── Header ─────────────────────────────────────── */
+#top{flex:none;display:flex;align-items:center;gap:8px;padding:calc(9px + env(safe-area-inset-top)) 12px 9px;
+  background:var(--bg2);border-bottom:1px solid var(--line);z-index:5}
+.bal{display:flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);
+  border-radius:9px;padding:5px 9px;font-size:12.5px;font-weight:700}
+.bal i{font-style:normal;font-size:13px}
+.bal.snk{color:var(--ac)} .bal.coin{color:var(--gold)}
+#wbtn{margin-left:auto;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  padding:6px 11px;font-size:12px;font-weight:600;color:var(--dim);display:flex;align-items:center;gap:6px}
+#wbtn.on{color:var(--ac);border-color:rgba(45,212,191,.4)}
+#wbtn .dot{width:6px;height:6px;border-radius:50%;background:var(--dim2)}
+#wbtn.on .dot{background:var(--ac);box-shadow:0 0 8px var(--ac)}
+
+/* ── Corpo ──────────────────────────────────────── */
+#body{flex:1;position:relative;overflow:hidden}
+.page{position:absolute;inset:0;overflow-y:auto;padding:14px 12px 18px;display:none;
+  -webkit-overflow-scrolling:touch}
+.page.on{display:block}
+
+/* ── Tab bar ────────────────────────────────────── */
+#tabs{flex:none;display:flex;background:var(--bg2);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.tab{flex:1;padding:9px 2px 8px;text-align:center;color:var(--dim2);font-size:9.5px;font-weight:600;
+  letter-spacing:.2px;transition:color .15s}
+.tab b{display:block;font-size:19px;font-weight:400;margin-bottom:2px;line-height:1}
+.tab.on{color:var(--ac)}
+
+/* ── Tipografia ─────────────────────────────────── */
+h2{margin:0 0 3px;font-size:20px;font-weight:700;letter-spacing:-.3px}
+h3{margin:20px 0 9px;font-size:12px;font-weight:700;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.7px}
+h3:first-child{margin-top:0}
+.sub{margin:0 0 14px;color:var(--dim);font-size:12.5px;line-height:1.55}
+.muted{color:var(--dim);font-size:11.5px;line-height:1.5}
+
+/* ── Componenti ─────────────────────────────────── */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px;margin-bottom:10px}
+.card.flat{background:var(--bg2)}
+.row{display:flex;align-items:center;gap:10px}
+.row+.row{margin-top:9px}
+.grow{flex:1;min-width:0}
+.btn{background:var(--ac);color:#04211d;border-radius:10px;padding:11px 18px;font-size:14px;
+  font-weight:700;text-align:center;transition:transform .07s,opacity .15s}
+.btn:active{transform:scale(.975)}
+.btn:disabled{opacity:.38}
+.btn.sm{padding:7px 13px;font-size:12px;border-radius:8px}
+.btn.g{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+.btn.gold{background:var(--gold);color:#2d1f00}
+.btn.dan{background:rgba(239,90,90,.15);color:var(--dan);border:1px solid rgba(239,90,90,.35)}
+.btn.wide{width:100%}
+.pill{display:inline-block;padding:2.5px 8px;border-radius:999px;font-size:9.5px;font-weight:700;
+  letter-spacing:.4px;text-transform:uppercase}
+.bar{height:6px;background:#0a0f16;border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ac);border-radius:99px;transition:width .4s}
+.kv{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;font-size:13px}
+.kv span{color:var(--dim)}
+.kv b{font-weight:600}
+.empty{text-align:center;color:var(--dim2);font-size:12.5px;padding:26px 10px;line-height:1.6}
+
+/* ── NFT ────────────────────────────────────────── */
+.nftgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
+.nft{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px;
+  position:relative;overflow:hidden;transition:border-color .15s}
+.nft.sel{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
+.nft.off{opacity:.42}
+.nft .art{height:52px;border-radius:8px;margin-bottom:7px;position:relative;overflow:hidden;
+  background:#0a0f16;display:flex;align-items:center;justify-content:center}
+.nft .art canvas{width:100%;height:100%}
+.nft .nm{font-size:11.5px;font-weight:700;line-height:1.25;margin-bottom:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nft .rr{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.nft .dur{margin-top:6px;height:3px;background:#0a0f16;border-radius:99px;overflow:hidden}
+.nft .dur>i{display:block;height:100%;border-radius:99px}
+.nft .eq{position:absolute;top:6px;right:6px;background:var(--ac);color:#04211d;font-size:8px;
+  font-weight:800;padding:2px 5px;border-radius:5px;letter-spacing:.3px}
+
+/* ── Modale ─────────────────────────────────────── */
+#modal{position:fixed;inset:0;z-index:40;display:none;align-items:flex-end;justify-content:center;
+  background:rgba(6,9,13,.82);backdrop-filter:blur(6px)}
+#modal.on{display:flex}
+#mbox{background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;
+  max-width:460px;max-height:88%;overflow-y:auto;padding:16px 15px calc(18px + env(safe-area-inset-bottom))}
+#mbox h4{margin:0 0 4px;font-size:17px;font-weight:700}
+.mgrab{width:34px;height:4px;background:var(--line);border-radius:99px;margin:0 auto 13px}
+
+/* ── Gioco ──────────────────────────────────────── */
+#game{position:fixed;inset:0;z-index:30;display:none;background:#0a0e13}
+#game.on{display:block}
+#cv{display:block;width:100%;height:100%;touch-action:none}
+#hud{position:absolute;inset:0;pointer-events:none}
+.htl{position:absolute;top:calc(11px + env(safe-area-inset-top));left:11px;display:flex;gap:7px}
+.htr{position:absolute;top:calc(11px + env(safe-area-inset-top));right:11px}
+.chip{background:rgba(14,20,29,.88);border:1px solid var(--line);border-radius:9px;padding:5px 10px;
+  font-size:13px;font-weight:700}
+.chip small{display:block;color:var(--dim);font-size:9px;font-weight:600;letter-spacing:.4px;
+  text-transform:uppercase;margin-bottom:1px}
+#hAlive{color:var(--ac)}
+#hBoard{position:absolute;top:calc(66px + env(safe-area-inset-top));right:11px;font-size:11px;
+  color:var(--dim);line-height:1.7;text-align:right}
+#hBoard b{color:var(--txt)} #hBoard .me{color:var(--ac)}
+#hWarn{position:absolute;top:36%;left:0;right:0;text-align:center;font-size:14px;font-weight:700;
+  color:var(--dan);text-shadow:0 2px 12px #000;opacity:0;transition:opacity .2s}
+#hWarn.on{opacity:1}
+#hHint{position:absolute;top:52%;left:0;right:0;text-align:center;
+  font-size:13px;font-weight:600;color:var(--dim);opacity:0;transition:opacity .4s}
+#hAbil{position:absolute;left:calc(14px + env(safe-area-inset-left));
+  bottom:calc(122px + env(safe-area-inset-bottom));font-size:10px;color:var(--dim);
+  background:rgba(14,20,29,.88);border:1px solid var(--line);border-radius:9px;padding:5px 9px}
+#hAbil b{color:var(--ac);display:block;font-size:11px}
+
+/* Minimappa */
+#hMap{position:absolute;left:calc(14px + env(safe-area-inset-left));
+  bottom:calc(26px + env(safe-area-inset-bottom));width:88px;height:88px;
+  border-radius:50%;background:rgba(10,14,19,.8);border:1px solid var(--line)}
+
+/* Barra dell'energia del boost */
+#hEnWrap{position:absolute;right:calc(18px + env(safe-area-inset-right));
+  bottom:calc(116px + env(safe-area-inset-bottom));width:86px;height:6px;
+  background:rgba(10,14,19,.85);border:1px solid var(--line);border-radius:99px;overflow:hidden}
+#hEn{height:100%;width:100%;background:var(--ac);border-radius:99px;transition:background .2s}
+#hEnWrap.low #hEn{background:var(--dan)}
+body.desktop #hEnWrap{right:18px;bottom:22px;width:120px;height:7px}
+
+/* Kill feed */
+#hFeed{position:absolute;top:calc(64px + env(safe-area-inset-top));left:0;right:0;
+  text-align:center;font-size:11.5px;line-height:1.8;pointer-events:none}
+#hFeed div{display:inline-block;background:rgba(14,20,29,.85);border:1px solid var(--line);
+  border-radius:7px;padding:2px 9px;margin:1px}
+#hFeed b{color:var(--ac)} #hFeed i{font-style:normal;color:var(--dan)}
+
+/* Stato della zona */
+#hZone{position:absolute;top:calc(44px + env(safe-area-inset-top));left:0;right:0;
+  text-align:center;font-size:11px;font-weight:700;color:var(--dim);letter-spacing:.3px}
+#hZone.hot{color:var(--dan)}
+#hBoost{position:absolute;right:calc(18px + env(safe-area-inset-right));
+  bottom:calc(22px + env(safe-area-inset-bottom));width:86px;height:86px;border-radius:50%;
+  background:rgba(45,212,191,.12);border:2px solid rgba(45,212,191,.45);pointer-events:auto;
+  display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;
+  letter-spacing:1px;color:var(--ac);user-select:none}
+#hBoost.on{background:rgba(45,212,191,.3)}
+body.desktop #hBoost{display:none}
+
+/* ── Risultato ──────────────────────────────────── */
+#res{position:fixed;inset:0;z-index:35;display:none;background:rgba(10,14,19,.96);
+  overflow-y:auto;padding:22px 14px calc(22px + env(safe-area-inset-bottom))}
+#res.on{display:block}
+.rwrap{max-width:420px;margin:0 auto}
+.rplace{text-align:center;padding:12px 0 18px}
+.rplace .n{font-size:56px;font-weight:800;line-height:1;color:var(--gold)}
+.rplace .l{color:var(--dim);font-size:12.5px;margin-top:5px}
+.rstats{display:flex;gap:8px;margin-bottom:12px}
+.rstat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:10px;text-align:center}
+.rstat b{display:block;font-size:18px}
+.rstat small{color:var(--dim);font-size:9.5px;text-transform:uppercase;letter-spacing:.4px}
+.pos{color:var(--ac)!important} .neg{color:var(--dan)!important}
+
+/* ── Mercato ────────────────────────────────────── */
+.lst{display:flex;gap:11px;align-items:center;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:10px;margin-bottom:8px}
+.lst .art{width:52px;height:52px;flex:none;border-radius:9px;overflow:hidden;background:#0a0f16}
+.lst .art canvas{width:100%;height:100%}
+.lst .info{flex:1;min-width:0}
+.lst .nm{font-size:13px;font-weight:700;margin-bottom:2px}
+.lst .meta{font-size:10.5px;color:var(--dim)}
+.lst .buy{flex:none;text-align:right}
+.lst .price{font-size:14px;font-weight:800;color:var(--ac);margin-bottom:5px}
+
+/* ── Segmenti ───────────────────────────────────── */
+.seg{display:flex;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:3px;
+  margin-bottom:12px;gap:3px}
+.seg button{flex:1;padding:7px 4px;border-radius:7px;font-size:11.5px;font-weight:700;color:var(--dim)}
+.seg button.on{background:var(--panel2);color:var(--txt)}
+
+/* ── Tabella economia ───────────────────────────── */
+.ebar{display:flex;align-items:center;gap:9px;margin-bottom:7px;font-size:11.5px}
+.ebar .lbl{width:96px;flex:none;color:var(--dim)}
+.ebar .tr{flex:1;height:16px;background:#0a0f16;border-radius:5px;overflow:hidden}
+.ebar .tr>i{display:block;height:100%;border-radius:5px}
+.ebar .vl{width:74px;flex:none;text-align:right;font-weight:700}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom));
+  background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:10px 16px;
+  font-size:12.5px;font-weight:600;z-index:60;opacity:0;transition:opacity .25s,transform .25s;
+  pointer-events:none;max-width:88%;text-align:center;line-height:1.45}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE — telefono (base) · tablet ≥720 · computer ≥1080
+   La baseline sopra è il telefono e non va toccata.
+   ═══════════════════════════════════════════════════════════════ */
+:root{--col:660px;--gut:12px}
+.brand{display:none}
+
+/* Il mouse merita una barra di scorrimento e uno stato hover */
+@media (pointer:fine){
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;
+    border:3px solid var(--bg)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--dim2)}
+  ::-webkit-scrollbar-track{background:transparent}
+}
+@media (hover:hover) and (pointer:fine){
+  .btn:hover:not(:disabled){filter:brightness(1.09)}
+  .tab:hover{color:var(--txt)}
+  .nft:hover,.lst:hover,.unit:hover{border-color:var(--dim2)}
+  .xbtn:hover{color:var(--txt)}
+}
+
+/* ── TABLET ─────────────────────────────────────── */
+@media (min-width:720px){
+  :root{--gut:20px}
+  #top{padding-left:max(var(--gut),calc((100% - var(--col))/2));
+       padding-right:max(var(--gut),calc((100% - var(--col))/2))}
+  .page{padding:22px max(var(--gut),calc((100% - var(--col))/2)) 32px}
+  h2{font-size:23px}
+  .sub{font-size:13.5px}
+  .card{padding:15px;border-radius:15px;margin-bottom:12px}
+  .grid2{grid-template-columns:repeat(3,1fr)}
+  .grid3{grid-template-columns:repeat(4,1fr)}
+  #tabs{justify-content:center;gap:8px}
+  .tab{flex:0 1 148px;font-size:11px;padding:11px 4px 10px}
+  .tab b{font-size:21px}
+  /* La modale diventa un dialogo centrato, non un foglio che sale */
+  #modal{align-items:center}
+  #mbox{max-width:540px;border-radius:20px;max-height:84vh;
+        padding:18px 20px 22px;animation:fadein .18s ease-out}
+  .mgrab{display:none}
+  .rwrap{max-width:540px}
+  .toast{bottom:calc(94px + env(safe-area-inset-bottom))}
+}
+@keyframes fadein{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+
+/* ── COMPUTER ───────────────────────────────────── */
+@media (min-width:1080px){
+  :root{--col:720px}
+  #app{flex-direction:row}
+  #main{flex:1;min-width:0}
+  #tabs{order:-1;flex:none;width:224px;flex-direction:column;justify-content:flex-start;
+        gap:4px;border-top:none;border-right:1px solid var(--line);
+        padding:16px 12px calc(16px + env(safe-area-inset-bottom))}
+  .tab{flex:none;display:flex;align-items:center;gap:12px;text-align:left;
+       padding:11px 13px;border-radius:11px;font-size:13.5px;letter-spacing:0}
+  .tab b{font-size:20px;margin:0;line-height:1;display:block}
+  .tab.on{background:var(--panel)}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 13px 18px;
+         font-size:15px;font-weight:800;letter-spacing:-.3px;color:var(--txt)}
+  .brand b{font-size:20px;color:var(--ac);font-weight:400}
+  .toast{bottom:30px}
+}
+
+/* ── Telefono coricato ──────────────────────────── */
+@media (max-height:520px) and (orientation:landscape) and (max-width:1079px){
+  #top{padding-top:calc(5px + env(safe-area-inset-top));padding-bottom:5px}
+  .tab{padding:5px 2px 4px;font-size:9px}
+  .tab b{font-size:15px;margin-bottom:0}
+  .page{padding-top:12px}
+}
+
+/* ── HUD di gioco: la tela resta a tutto schermo, l'interfaccia si raccoglie ── */
+@media (hover:hover) and (pointer:fine){
+  #cv{cursor:crosshair}
+  .btn,.tab,.nft,.lst,.seg button,.xbtn,#mx,#hBoost{cursor:pointer}
+}
+@media (min-width:720px){
+  #hud{--hin:max(14px,calc((100% - 900px)/2))}
+  .htl{left:calc(var(--hin) + env(safe-area-inset-left))}
+  .htr{right:calc(var(--hin) + env(safe-area-inset-right))}
+  #hBoard{right:calc(var(--hin) + env(safe-area-inset-right))}
+  #hAbil{left:calc(var(--hin) + env(safe-area-inset-left))}
+  #hMap{left:calc(var(--hin) + env(safe-area-inset-left))}
+  #hEnWrap{right:calc(var(--hin) + env(safe-area-inset-right))}
+  body.desktop #hEnWrap{right:var(--hin)}
+  #hBoost{right:calc(var(--hin) + env(safe-area-inset-right))}
+  #hZone{max-width:640px;margin:0 auto}
+  #hFeed{max-width:640px;margin:0 auto}
+  #hWarn{max-width:560px;margin:0 auto}
+  #hHint{max-width:560px;margin:0 auto}
+}
+@media (min-width:1080px){
+  #hud{--hin:max(14px,calc((100% - 1100px)/2))}
+  .chip{font-size:14px}
+  #hBoard{font-size:12.5px}
+  #hZone{font-size:12px}
+  #hFeed{font-size:12.5px}
+  #hWarn{font-size:17px}
+  #hHint{font-size:14.5px}
+  #hMap{width:120px;height:120px}
+  #hAbil{bottom:calc(154px + env(safe-area-inset-bottom))}
+}
+
+/* Telefono coricato: la barra torna a piena larghezza (altrimenti
+   restano attive le voci da 148px della regola tablet) */
+@media (max-height:520px) and (orientation:landscape) and (max-width:1079px){
+  #tabs{justify-content:stretch;gap:0}
+  .tab{flex:1}
+  .toast{bottom:calc(58px + env(safe-area-inset-bottom))}
+}
+
+/* Fuoco da tastiera (invisibile al tocco: :focus-visible non scatta) */
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid var(--ac);outline-offset:2px;border-radius:9px}
+#cv:focus,#cv:focus-visible,#hMap:focus,#hMap:focus-visible{outline:none}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECONDA PASSATA — rifinitura tablet/computer
+   Ogni regola sta dentro una @media. Le uniche fuori sono la
+   posizione di riferimento di #mbox e la X nascosta di default:
+   entrambe invisibili sul telefono.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Chiusura visibile della modale (sopra i 720px la maniglia sparisce) */
+#mbox{position:relative}
+#mx{display:none;position:absolute;top:10px;right:10px;width:32px;height:32px;
+  border-radius:9px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+  font-size:15px;line-height:1;align-items:center;justify-content:center;z-index:2}
+@media (min-width:720px){#mx{display:flex} #mbox h4{padding-right:38px}}
+@media (hover:hover) and (pointer:fine){#mx:hover{color:var(--txt);border-color:var(--dim2)}}
+
+/* Modale larga su richiesta */
+@media (min-width:1080px){
+  #mbox.wide{max-width:880px}
+}
+
+/* Aree di tocco: mai sotto ~42px quando si tocca col dito */
+@media (pointer:coarse){
+  .btn.sm{min-height:40px;padding:9px 14px}
+  .seg button{min-height:40px}
+  .lst .buy button{min-height:44px}
+  .chip{min-height:32px}
+}
+@media (pointer:coarse) and (min-width:720px){
+  #hMap{width:104px;height:104px}
+  #hBoost{width:100px;height:100px}
+  #hEnWrap{width:100px}
+}
+@media (pointer:coarse) and (max-height:460px) and (orientation:landscape){
+  .btn.sm{min-height:34px;padding:7px 11px}
+}
+
+/* Telefono coricato: l'HUD non deve accavallarsi sul lato corto */
+@media (pointer:coarse) and (max-height:520px) and (orientation:landscape){
+  #hMap{width:66px;height:66px;bottom:calc(12px + env(safe-area-inset-bottom))}
+  #hAbil{bottom:calc(86px + env(safe-area-inset-bottom))}
+  #hBoost{width:64px;height:64px;bottom:calc(12px + env(safe-area-inset-bottom));font-size:9px}
+  #hEnWrap{width:64px;bottom:calc(82px + env(safe-area-inset-bottom))}
+  #hZone{top:calc(28px + env(safe-area-inset-top));font-size:10px}
+  #hBoard{top:calc(44px + env(safe-area-inset-top));font-size:10px;line-height:1.5}
+  #hFeed{top:calc(42px + env(safe-area-inset-top));font-size:10.5px;line-height:1.5}
+  #hWarn{top:30%}
+  #hHint{top:44%}
+}
+
+/* Mercato: le inserzioni diventano una griglia (330px è il minimo
+   sotto il quale una scheda .lst va a capo male) */
+@media (min-width:900px){
+  .lstwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));
+    gap:9px;align-items:stretch}
+  .lstwrap>.lst{margin-bottom:0;min-width:0}
+  .lst .info{min-width:0}
+  .lst .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lst .art{width:62px;height:62px}
+}
+@media (min-width:1080px){
+  .lst{padding:12px}
+  .lst .art{width:68px;height:68px}
+  .lst .price{font-size:15px}
+}
+
+/* Tessere che si allargano invece di moltiplicare le colonnine, con
+   l'anteprima che cresce con loro (nftArt disegna su un riquadro 2:1) */
+@media (min-width:720px){
+  .nftgrid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr))}
+  .nft .art{height:auto;aspect-ratio:2/1;min-height:52px}
+}
+@media (min-width:1080px){
+  .nftgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+}
+
+/* Controlli e stati vuoti che non devono stirarsi */
+@media (min-width:720px){
+  .seg{max-width:430px}
+  .seg button{padding:9px 8px;font-size:12.5px}
+  .empty{max-width:520px;margin-left:auto;margin-right:auto;padding:36px 16px;font-size:13.5px}
+  .ebar .lbl{width:130px}
+  .ebar .tr{max-width:560px}
+}
+
+/* Risultato di fine partita: due colonne dove c'è larghezza.
+   .rcols/.rcol/.ractions non hanno nessuna regola sotto soglia:
+   restano div nudi e il telefono non cambia di un pixel. */
+@media (min-width:1080px){
+  .rwrap{max-width:860px}
+  .rcols{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-items:start}
+  .ractions{display:flex;flex-direction:row;justify-content:center;gap:12px;margin-top:18px}
+  .ractions .btn{flex:0 1 260px;margin-top:0!important}
+}
+
+/* Telefono coricato: la modale è un dialogo basso, non un tunnel.
+   Questa query NON ha max-width: vale anche su una finestra bassa. */
+@media (max-height:520px) and (orientation:landscape){
+  #modal{align-items:center;padding:10px}
+  #mbox{max-width:640px;border-radius:16px;max-height:94vh;padding:12px 14px}
+  .mgrab{display:none}
+  #mx{display:flex;top:8px;right:8px;width:28px;height:28px}
+  #mbox h4{font-size:15px;margin-bottom:2px;padding-right:34px}
+  #res{padding:14px 16px}
+  .rwrap{max-width:860px}
+  .rplace{padding:2px 0 10px}
+  .rplace .n{font-size:30px}
+  .rstats{margin-bottom:9px}
+  .rstat{padding:7px}
+  .rstat b{font-size:15px}
+  .rcols{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;align-items:start}
+  .ractions{display:flex;flex-direction:row;justify-content:center;gap:10px;margin-top:10px}
+  .ractions .btn{flex:0 1 220px;padding:9px 14px;margin-top:0!important}
+}
+
+/* Barra di scorrimento visibile anche nella modale e nel risultato:
+   ::-webkit-scrollbar non copre Firefox, e dentro #mbox il bordo da
+   3px color --bg del pollice si vede come un alone */
+@media (pointer:fine){
+  #mbox::-webkit-scrollbar-thumb{border-color:var(--panel)}
+  #mbox,#res,.page{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TERZA PASSATA — elenchi di schede a più colonne
+   Stessa idea della .lstwrap del mercato: la griglia sta su un
+   CONTENITORE aggiunto nel JS, non sulla pagina, perché fra un
+   elenco e l'altro ci sono titoli h3 che non devono finirci dentro.
+   .cwrap non ha nessuna regola sotto i 900px: resta un div nudo,
+   le .card restano impilate col loro margin-bottom e il telefono
+   non cambia di un pixel.
+   ═══════════════════════════════════════════════════════════════ */
+@media (min-width:900px){
+  .cwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+    gap:10px;align-items:start}
+  .cwrap>.card{margin-bottom:0;min-width:0}
+}
+@media (min-width:1080px){
+  .cwrap{grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:11px}
+}
+
+/* Modale a due colonne, solo dove è stata chiesta con {wide:true}:
+   il wallet è la modale più lunga e a 540px su un monitor è un tunnel */
+@media (min-width:1080px){
+  #mbox.wide .mcols{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;align-items:start}
+  #mbox.wide .mcols>div{min-width:0}
+  #mbox.wide .mcols>div>h3:first-child{margin-top:0}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="main">
+  <div id="top">
+    <div class="bal snk"><i>◈</i><span id="bSnk">0</span></div>
+    <div class="bal coin"><i>●</i><span id="bCoin">0</span></div>
+    <button id="wbtn"><span class="dot"></span><span id="wtxt">Wallet</span></button>
+  </div>
+
+  <div id="body">
+    <div class="page on" id="p-play"></div>
+    <div class="page" id="p-inv"></div>
+    <div class="page" id="p-mkt"></div>
+    <div class="page" id="p-sea"></div>
+    <div class="page" id="p-eco"></div>
+  </div>
+  </div>
+
+  <div id="tabs">
+    <div class="brand"><b>◈</b><span>Snake Royale</span></div>
+    <button class="tab on" data-p="play"><b>🎮</b>Gioca</button>
+    <button class="tab" data-p="inv"><b>🎒</b>Inventario</button>
+    <button class="tab" data-p="mkt"><b>🛒</b>Mercato</button>
+    <button class="tab" data-p="sea"><b>🏆</b>Stagione</button>
+    <button class="tab" data-p="eco"><b>📊</b>Economia</button>
+  </div>
+</div>
+
+<div id="game">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <div class="htl">
+      <div class="chip"><small>Massa</small><span id="hMass">10</span></div>
+      <div class="chip"><small>Kill</small><span id="hKills">0</span></div>
+    </div>
+    <div class="htr"><div class="chip"><small>In vita</small><span id="hAlive">10</span></div></div>
+    <div id="hBoard"></div>
+    <div id="hZone"></div>
+    <div id="hFeed"></div>
+    <div id="hWarn">⚠ FUORI DALLA ZONA</div>
+    <div id="hHint">Trascina il dito per guidare · doppio tocco per il boost</div>
+    <div id="hAbil"></div>
+    <canvas id="hMap"></canvas>
+    <div id="hEnWrap"><div id="hEn"></div></div>
+    <div id="hBoost">BOOST</div>
+  </div>
+</div>
+
+<div id="res"><div class="rwrap" id="resIn"></div></div>
+
+<div id="modal"><div id="mbox"><div class="mgrab"></div><button id="mx" aria-label="Chiudi">✕</button><div id="mIn"></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(()=>{
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   0 · UTILITÀ
+   ═══════════════════════════════════════════════════════════════ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const nf=n=>Math.round(n).toLocaleString('it-IT');
+const now=()=>Date.now();
+const DAY=864e5;
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function fnv(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);
+  h=Math.imul(h,0x01000193)}return(h>>>0).toString(16).padStart(8,'0')}
+
+function uid(p){return p+'_'+Math.random().toString(36).slice(2,10)}
+
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2400)}
+
+/* ═══════════════════════════════════════════════════════════════
+   1 · CATALOGO NFT
+   Quattro categorie, esattamente come il §6.2 dell'architettura:
+   cosmetici (solo estetica) · sidegrade (cambiano COME giochi)
+   economici (moltiplicano i guadagni) · potenza (SOLO casual)
+   ═══════════════════════════════════════════════════════════════ */
+const RAR={
+  comune:      {k:1,   c:'#8b9bb0', n:'Comune'},
+  raro:        {k:2.4, c:'#38bdf8', n:'Raro'},
+  epico:       {k:5.5, c:'#c084fc', n:'Epico'},
+  leggendario: {k:13,  c:'#f5c451', n:'Leggendario'}
+};
+const RARORD=['comune','raro','epico','leggendario'];
+
+const DEFS={
+  /* ── SKIN · cosmetiche, eterne, nessun effetto ─────────────── */
+  sk_verde:  {cat:'skin',rar:'comune',      name:'Verde Neon',   price:0,
+              body:'#2dd4bf',glow:'#5eead4',pat:'solid',   d:'Skin di partenza.'},
+  sk_magma:  {cat:'skin',rar:'comune',      name:'Magma',        price:180,
+              body:'#fb7185',glow:'#fbbf24',pat:'bands',   d:'Bande incandescenti.'},
+  sk_ghiacc: {cat:'skin',rar:'raro',        name:'Ghiaccio',     price:430,
+              body:'#7dd3fc',glow:'#e0f2fe',pat:'grad',    d:'Sfumatura glaciale.'},
+  sk_giungla:{cat:'skin',rar:'raro',        name:'Giungla',      price:410,
+              body:'#4ade80',glow:'#a3e635',pat:'bands',   d:'Mimetica vegetale.'},
+  sk_oro:    {cat:'skin',rar:'epico',       name:'Oro Reale',    price:1450,
+              body:'#f5c451',glow:'#fff7cc',pat:'grad',    d:'Scia dorata luccicante.'},
+  sk_vuoto:  {cat:'skin',rar:'leggendario', name:'Vuoto',        price:4400,
+              body:'#7c3aed',glow:'#e879f9',pat:'void',    d:'Distorce lo spazio attorno.'},
+
+  /* ── ABILITÀ · sidegrade, legali in ranked, con durabilità ─── */
+  ab_viper:  {cat:'ability',rar:'raro',  name:'Viper',   price:900,  dur:100,
+              mods:{speed:1.15,startMass:.8},
+              d:'+15% velocità · −20% massa iniziale. Veloce ma fragile all\'inizio.'},
+  ab_bulwark:{cat:'ability',rar:'raro',  name:'Bulwark', price:950,  dur:100,
+              mods:{speed:.9,shield:60},
+              d:'Assorbe un impatto ogni 60s · −10% velocità. Perdona un errore.'},
+  ab_wraith: {cat:'ability',rar:'epico', name:'Wraith',  price:2300, dur:100,
+              mods:{radius:.78,growth:.75},
+              d:'−22% spessore (bersaglio più piccolo) · cresci il 25% più lento.'},
+  ab_leech:  {cat:'ability',rar:'epico', name:'Leech',   price:2400, dur:100,
+              mods:{leech:1.35,visible:1},
+              d:'+35% massa assorbita dalle kill · sei visibile a tutti sulla mappa.'},
+  ab_surge:  {cat:'ability',rar:'raro',  name:'Surge',   price:880,  dur:100,
+              mods:{boostCost:.62,enRegen:1.5,boostMul:.94},
+              d:'L\'energia si ricarica del 50% più in fretta · ma il boost spinge un filo meno.'},
+  ab_magnete:{cat:'ability',rar:'raro',  name:'Magnete', price:1000, dur:100,
+              mods:{magnet:118,speed:.93},
+              d:'Attira il cibo da lontano: cresci molto più in fretta · −7% velocità.'},
+  ab_radar:  {cat:'ability',rar:'epico', name:'Radar',   price:2100, dur:100,
+              mods:{radar:1,visible:1},
+              d:'Vedi tutti sulla minimappa · ma anche loro vedono te.'},
+  ab_bozzolo:{cat:'ability',rar:'epico', name:'Bozzolo', price:2200, dur:100,
+              mods:{regen:2.4,growth:.8},
+              d:'Rigeneri massa restando lontano dagli altri · mangiando cresci il 20% meno.'},
+
+  /* ── TALISMANI · economici, non toccano il gameplay ────────── */
+  ch_fortuna:{cat:'charm',rar:'comune',name:'Talismano della Fortuna',price:350, dur:100,
+              eco:{earn:.08},   d:'+8% su tutti i $SNK vinti in partita.'},
+  ch_caccia: {cat:'charm',rar:'raro',  name:'Sigillo del Cacciatore', price:1100,dur:100,
+              eco:{killEarn:.18},d:'+18% sui premi da eliminazione.'},
+  ch_corona: {cat:'charm',rar:'epico', name:'Corona del Sopravvissuto',price:2600,dur:100,
+              eco:{placeEarn:.22},d:'+22% sui premi di piazzamento.'},
+  ch_mercan: {cat:'charm',rar:'raro',  name:'Pass del Mercante',      price:1250,dur:100,
+              eco:{fee:-.01},   d:'Fee del marketplace dal 5% al 4%.'},
+  ch_biglie: {cat:'charm',rar:'epico', name:'Biglietto d\'Oro',       price:2800,dur:100,
+              eco:{tickets:2},  d:'+2 ticket gratuiti al giorno.'},
+
+  /* ── CORE · potenza pura, DISATTIVATI in ranked ────────────── */
+  pw_gigante:{cat:'core',rar:'raro', name:'Nucleo del Gigante',price:700, dur:100,
+              mods:{startMass:1.45},d:'+45% massa iniziale. Solo in Casual.'},
+  pw_reatt:  {cat:'core',rar:'epico',name:'Reattore',          price:1900,dur:100,
+              mods:{speed:1.25},    d:'+25% velocità base. Solo in Casual.'}
+};
+const SLOT={skin:'Skin',ability:'Abilità',charm:'Talismano',core:'Core'};
+
+/* ═══════════════════════════════════════════════════════════════
+   2 · PERSISTENZA
+   ═══════════════════════════════════════════════════════════════ */
+const KEY='snakeroyale.v1';
+let DB=null;
+
+function fresh(){
+  return {
+    v:1, created:now(),
+    player:{name:'TU',addr:null,level:1,xp:0,mmr:1000,stake:0,kyc:0},
+    accounts:{}, txs:[], entries:[], seq:0,
+    nfts:[], loadout:{ranked:{},casual:{}},
+    market:{listings:[],trades:[],offers:[]},
+    season:{id:1,start:now(),end:now()+56*DAY,bpXp:0,premium:false,claimed:[]},
+    quests:{day:0,daily:[],weekly:[],wkClaimed:0},
+    ach:{},
+    matches:[], replays:[],
+    eco:{minted:0,burned:0,sunk:0,rakeTot:0,week:0,weekSink:0,weekMint:0,hist:[]},
+    risk:{date:0,count:0,flags:[]},
+    withdrawals:[], deposits:[],
+    stats:{played:0,wins:0,kills:0,deaths:0,bestMass:0,top3:0,earned:0,spent:0},
+    tickets:{date:0,left:3,bought:0}
+  };
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}}
+function load(){
+  try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);if(d&&d.v===1)return d}}catch(e){}
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3 · LEDGER A PARTITA DOPPIA
+   Ogni movimento di valore è una transazione le cui scritture
+   sommano a ZERO. Se non quadra, l'operazione viene rifiutata.
+   È il §10.2 dell'architettura, funzionante.
+   ═══════════════════════════════════════════════════════════════ */
+const ACC={
+  pSnk:'player:SNK', pCoin:'player:COINS',
+  prize:'sys:prize', burn:'sys:burn', treas:'sys:treasury', ops:'sys:ops',
+  crea:'sys:creators', resv:'sys:seasonReserve', emis:'sys:emission',
+  opp:'sys:opponents', ext:'sys:external', mkt:'sys:market',
+  coinSink:'sys:coinsink'   // dove finiscono i Coins spesi (ticket, consumabili)
+};
+
+function bal(a){return DB.accounts[a]||0}
+
+function post(type,ref,moves){
+  let s=0;
+  for(const m of moves) s+=m[1];
+  if(Math.abs(s)>1e-6) throw new Error('Transazione sbilanciata: '+type+' → '+s.toFixed(6));
+  const tx={id:'tx_'+(++DB.seq),type,ref:ref||null,at:now()};
+  DB.txs.push(tx);
+  if(DB.txs.length>400) DB.txs.splice(0,DB.txs.length-400);
+  for(const [a,v] of moves){
+    DB.accounts[a]=(DB.accounts[a]||0)+v;
+    DB.entries.push({t:tx.id,a,v});
+  }
+  if(DB.entries.length>2500) DB.entries.splice(0,DB.entries.length-2500);
+  if(DB.accounts[ACC.pSnk]<-1e-6) throw new Error('Saldo $SNK negativo');
+  return tx;
+}
+
+/** Verifica l'invariante globale: la somma di TUTTI i conti è zero. */
+function ledgerOk(){
+  let s=0; for(const k in DB.accounts) s+=DB.accounts[k];
+  return Math.abs(s)<1e-6;
+}
+
+const snk=()=>bal(ACC.pSnk), coins=()=>bal(ACC.pCoin);
+
+/* ═══════════════════════════════════════════════════════════════
+   4 · WALLET  (TON Connect simulato)
+   ═══════════════════════════════════════════════════════════════ */
+function connectWallet(){
+  if(DB.player.addr){openWallet();return}
+  const c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+  let a='EQ';for(let i=0;i<46;i++)a+=c[Math.floor(Math.random()*c.length)];
+  DB.player.addr=a; save(); renderTop();
+  toast('Wallet collegato — ora puoi prelevare');
+  openWallet();
+}
+
+function requestWithdraw(amt){
+  if(amt<=0||amt>snk()){toast('Importo non valido');return}
+  // Coda e finestra di clawback — §9.3 dell'architettura
+  let delay,label;
+  if(amt<100){delay=0;label='istantaneo'}
+  else if(amt<1000){delay=36e5;label='coda 1 ora'}
+  else if(amt<10000){delay=DAY;label='coda 24 ore'}
+  else{delay=DAY;label='revisione manuale + KYC'}
+  const risk=riskScore();
+  post('withdrawal_lock','w',[[ACC.pSnk,-amt],[ACC.ext,amt]]);
+  DB.withdrawals.push({id:uid('w'),amt,at:now(),ready:now()+delay,label,risk,
+    st:risk>70?'revisione':'in coda'});
+  save(); toast('Prelievo di '+nf(amt)+' $SNK — '+label);
+  openWallet();
+}
+
+function deposit(amt){
+  post('deposit','d',[[ACC.ext,-amt],[ACC.pSnk,amt]]);
+  DB.deposits.push({id:uid('d'),amt,at:now()});
+  save(); renderTop(); toast('Depositati '+nf(amt)+' $SNK');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5 · NFT ENGINE
+   ═══════════════════════════════════════════════════════════════ */
+function mint(defId,src){
+  const d=DEFS[defId];
+  const n={id:uid('nft'),def:defId,cat:d.cat,rar:d.rar,
+    dur:d.dur?d.dur:null,durMax:d.dur||null,
+    at:now(),src:src||'mint',
+    addr:'EQ'+fnv(defId+Math.random()).repeat(2)};
+  DB.nfts.push(n); return n;
+}
+const owned=cat=>DB.nfts.filter(n=>!n.listed&&(!cat||n.cat===cat));
+const nftById=id=>DB.nfts.find(n=>n.id===id);
+const defOf=n=>DEFS[n.def];
+const isBroken=n=>n.dur!==null&&n.dur<=0;
+
+function repairCost(n){
+  const d=defOf(n), missing=(n.durMax-n.dur)/n.durMax;
+  return Math.round(d.price*0.22*missing*RAR[n.rar].k/RAR[n.rar].k + d.price*0.28*missing);
+}
+function repair(id){
+  const n=nftById(id); if(!n||n.dur===null)return;
+  const c=repairCost(n);
+  if(c>snk()){toast('$SNK insufficienti');return}
+  // Sink: la riparazione BRUCIA il 100% — §5.3
+  post('repair',id,[[ACC.pSnk,-c],[ACC.burn,c]]);
+  DB.eco.burned+=c; DB.eco.sunk+=c; DB.eco.weekSink+=c;
+  n.dur=n.durMax; save(); toast('Riparato per '+nf(c)+' $SNK (bruciati)');
+  renderAll();
+}
+
+/** Crafting: 3 NFT stessa rarità e categoria + token → 1 rarità superiore */
+function craftables(){
+  const out={};
+  for(const n of owned()){
+    if(n.rar==='leggendario')continue;
+    const k=n.cat+'|'+n.rar; (out[k]=out[k]||[]).push(n);
+  }
+  return Object.entries(out).filter(([,v])=>v.length>=3);
+}
+function craftCost(rar){return Math.round(400*RAR[rar].k)}
+function craft(cat,rar){
+  const pool=owned().filter(n=>n.cat===cat&&n.rar===rar).slice(0,3);
+  if(pool.length<3)return;
+  const cost=craftCost(rar);
+  if(cost>snk()){toast('$SNK insufficienti');return}
+  const up=RARORD[RARORD.indexOf(rar)+1];
+  const cands=Object.keys(DEFS).filter(k=>DEFS[k].cat===cat&&DEFS[k].rar===up);
+  if(!cands.length){toast('Nessuna ricetta disponibile');return}
+  post('craft',cat,[[ACC.pSnk,-cost],[ACC.burn,cost]]);
+  DB.eco.burned+=cost; DB.eco.sunk+=cost; DB.eco.weekSink+=cost;
+  const ids=pool.map(n=>n.id);
+  DB.nfts=DB.nfts.filter(n=>!ids.includes(n.id));
+  for(const s in DB.loadout) for(const k in DB.loadout[s])
+    if(ids.includes(DB.loadout[s][k])) delete DB.loadout[s][k];
+  const got=mint(cands[Math.floor(Math.random()*cands.length)],'craft');
+  save(); closeModal();
+  toast('Fusione riuscita → '+defOf(got).name+' ('+RAR[up].n+')');
+  renderAll();
+}
+
+/* ── Loadout ───────────────────────────────────────────────── */
+function equip(mode,id){
+  const n=nftById(id); if(!n)return;
+  if(n.cat==='core'&&mode==='ranked'){toast('I Core sono disattivati in Ranked');return}
+  const cur=DB.loadout[mode][n.cat];
+  DB.loadout[mode][n.cat]= cur===id ? undefined : id;
+  save(); renderInv();
+}
+
+/** Aggrega i modificatori del loadout. In ranked i Core vengono ignorati. */
+function loadoutMods(mode){
+  const m={speed:1,radius:1,growth:1,startMass:1,leech:1,boostCost:1,boostMul:1,
+           enRegen:1,shield:0,visible:0,radar:0,magnet:R.magnet,regen:0,zoneRes:1,
+           earn:0,killEarn:0,placeEarn:0,fee:0,tickets:0,
+           skin:'sk_verde',ability:null,used:[]};
+  const L=DB.loadout[mode]||{};
+  for(const cat in L){
+    const id=L[cat]; if(!id)continue;
+    const n=nftById(id); if(!n)continue;
+    if(n.cat==='core'&&mode==='ranked')continue;
+    if(isBroken(n))continue;
+    const d=defOf(n);
+    if(d.cat==='skin'){m.skin=n.def;continue}
+    m.used.push(n.id);
+    if(d.cat==='ability')m.ability=n.def;
+    if(d.mods)for(const k in d.mods){
+      if(SETMODS[k])m[k]=d.mods[k]; else m[k]*=d.mods[k];
+    }
+    if(d.eco)for(const k in d.eco)m[k]+=d.eco[k];
+  }
+  return m;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   6 · MARKETPLACE
+   Listing a prezzo fisso, aste con anti-sniping, offerte.
+   Royalty 5% al creator + fee 5% protocollo (metà bruciata).
+   ═══════════════════════════════════════════════════════════════ */
+const ROY=.05, FEE=.05;
+
+function marketFee(){return Math.max(.01,FEE+loadoutMods('ranked').fee)}
+
+function listNft(id,price,kind,hours){
+  const n=nftById(id); if(!n||n.listed)return;
+  for(const s in DB.loadout) for(const k in DB.loadout[s])
+    if(DB.loadout[s][k]===id) delete DB.loadout[s][k];
+  n.listed=true;
+  DB.market.listings.push({id:uid('lst'),nft:id,mine:true,price,kind:kind||'fixed',
+    bid:kind==='auction'?Math.round(price*.6):null,bidder:null,
+    ends:now()+(hours||24)*36e5,at:now()});
+  save(); toast('Messo in vendita a '+nf(price)+' $SNK'); renderAll();
+}
+
+function cancelListing(lid){
+  const i=DB.market.listings.findIndex(l=>l.id===lid); if(i<0)return;
+  const l=DB.market.listings[i];
+  if(l.bidder==='me'){ // rimborso della propria offerta in escrow
+    post('bid_refund',lid,[[ACC.mkt,-l.bid],[ACC.pSnk,l.bid]]);
+  }
+  const n=nftById(l.nft); if(n)n.listed=false;
+  DB.market.listings.splice(i,1); save(); toast('Annullato'); renderAll();
+}
+
+function buyListing(lid){
+  const l=DB.market.listings.find(x=>x.id===lid); if(!l)return;
+  if(l.mine){toast('È già tuo');return}
+  if(l.price>snk()){toast('$SNK insufficienti');return}
+  const fee=Math.round(l.price*marketFee()), roy=Math.round(l.price*ROY);
+  const net=l.price-fee-roy, burn=Math.round(fee/2);
+  post('market_buy',lid,[
+    [ACC.pSnk,-l.price],[ACC.opp,net],[ACC.crea,roy],
+    [ACC.burn,burn],[ACC.treas,fee-burn]
+  ]);
+  DB.eco.burned+=burn; DB.eco.sunk+=fee; DB.eco.weekSink+=fee;
+  DB.stats.spent+=l.price;
+  const n=mint(l.defId,'market');
+  if(l.dur!==undefined&&l.dur!==null){n.dur=l.dur}
+  DB.market.trades.unshift({at:now(),def:l.defId,price:l.price,side:'buy'});
+  DB.market.listings=DB.market.listings.filter(x=>x.id!==lid);
+  save(); closeModal(); toast('Comprato '+DEFS[l.defId].name); renderAll();
+}
+
+function placeBid(lid,amt){
+  const l=DB.market.listings.find(x=>x.id===lid); if(!l||l.kind!=='auction')return;
+  const min=Math.ceil((l.bid||0)*1.05)+1;
+  if(amt<min){toast('Rilancio minimo '+nf(min)+' $SNK');return}
+  if(amt>snk()){toast('$SNK insufficienti');return}
+  if(l.bidder==='me') post('bid_refund',lid,[[ACC.mkt,-l.bid],[ACC.pSnk,l.bid]]);
+  post('bid',lid,[[ACC.pSnk,-amt],[ACC.mkt,amt]]);
+  l.bid=amt; l.bidder='me';
+  // Anti-sniping: un rilancio negli ultimi 3 minuti estende la scadenza
+  if(l.ends-now()<18e4){l.ends=now()+18e4;toast('Rilancio accettato — asta estesa di 3 min')}
+  else toast('Rilancio di '+nf(amt)+' $SNK');
+  save(); renderAll();
+}
+
+/** Bot di mercato: mantiene il mercato vivo fra una sessione e l'altra. */
+function tickMarket(){
+  const L=DB.market.listings;
+  // Chiusura aste scadute
+  for(const l of [...L]){
+    if(l.kind==='auction'&&now()>l.ends){
+      if(l.bidder==='me'){
+        const fee=Math.round(l.bid*marketFee()), roy=Math.round(l.bid*ROY);
+        const burn=Math.round(fee/2);
+        post('auction_win',l.id,[[ACC.mkt,-l.bid],[ACC.opp,l.bid-fee-roy],
+          [ACC.crea,roy],[ACC.burn,burn],[ACC.treas,fee-burn]]);
+        DB.eco.burned+=burn; DB.eco.sunk+=fee;
+        mint(l.defId,'auction');
+        toast('Asta vinta: '+DEFS[l.defId].name);
+      } else if(l.mine&&l.bidder){
+        const fee=Math.round(l.bid*marketFee()), roy=Math.round(l.bid*ROY);
+        const burn=Math.round(fee/2);
+        post('auction_sold',l.id,[[ACC.opp,-l.bid],[ACC.pSnk,l.bid-fee-roy],
+          [ACC.crea,roy],[ACC.burn,burn],[ACC.treas,fee-burn]]);
+        DB.eco.burned+=burn;
+        DB.nfts=DB.nfts.filter(n=>n.id!==l.nft);
+      } else if(l.mine){
+        const n=nftById(l.nft); if(n)n.listed=false;
+      }
+      DB.market.listings=DB.market.listings.filter(x=>x.id!==l.id);
+    }
+  }
+  // Rilanci dei bot sulle aste
+  for(const l of DB.market.listings){
+    if(l.kind==='auction'&&l.bidder==='me'&&Math.random()<.25&&now()<l.ends-6e4){
+      const up=Math.ceil(l.bid*(1.06+Math.random()*.12));
+      post('bid_refund',l.id,[[ACC.mkt,-l.bid],[ACC.pSnk,l.bid]]);
+      l.bid=up; l.bidder='bot';
+      if(l.ends-now()<18e4) l.ends=now()+18e4;
+    }
+  }
+  // Acquisto dei bot su ciò che hai messo in vendita
+  for(const l of [...DB.market.listings]){
+    if(l.mine&&l.kind==='fixed'){
+      const d=DEFS[nftById(l.nft)?nftById(l.nft).def:''];
+      const fair=d?d.price:l.price;
+      const p=l.price<=fair*1.1?.30:l.price<=fair*1.6?.10:.02;
+      if(Math.random()<p){
+        const fee=Math.round(l.price*marketFee()), roy=Math.round(l.price*ROY);
+        const burn=Math.round(fee/2);
+        post('market_sold',l.id,[[ACC.opp,-l.price],[ACC.pSnk,l.price-fee-roy],
+          [ACC.crea,roy],[ACC.burn,burn],[ACC.treas,fee-burn]]);
+        DB.eco.burned+=burn; DB.eco.sunk+=fee;
+        DB.stats.earned+=l.price-fee-roy;
+        DB.market.trades.unshift({at:now(),def:l.defId||d&&l.nft,price:l.price,side:'sell'});
+        DB.nfts=DB.nfts.filter(n=>n.id!==l.nft);
+        DB.market.listings=DB.market.listings.filter(x=>x.id!==l.id);
+        toast('Venduto! +'+nf(l.price-fee-roy)+' $SNK');
+      }
+    }
+  }
+  // Nuove inserzioni dal mercato
+  const botL=DB.market.listings.filter(l=>!l.mine);
+  while(botL.length<12){
+    const l=genListing(); DB.market.listings.push(l); botL.push(l);
+  }
+  save();
+}
+
+function genListing(){
+  const keys=Object.keys(DEFS).filter(k=>DEFS[k].price>0);
+  const def=keys[Math.floor(Math.random()*keys.length)];
+  const d=DEFS[def];
+  const auction=Math.random()<.25;
+  const jitter=.72+Math.random()*.7;
+  const price=Math.round(d.price*jitter/10)*10;
+  const dur=d.dur?Math.round(35+Math.random()*65):null;
+  const durAdj=dur?Math.round(price*(.55+.45*dur/100)):price;
+  return {id:uid('lst'),defId:def,mine:false,dur,
+    kind:auction?'auction':'fixed',
+    price:auction?Math.round(durAdj*.7):durAdj,
+    bid:auction?Math.round(durAdj*.55):null,bidder:auction?'bot':null,
+    ends:now()+(auction?(1+Math.random()*8)*36e5:72*36e5),at:now()};
+}
+
+function floorOf(cat){
+  const ls=DB.market.listings.filter(l=>!l.mine&&l.kind==='fixed'&&DEFS[l.defId].cat===cat);
+  return ls.length?Math.min(...ls.map(l=>l.price)):0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   7 · MODALITÀ E MATCHMAKING
+   ═══════════════════════════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────────
+   LA MEMBRANA A SENSO UNICO
+   I Coins si guadagnano giocando (rubinetto libero) e non escono
+   MAI verso i $SNK. I $SNK possono diventare Coins, bruciandosi.
+   Se esistesse anche il percorso inverso, un bot potrebbe coltivare
+   Coins gratis e convertirli in valore reale: è così che sono morti
+   tutti i play-to-earn della generazione precedente.
+   ───────────────────────────────────────────────────────────── */
+const MODES={
+  free:  {key:'free',  name:'Allenamento', cur:'COINS', fee:0,   tk:0, rake:0,   min:1,
+          d:'Gratis, sempre · premi in Coins · nessun rischio'},
+  arena: {key:'arena', name:'Arena',       cur:'COINS', fee:0,   tk:1, rake:0,   min:1,
+          d:'Costa 1 Ticket · premi in Coins molto più alti'},
+  t1:    {key:'t1',    name:'Ranked T1',   cur:'SNK',   fee:25,  tk:0, rake:.10, min:2,
+          d:'Quota bassa in $SNK · qui si gioca per valore reale'},
+  t2:    {key:'t2',    name:'Ranked T2',   cur:'SNK',   fee:100, tk:0, rake:.10, min:4,
+          d:'La fascia principale'},
+  t3:    {key:'t3',    name:'Ranked T3',   cur:'SNK',   fee:500, tk:0, rake:.10, min:8,
+          d:'Alta posta · richiede livello 8 e stake'}
+};
+const isRanked=k=>MODES[k].cur==='SNK';
+
+const TICKET_PRICE=600;      // in Coins
+const TICKET_FREE=3;         // gratuiti al giorno
+const TICKET_MAX=12;         // tetto giornaliero: chiude l'arbitraggio da bot
+
+function ticketsLeft(){
+  const d=Math.floor(now()/DAY);
+  if(DB.tickets.date!==d){
+    DB.tickets.date=d;
+    DB.tickets.left=TICKET_FREE+loadoutMods('ranked').tickets;
+    DB.tickets.bought=0; save();
+  }
+  return DB.tickets.left;
+}
+function ticketCost(){
+  const n=DB.tickets.bought||0;
+  return Math.round(TICKET_PRICE*(1+n*0.35));   // prezzo crescente: altro freno al farming
+}
+function buyTicket(){
+  const c=ticketCost();
+  if((DB.tickets.bought||0)>=TICKET_MAX){toast('Hai raggiunto il tetto giornaliero di Ticket');return}
+  if(c>coins()){toast('Servono '+nf(c)+' ● Coins');return}
+  post('ticket_buy',null,[[ACC.pCoin,-c],[ACC.coinSink,c]]);
+  DB.tickets.bought=(DB.tickets.bought||0)+1;
+  DB.tickets.left++;
+  save(); toast('Ticket comprato per '+nf(c)+' ● Coins'); renderAll();
+}
+
+/** $SNK → Coins, senso unico. È un sink puro: i $SNK spesi si bruciano. */
+function convertToCoins(amtSnk){
+  if(amtSnk>snk()){toast('$SNK insufficienti');return}
+  const got=amtSnk*45;
+  post('convert_snk_coins',null,[[ACC.pSnk,-amtSnk],[ACC.burn,amtSnk],
+    [ACC.emis,-got],[ACC.pCoin,got]]);
+  DB.eco.burned+=amtSnk; DB.eco.sunk+=amtSnk; DB.eco.weekSink+=amtSnk;
+  save(); toast(nf(amtSnk)+' ◈ bruciati → '+nf(got)+' ● Coins'); renderAll();
+}
+
+function canPlay(k){
+  const M=MODES[k];
+  if(k==='free')return{ok:true};
+  if(M.tk){
+    if(ticketsLeft()<M.tk)return{ok:false,why:'Serve un Ticket',needTicket:true};
+    return{ok:true};
+  }
+  if(DB.player.level<M.min)return{ok:false,why:'Serve il livello '+M.min};
+  if(k==='t3'&&DB.player.stake<2000)return{ok:false,why:'Serve uno stake di 2.000 $SNK'};
+  if(snk()<M.fee)return{ok:false,why:'Servono '+nf(M.fee)+' $SNK'};
+  return{ok:true};
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   8 · CURVA DEI PREMI  (§11.4 dell'architettura)
+   Tariffa FISSA per eliminazione: il residuo delle morti da zona
+   viene bruciato, non redistribuito. Vedi §5.2.
+   ═══════════════════════════════════════════════════════════════ */
+const SPLIT={1:.45,2:.25,3:.15,4:.10,5:.05};
+const PLACE_SHARE=.6, KILL_SHARE=.4, MAX_ELIM=9;
+
+/** Premi in Coins: rubinetto libero, nessun montepremi da bilanciare. */
+const COIN_PAY={free:{base:150,place:38,kill:80},arena:{base:380,place:210,kill:190}};
+
+function computePayout(modeKey,place,kills,eco){
+  const M=MODES[modeKey];
+  if(M.cur==='COINS'){
+    const c=COIN_PAY[modeKey]||COIN_PAY.free;
+    let p=Math.round(c.base+c.place*Math.max(0,11-place)*(place<=3?1.7:1));
+    let k=Math.round(c.kill*kills);
+    if(eco){p=Math.round(p*(1+eco.earn));k=Math.round(k*(1+eco.earn))}
+    return {place:p,kills:k,fee:0,pool:0,dist:0,cur:'COINS'};
+  }
+  const pool=M.fee*10, dist=pool*(1-M.rake);
+  let p=Math.round(dist*PLACE_SHARE*(SPLIT[place]||0));
+  let k=Math.round(dist*KILL_SHARE/MAX_ELIM*kills);
+  if(eco){
+    if(place<=3)p=Math.round(p*(1+eco.placeEarn));
+    k=Math.round(k*(1+eco.killEarn));
+    p=Math.round(p*(1+eco.earn)); k=Math.round(k*(1+eco.earn));
+  }
+  return {place:p,kills:k,fee:M.fee,pool,dist,cur:'SNK'};
+}
+
+/** Rendimenti decrescenti oltre 25 partite/giorno — anti-bot §13 */
+function diminish(){
+  const d=Math.floor(now()/DAY);
+  if(DB.risk.date!==d){DB.risk.date=d;DB.risk.count=0}
+  const n=DB.risk.count;
+  return n<=25?1:Math.pow(.85,Math.min(20,n-25));
+}
+function riskScore(){
+  let s=0;
+  if(DB.risk.count>40)s+=35;
+  if(DB.risk.count>70)s+=30;
+  if(!DB.player.addr)s+=5;
+  return Math.min(100,s);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   9 · PROGRESSIONE · BATTLE PASS · QUEST · ACHIEVEMENT
+   ═══════════════════════════════════════════════════════════════ */
+const lvlNeed=l=>Math.round(120*Math.pow(l,1.35));
+function addXp(n){
+  DB.player.xp+=n; DB.season.bpXp+=n;
+  let up=0;
+  while(DB.player.xp>=lvlNeed(DB.player.level)){
+    DB.player.xp-=lvlNeed(DB.player.level); DB.player.level++; up++;
+  }
+  return up;
+}
+
+const BP_TIERS=50, BP_STEP=260, BP_PRICE=1200;
+const bpTier=()=>Math.min(BP_TIERS,Math.floor(DB.season.bpXp/BP_STEP));
+function bpReward(t){
+  if(t%10===0)return{type:'nft',v:t>=40?'epico':t>=20?'raro':'comune'};
+  if(t%5===0)return{type:'snk',v:60+t*8};
+  return{type:'coins',v:120+t*14};
+}
+function bpClaim(t){
+  if(DB.season.claimed.includes(t))return;
+  if(t>bpTier()){toast('Livello non ancora raggiunto');return}
+  const free=bpReward(t);
+  DB.season.claimed.push(t);
+  give(free,'battlepass');
+  if(DB.season.premium){
+    const prem=t%5===0?{type:'snk',v:110+t*14}:{type:'coins',v:200+t*20};
+    give(prem,'battlepass_premium');
+  }
+  save(); renderSeason(); renderTop();
+}
+function buyBP(){
+  if(BP_PRICE>snk()){toast('Servono '+nf(BP_PRICE)+' $SNK');return}
+  const burn=Math.round(BP_PRICE*.6);
+  post('battlepass',null,[[ACC.pSnk,-BP_PRICE],[ACC.burn,burn],[ACC.treas,BP_PRICE-burn]]);
+  DB.eco.burned+=burn; DB.eco.sunk+=BP_PRICE; DB.eco.weekSink+=BP_PRICE;
+  DB.season.premium=true; save(); toast('Battle Pass Premium attivato');
+  renderSeason(); renderTop();
+}
+
+function give(r,src){
+  if(r.type==='coins'){post('reward_coins',src,[[ACC.emis,-r.v],[ACC.pCoin,r.v]])}
+  else if(r.type==='snk'){
+    post('reward_snk',src,[[ACC.resv,-r.v],[ACC.pSnk,r.v]]);
+    DB.eco.minted+=r.v; DB.eco.weekMint+=r.v;
+  }
+  else if(r.type==='nft'){
+    const c=Object.keys(DEFS).filter(k=>DEFS[k].rar===r.v&&DEFS[k].price>0);
+    const got=mint(c[Math.floor(Math.random()*c.length)],src);
+    toast('Ricevuto: '+defOf(got).name);
+  }
+}
+
+const QPOOL=[
+  {id:'q_play3', t:'Gioca 3 partite',            n:3, k:'played', r:{type:'coins',v:260}},
+  {id:'q_kill5', t:'Ottieni 5 eliminazioni',     n:5, k:'kills',  r:{type:'coins',v:420}},
+  {id:'q_top3',  t:'Arriva 2 volte nei primi 3', n:2, k:'top3',   r:{type:'snk',v:70}},
+  {id:'q_win',   t:'Vinci una partita',          n:1, k:'wins',   r:{type:'snk',v:110}},
+  {id:'q_mass',  t:'Raggiungi 150 di massa',     n:1, k:'mass150',r:{type:'coins',v:340}},
+  {id:'q_rank2', t:'Gioca 2 partite Ranked',     n:2, k:'ranked', r:{type:'snk',v:55}}
+];
+function refreshQuests(){
+  const d=Math.floor(now()/DAY);
+  if(DB.quests.day===d)return;
+  DB.quests.day=d;
+  const sh=[...QPOOL].sort(()=>Math.random()-.5);
+  DB.quests.daily=sh.slice(0,3).map(q=>({...q,p:0,done:false}));
+  if(!DB.quests.weekly.length||DB.quests.wkClaimed<d-6){
+    DB.quests.wkClaimed=d;
+    DB.quests.weekly=sh.slice(3,5).map(q=>({...q,n:q.n*4,p:0,done:false,
+      r:{type:q.r.type,v:q.r.v*4}}));
+  }
+  save();
+}
+function questProgress(keys){
+  for(const list of [DB.quests.daily,DB.quests.weekly])
+    for(const q of list){
+      if(q.done)continue;
+      const inc=keys[q.k]||0; if(!inc)continue;
+      q.p=Math.min(q.n,q.p+inc);
+      if(q.p>=q.n)q.done=true;
+    }
+}
+function claimQuest(id){
+  for(const list of [DB.quests.daily,DB.quests.weekly]){
+    const q=list.find(x=>x.id===id&&x.done&&!x.taken);
+    if(q){q.taken=true;give(q.r,'quest');save();renderSeason();renderTop();
+      toast('Quest completata')}
+  }
+}
+
+const ACHS=[
+  {id:'a_first', t:'Primo sangue',        d:'Ottieni la tua prima eliminazione', c:s=>s.kills>=1},
+  {id:'a_win',   t:'Ultimo sopravvissuto',d:'Vinci una partita',                 c:s=>s.wins>=1},
+  {id:'a_win10', t:'Dominatore',          d:'Vinci 10 partite',                  c:s=>s.wins>=10},
+  {id:'a_k50',   t:'Predatore',           d:'50 eliminazioni totali',            c:s=>s.kills>=50},
+  {id:'a_mass',  t:'Colosso',             d:'Raggiungi 300 di massa',            c:s=>s.bestMass>=300},
+  {id:'a_p20',   t:'Veterano',            d:'Gioca 20 partite',                  c:s=>s.played>=20},
+  {id:'a_earn',  t:'Investitore',         d:'Guadagna 5.000 $SNK in totale',     c:s=>s.earned>=5000},
+  {id:'a_top3',  t:'Costante',            d:'15 podi',                           c:s=>s.top3>=15}
+];
+function checkAch(){
+  for(const a of ACHS){
+    if(!DB.ach[a.id]&&a.c(DB.stats)){
+      DB.ach[a.id]=now();
+      give({type:'coins',v:500},'achievement');
+      toast('🏅 '+a.t);
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   10 · ECONOMIA · EMISSION GOVERNOR  (§5.4)
+   E_w = min(CAP_w , k × SINK_(w-1))  — l'emissione non può mai
+   superare i consumi della settimana precedente.
+   ═══════════════════════════════════════════════════════════════ */
+const SUPPLY=1e9, K_FACTOR=.7, WEEK_CAP=2.4e6;
+function governor(){
+  const prevSink=DB.eco.hist.length?DB.eco.hist[DB.eco.hist.length-1].sink:DB.eco.weekSink;
+  const allowed=Math.min(WEEK_CAP,K_FACTOR*Math.max(prevSink,1));
+  return {allowed,used:DB.eco.weekMint,prevSink,
+    ratio:DB.eco.weekMint?DB.eco.weekSink/DB.eco.weekMint:Infinity};
+}
+function rollWeek(){
+  DB.eco.hist.push({w:DB.eco.week,sink:DB.eco.weekSink,mint:DB.eco.weekMint});
+  if(DB.eco.hist.length>12)DB.eco.hist.shift();
+  DB.eco.week++; DB.eco.weekSink=0; DB.eco.weekMint=0; save();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   11 · SIMULAZIONE  (invariata nel cuore, + modificatori NFT)
+   ═══════════════════════════════════════════════════════════════ */
+const R={
+  players:10, world:2200, zoneStart:940, zoneEnd:110,
+  grace:4, zoneDelay:12, zoneTime:150, zoneDps:3.2,
+  speed:116, boostMul:1.95, boostCost:2.6, turnRate:3.5,
+  // Energia: il boost non è più infinito finché hai massa. Si scarica in
+  // ~2,5 s di spinta piena e si ricarica in ~5 s. Diventa una risorsa da
+  // dosare — quando spingere, e quando tenerne da parte per fuggire.
+  enMax:100, enDrain:40, enRegen:20, enUnlock:30,
+  magnet:34,              // raggio base di attrazione del cibo, per tutti
+  turnBoost:.82,          // in boost si sterza peggio: la velocità ha un prezzo
+  startMass:10, minMass:6, pointGap:5, food:460, foodMass:1,
+  dropRatio:.62, tick:1/30, simVersion:'2.0.0'
+};
+const NAMES=['Vipera','Kaito','Nova','Bruco','Zenit','Mamba','Yuki','Orbit','Tessa','Drago'];
+const BOTAB=['ab_viper','ab_bulwark','ab_wraith','ab_leech','ab_surge',null,null];
+const BOTSK=['sk_verde','sk_magma','sk_ghiacc','sk_giungla','sk_oro','sk_vuoto'];
+
+function baseMods(){return{speed:1,radius:1,growth:1,startMass:1,leech:1,boostCost:1,
+  boostMul:1,enRegen:1,shield:0,visible:0,radar:0,magnet:R.magnet,regen:0,
+  zoneRes:1,skin:'sk_verde'}}
+
+/** Questi modificatori si IMPOSTANO, non si moltiplicano. */
+const SETMODS={shield:1,visible:1,radar:1,magnet:1,regen:1};
+
+function applyDef(m,defId){
+  if(!defId)return m;
+  const d=DEFS[defId]; if(!d||!d.mods)return m;
+  for(const k in d.mods){
+    if(SETMODS[k])m[k]=d.mods[k]; else m[k]*=d.mods[k];
+  }
+  return m;
+}
+
+/**
+ * Crea una partita. Deterministica: stesso seed + stesso loadout
+ * del giocatore = stessa identica partita. È ciò che rende
+ * verificabili i replay (§13, livello 3).
+ */
+function createMatch(seed,pMods,mmr){
+  const rnd=mulberry32(seed);
+  const cx=R.world/2, cy=R.world/2, snakes=[];
+  const skill=clamp((mmr||1000)/1000,.7,1.6);
+  for(let i=0;i<R.players;i++){
+    const a=(i/R.players)*Math.PI*2+(rnd()-.5)*.3;
+    const d=R.zoneStart*(.5+rnd()*.34);
+    const x=cx+Math.cos(a)*d, y=cy+Math.sin(a)*d;
+    let mod;
+    if(i===0){ mod=Object.assign(baseMods(),pMods||{}); }
+    else{
+      mod=baseMods();
+      const ab=BOTAB[Math.floor(rnd()*BOTAB.length)];
+      applyDef(mod,ab); mod.ability=ab;
+      mod.skin=BOTSK[Math.floor(rnd()*BOTSK.length)];
+    }
+    snakes.push({
+      id:i,bot:i>0,name:i===0?'TU':NAMES[i-1],
+      x,y,ang:a+Math.PI/2+(rnd()-.5)*.5,
+      mass:R.startMass*mod.startMass, maxMass:R.startMass*mod.startMass,
+      path:[{x,y}],acc:0,alive:true,kills:0,placement:0,boosting:false,
+      mod, shieldT:0, energy:R.enMax, lock:false, calm:0, killedBy:null,
+      aggr:(.25+rnd()*.6)*(i===0?1:skill),
+      react:(.55+rnd()*.5)*(i===0?1:skill),
+      wob:rnd()*6.28,target:null
+    });
+  }
+  const food=[];
+  for(let i=0;i<R.food;i++)food.push(spawnFood(rnd,cx,cy,R.zoneStart));
+  return {seed,rnd,cx,cy,snakes,food,t:0,zone:R.zoneStart,alive:R.players,
+    input:{ang:snakes[0].ang,boost:false},finished:false,grid:new Map(),
+    tickN:0,log:[],lastIn:null,feed:[],flash:0};
+}
+
+function spawnFood(rnd,cx,cy,rad,x,y,m){
+  if(x===undefined){const a=rnd()*Math.PI*2,d=Math.sqrt(rnd())*rad*.97;
+    x=cx+Math.cos(a)*d;y=cy+Math.sin(a)*d}
+  return{x,y,m:m||R.foodMass};
+}
+
+function rebuildGrid(m){
+  m.grid.clear();
+  for(let i=0;i<m.food.length;i++){
+    const f=m.food[i],k=((f.x/90)|0)+','+((f.y/90)|0);
+    let a=m.grid.get(k);if(!a){a=[];m.grid.set(k,a)}a.push(i);
+  }
+}
+function nearFood(m,x,y,r){
+  const out=[],x0=((x-r)/90)|0,x1=((x+r)/90)|0,y0=((y-r)/90)|0,y1=((y+r)/90)|0;
+  for(let gx=x0;gx<=x1;gx++)for(let gy=y0;gy<=y1;gy++){
+    const a=m.grid.get(gx+','+gy);if(a)for(const i of a)out.push(i);
+  }
+  return out;
+}
+const radiusOf=s=>(5.2+Math.sqrt(s.mass)*1.05)*s.mod.radius;
+const bodyLenOf=s=>42+s.mass*1.15;
+
+/**
+ * Un tick con registrazione dell'input (delta encoding per il replay).
+ * L'angolo viene QUANTIZZATO prima di essere simulato, non solo prima di
+ * essere registrato: altrimenti la partita gira sul valore pieno e il replay
+ * su quello arrotondato, e i due divergono. È lo stesso motivo per cui il
+ * netcode reale quantizza gli input prima di metterli sul filo.
+ */
+function step(m,ang,boost){
+  ang=Math.round(ang*1000)/1000;
+  const key=ang+'|'+(boost?1:0);
+  if(key!==m.lastIn){m.log.push([m.tickN,ang,boost?1:0]);m.lastIn=key}
+  m.input.ang=ang; m.input.boost=boost;
+  tick(m,R.tick);
+  m.tickN++;
+}
+
+function tick(m,dt){
+  m.t+=dt;
+  if(m.t>R.zoneDelay){
+    const p=Math.min(1,(m.t-R.zoneDelay)/R.zoneTime);
+    m.zone=R.zoneStart+(R.zoneEnd-R.zoneStart)*(p*p*(3-2*p));
+  }
+  rebuildGrid(m);
+
+  for(const s of m.snakes){
+    if(!s.alive)continue;
+    if(s.shieldT>0)s.shieldT-=dt;
+
+    let want,boost=false;
+    if(s.bot){const d=botThink(m,s);want=d.ang;boost=d.boost}
+    else{want=m.input.ang;boost=m.input.boost}
+
+    // ── Energia del boost ──────────────────────────────────
+    // A zero si blocca finché non risale sopra la soglia: impedisce di
+    // tenerlo premuto a raffica e crea un ritmo di spinta e recupero.
+    if(s.energy<=0)s.lock=true;
+    if(s.energy>=R.enUnlock)s.lock=false;
+    boost=boost&&!s.lock&&s.energy>0&&s.mass>R.minMass+2;
+    if(boost)s.energy=Math.max(0,s.energy-R.enDrain*s.mod.boostCost*dt);
+    else s.energy=Math.min(R.enMax,s.energy+R.enRegen*s.mod.enRegen*dt);
+
+    let diff=want-s.ang;
+    while(diff>Math.PI)diff-=Math.PI*2;
+    while(diff<-Math.PI)diff+=Math.PI*2;
+    const mx=R.turnRate*dt*(boost?R.turnBoost:1);
+    s.ang+=clamp(diff,-mx,mx);
+    s.boosting=boost;
+
+    const sp=R.speed*s.mod.speed*(boost?R.boostMul*s.mod.boostMul:1);
+    if(boost){
+      s.mass-=R.boostCost*dt;
+      if(m.rnd()<dt*8)m.food.push(spawnFood(m.rnd,0,0,0,
+        s.x-Math.cos(s.ang)*radiusOf(s),s.y-Math.sin(s.ang)*radiusOf(s),.6));
+    }
+    s.x+=Math.cos(s.ang)*sp*dt; s.y+=Math.sin(s.ang)*sp*dt;
+
+    s.acc+=sp*dt;
+    while(s.acc>=R.pointGap){s.acc-=R.pointGap;s.path.unshift({x:s.x,y:s.y})}
+    const need=Math.max(4,(bodyLenOf(s)/R.pointGap)|0);
+    if(s.path.length>need)s.path.length=need;
+
+    // ── Magnete: il cibo vicino viene attirato verso la testa ──
+    const r=radiusOf(s),eat=r+9,mag=s.mod.magnet+r;
+    for(const i of nearFood(m,s.x,s.y,mag)){
+      const f=m.food[i];if(!f)continue;
+      const dx=s.x-f.x,dy=s.y-f.y,d2=dx*dx+dy*dy;
+      if(d2<eat*eat){s.mass+=f.m*s.mod.growth;m.food[i]=null;continue}
+      if(d2<mag*mag){
+        const d=Math.sqrt(d2)||1,pull=(1-d/mag)*300*dt;
+        f.x+=dx/d*pull; f.y+=dy/d*pull;
+      }
+    }
+
+    const dz=Math.hypot(s.x-m.cx,s.y-m.cy);
+    s.outside=dz>m.zone;
+    if(s.outside)s.mass-=R.zoneDps*dt*(1+(dz-m.zone)/400)/s.mod.zoneRes;
+
+    // ── Bozzolo: rigenera solo se nessuno è vicino ──
+    if(s.mod.regen>0){
+      let solo=true;
+      for(const o of m.snakes){
+        if(o===s||!o.alive)continue;
+        if((o.x-s.x)**2+(o.y-s.y)**2<300*300){solo=false;break}
+      }
+      s.calm=solo?s.calm+dt:0;
+      if(s.calm>2&&!s.outside)s.mass+=s.mod.regen*dt;
+    }
+
+    if(s.mass>s.maxMass)s.maxMass=s.mass;
+    if(s.mass<R.minMass)kill(m,s,null);
+  }
+
+  m.food=m.food.filter(Boolean);
+  if(m.food.length<R.food*.8&&m.rnd()<dt*22)
+    m.food.push(spawnFood(m.rnd,m.cx,m.cy,m.zone));
+
+  collide(m);
+  if(m.alive<=1)m.finished=true;
+}
+
+/** Lo scudo di Bulwark: assorbe un impatto letale, poi va in cooldown. */
+function shielded(s){
+  if(s.mod.shield&&s.shieldT<=0){s.shieldT=s.mod.shield;return true}
+  return false;
+}
+
+function collide(m){
+  if(m.t<R.grace)return;
+  const live=m.snakes.filter(s=>s.alive);
+  for(let i=0;i<live.length;i++)for(let j=i+1;j<live.length;j++){
+    const a=live[i],b=live[j];if(!a.alive||!b.alive)continue;
+    const rr=radiusOf(a)+radiusOf(b);
+    if((a.x-b.x)**2+(a.y-b.y)**2<rr*rr){
+      const ra=a.mass/b.mass;
+      if(ra>1.1){if(!shielded(b)){a.kills++;kill(m,b,a)}}
+      else if(ra<.91){if(!shielded(a)){b.kills++;kill(m,a,b)}}
+      else{if(!shielded(a))kill(m,a,b);if(!shielded(b))kill(m,b,a)}
+    }
+  }
+  for(const s of live){
+    if(!s.alive)continue;
+    const r=radiusOf(s);
+    for(const o of live){
+      if(o===s||!o.alive||!s.alive)continue;
+      const hit=r+radiusOf(o)*.82,h2=hit*hit;
+      for(let k=3;k<o.path.length;k+=2){
+        const p=o.path[k],dx=p.x-s.x,dy=p.y-s.y;
+        if(dx*dx+dy*dy<h2){if(!shielded(s)){o.kills++;kill(m,s,o)}break}
+      }
+    }
+  }
+}
+
+function kill(m,s,by){
+  if(!s.alive)return;
+  s.alive=false; s.placement=m.alive; m.alive--;
+  s.killedBy=by?by.name:(s.outside?'zona':'zona');
+  m.feed.push({t:m.t,by:by?by.name:'ZONA',who:s.name,me:by&&by.id===0,mine:s.id===0});
+  if(m.feed.length>6)m.feed.shift();
+  if(by&&by.id===0)m.flash=.45;
+  const drop=s.mass*R.dropRatio,per=Math.max(1.2,drop/Math.max(6,s.path.length/3));
+  for(let k=0;k<s.path.length;k+=3){
+    const p=s.path[k];
+    m.food.push(spawnFood(m.rnd,0,0,0,p.x+(m.rnd()-.5)*14,p.y+(m.rnd()-.5)*14,per));
+  }
+  if(by)by.mass+=s.mass*.28*by.mod.leech;
+  if(s.id===0)m.finished=true;
+}
+
+function botThink(m,s){
+  const dz=Math.hypot(s.x-m.cx,s.y-m.cy);
+  const canB=!s.lock&&s.energy>35;      // i bot tengono da parte l'energia
+  let ang=s.ang;
+  if(dz>m.zone-70)return{ang:Math.atan2(m.cy-s.y,m.cx-s.x),boost:dz>m.zone&&canB};
+  const r=radiusOf(s),look=r+58+s.mass*.22;
+  let danger=0,escape=0;
+  for(const off of [-.5,0,.5]){
+    const a=s.ang+off,px=s.x+Math.cos(a)*look,py=s.y+Math.sin(a)*look;
+    for(const o of m.snakes){
+      if(o===s||!o.alive)continue;
+      for(let k=0;k<o.path.length;k+=4){
+        const p=o.path[k],d2=(p.x-px)**2+(p.y-py)**2;
+        if(d2<(r+radiusOf(o)+16)**2){
+          const w=(off===0?2.2:1)*s.react;
+          if(w>danger){danger=w;escape=off===0?(m.rnd()<.5?-1:1):-Math.sign(off)}
+        }
+      }
+    }
+  }
+  if(danger>0)return{ang:s.ang+escape*1.15,boost:danger>1.6&&canB};
+  if(m.rnd()<.02)s.target=null;
+  if(m.t>R.grace&&s.aggr>.55&&!s.target){
+    let best=null,bd=1e9;
+    for(const o of m.snakes){
+      if(o===s||!o.alive)continue;
+      // Leech rende visibile chi lo indossa: i bot lo puntano da più lontano
+      const range=o.mod.visible?520:330;
+      const d=Math.hypot(o.x-s.x,o.y-s.y);
+      if(d<range&&o.mass<s.mass*1.15&&d<bd){bd=d;best=o}
+    }
+    if(best){
+      const lead=Math.min(1.6,bd/180);
+      const tx=best.x+Math.cos(best.ang)*R.speed*lead,ty=best.y+Math.sin(best.ang)*R.speed*lead;
+      return{ang:Math.atan2(ty-s.y,tx-s.x),boost:bd<200&&s.mass>18&&canB};
+    }
+  }
+  let bf=null,bd=1e9;
+  for(const i of nearFood(m,s.x,s.y,290)){
+    const f=m.food[i];if(!f)continue;
+    const d=(f.x-s.x)**2+(f.y-s.y)**2;
+    if(d<bd){bd=d;bf=f}
+  }
+  if(bf)ang=Math.atan2(bf.y-s.y,bf.x-s.x);
+  else{s.wob+=.02;ang=s.ang+Math.sin(s.wob)*.35}
+  return{ang,boost:false};
+}
+
+/** Hash canonico dello stato finale — il confronto dell'anti-cheat. */
+function stateHash(m){
+  let s=m.tickN+'|'+m.alive+'|';
+  for(const k of m.snakes)
+    s+=k.id+':'+(k.alive?1:0)+':'+k.placement+':'+Math.round(k.mass*100)+':'
+      +Math.round(k.x*10)+':'+Math.round(k.y*10)+':'+k.kills+';';
+  return fnv(s);
+}
+
+function finalize(m){
+  const me=m.snakes[0];
+  if(me.alive)me.placement=1;
+  return {seed:m.seed,ticks:m.tickN,dur:m.t,
+    parts:m.snakes.map(s=>({id:s.id,place:s.placement||1,kills:s.kills,
+      mass:Math.round(s.maxMass),by:s.killedBy})),
+    hash:stateHash(m)};
+}
+
+/** Ri-esegue la partita dagli input registrati e confronta l'hash. */
+function verifyReplay(rep){
+  const m=createMatch(rep.seed,rep.mods,rep.mmr);
+  let li=0,ang=m.snakes[0].ang,boost=false;
+  for(let t=0;t<rep.ticks;t++){
+    while(li<rep.log.length&&rep.log[li][0]===t){ang=rep.log[li][1];boost=!!rep.log[li][2];li++}
+    m.input.ang=ang;m.input.boost=boost;
+    tick(m,R.tick); m.tickN++;
+    if(m.finished&&t>=rep.ticks-1)break;
+  }
+  const h=stateHash(m);
+  return {ok:h===rep.hash,got:h,want:rep.hash,ticks:m.tickN};
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   12 · RENDER DEL GIOCO
+   ═══════════════════════════════════════════════════════════════ */
+const cv=$('#cv'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1,cam={x:0,y:0,z:1};
+function resize(){
+  W=cv.clientWidth;H=cv.clientHeight;
+  if(!W||!H)return;                 // tela ancora nascosta: si riprova al frame dopo
+  /* Tetto ai pixel disegnati: su un monitor 2560x1440 a densità 2 sarebbero
+     14,7 milioni di pixel per fotogramma e il gioco perderebbe frame proprio
+     sulla macchina più potente. Sotto il tetto la densità resta intatta. */
+  const BUDGET=4.2e6;
+  let d=Math.min(devicePixelRatio||1,2);
+  const px=W*H*d*d;
+  if(px>BUDGET)d=Math.max(1,d*Math.sqrt(BUDGET/px));
+  DPR=d;
+  cv.width=W*d|0;cv.height=H*d|0;
+  ctx.setTransform(d,0,0,d,0,0);
+}
+/* Nessun listener qui: resize() lo chiama onViewportChange (in fondo al file),
+   unico punto d'ingresso per resize/orientationchange/visualViewport/matchMedia.
+   Registrarlo anche qui significava eseguire due volte lo stesso ridimensionamento. */
+
+function skinOf(s){return DEFS[s.mod.skin]||DEFS.sk_verde}
+
+function drawSnake(s){
+  const sk=skinOf(s),r=radiusOf(s);
+  ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.globalAlpha=s.outside?.55:1;
+
+  if(sk.pat==='void'){
+    ctx.strokeStyle=sk.glow;ctx.lineWidth=r*2.5;ctx.globalAlpha=(s.outside?.2:.28);
+    ctx.beginPath();ctx.moveTo(s.path[0].x,s.path[0].y);
+    for(let k=1;k<s.path.length;k++)ctx.lineTo(s.path[k].x,s.path[k].y);
+    ctx.stroke();ctx.globalAlpha=s.outside?.55:1;
+  }
+  ctx.strokeStyle=sk.body;ctx.lineWidth=r*2;
+  ctx.beginPath();ctx.moveTo(s.path[0].x,s.path[0].y);
+  for(let k=1;k<s.path.length;k++)ctx.lineTo(s.path[k].x,s.path[k].y);
+  ctx.stroke();
+
+  if(sk.pat==='bands'){
+    ctx.strokeStyle=sk.glow;ctx.lineWidth=r*1.5;
+    for(let k=0;k<s.path.length-3;k+=8){
+      ctx.beginPath();ctx.moveTo(s.path[k].x,s.path[k].y);
+      ctx.lineTo(s.path[k+2].x,s.path[k+2].y);ctx.stroke();
+    }
+  } else if(sk.pat==='grad'){
+    ctx.strokeStyle=sk.glow;ctx.lineWidth=r*.85;
+    ctx.beginPath();ctx.moveTo(s.path[0].x,s.path[0].y);
+    for(let k=1;k<Math.min(s.path.length,22);k++)ctx.lineTo(s.path[k].x,s.path[k].y);
+    ctx.stroke();
+  }
+
+  if(s.boosting){
+    ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=r*.65;
+    ctx.beginPath();ctx.moveTo(s.path[0].x,s.path[0].y);
+    for(let k=1;k<Math.min(s.path.length,14);k++)ctx.lineTo(s.path[k].x,s.path[k].y);
+    ctx.stroke();
+  }
+  if(s.mod.shield&&s.shieldT<=0){
+    ctx.beginPath();ctx.arc(s.x,s.y,r+5,0,Math.PI*2);
+    ctx.strokeStyle='rgba(56,189,248,.75)';ctx.lineWidth=2;ctx.stroke();
+  }
+  const ea=s.ang;
+  for(const sg of [-.55,.55]){
+    const ex=s.x+Math.cos(ea+sg)*r*.55,ey=s.y+Math.sin(ea+sg)*r*.55;
+    ctx.beginPath();ctx.arc(ex,ey,r*.29,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+    ctx.beginPath();ctx.arc(ex+Math.cos(ea)*r*.11,ey+Math.sin(ea)*r*.11,r*.15,0,Math.PI*2);
+    ctx.fillStyle='#0a0e13';ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+function draw(m){
+  const me=m.snakes[0],foc=me.alive?me:{x:cam.x,y:cam.y};
+  cam.x+=(foc.x-cam.x)*.14; cam.y+=(foc.y-cam.y)*.14;
+  // Lo zoom parte dalla massa, ma va riferito al lato corto del viewport: senza
+  // questo fattore un monitor largo inquadrerebbe l'arena intera e il gioco
+  // diventerebbe banale, mentre il telefono resterebbe stretto.
+  let want=Math.min(1,Math.max(.52,62/(radiusOf(me)+38)));
+  want*=Math.max(1,Math.min(2.2,Math.min(W,H)/420));
+  cam.z+=(want-cam.z)*.03;
+  const z=cam.z,ox=W/2-cam.x*z,oy=H/2-cam.y*z;
+
+  ctx.fillStyle='#0a0e13';ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.translate(ox,oy);ctx.scale(z,z);
+
+  const G=110;
+  ctx.strokeStyle='rgba(255,255,255,.03)';ctx.lineWidth=1/z;
+  const gx0=Math.floor((cam.x-W/2/z)/G)*G,gx1=cam.x+W/2/z;
+  const gy0=Math.floor((cam.y-H/2/z)/G)*G,gy1=cam.y+H/2/z;
+  ctx.beginPath();
+  for(let x=gx0;x<gx1;x+=G){ctx.moveTo(x,gy0);ctx.lineTo(x,gy1+G)}
+  for(let y=gy0;y<gy1;y+=G){ctx.moveTo(gx0,y);ctx.lineTo(gx1+G,y)}
+  ctx.stroke();
+
+  ctx.save();
+  ctx.beginPath();ctx.rect(cam.x-W/2/z-50,cam.y-H/2/z-50,W/z+100,H/z+100);
+  ctx.arc(m.cx,m.cy,m.zone,0,Math.PI*2,true);
+  ctx.fillStyle='rgba(239,90,90,.10)';ctx.fill('evenodd');
+  ctx.restore();
+  ctx.beginPath();ctx.arc(m.cx,m.cy,m.zone,0,Math.PI*2);
+  ctx.strokeStyle='rgba(239,90,90,.55)';ctx.lineWidth=3/z;ctx.stroke();
+
+  for(const f of m.food){
+    if(Math.abs(f.x-cam.x)>W/2/z+20||Math.abs(f.y-cam.y)>H/2/z+20)continue;
+    ctx.beginPath();ctx.arc(f.x,f.y,1.9+f.m*1.3,0,Math.PI*2);
+    ctx.fillStyle=f.m>1?'#f5c451':'#3f5468';ctx.fill();
+  }
+  for(const s of m.snakes){
+    if(!s.alive)continue;
+    const r=radiusOf(s)+bodyLenOf(s);
+    if(Math.abs(s.x-cam.x)>W/2/z+r||Math.abs(s.y-cam.y)>H/2/z+r)continue;
+    drawSnake(s);
+    if(s.id!==0&&z>.62){
+      // il corpo del testo è dentro ctx.scale(z,z): va diviso per z, altrimenti
+      // su uno schermo grande i nomi diventano il doppio
+      const kf=11/z*Math.max(1,Math.min(2.2,Math.min(W,H)/420));
+      ctx.font='600 '+kf.toFixed(2)+'px -apple-system,sans-serif';ctx.textAlign='center';
+      ctx.fillStyle=s.mod.visible?'rgba(239,90,90,.8)':'rgba(232,238,247,.45)';
+      ctx.fillText(s.name,s.x,s.y-radiusOf(s)-7/z*Math.max(1,Math.min(2.2,Math.min(W,H)/420)));
+    }
+  }
+  ctx.restore();
+
+  if(me.alive&&me.outside){
+    const a=Math.atan2(m.cy-me.y,m.cx-me.x);
+    ctx.save();ctx.translate(W/2,H/2);ctx.rotate(a);
+    ctx.beginPath();ctx.moveTo(64,0);ctx.lineTo(46,-11);ctx.lineTo(46,11);ctx.closePath();
+    ctx.fillStyle='rgba(239,90,90,.85)';ctx.fill();ctx.restore();
+  }
+
+  // Lampo verde quando elimini qualcuno: il colpo va sentito
+  if(m.flash>0){
+    ctx.fillStyle='rgba(45,212,191,'+(m.flash*.32).toFixed(3)+')';
+    ctx.fillRect(0,0,W,H);
+    m.flash=Math.max(0,m.flash-.03);
+  }
+}
+
+/* ── Anteprima NFT su canvas ─────────────────────────────── */
+function nftArt(el,defId){
+  const d=DEFS[defId];if(!d)return;
+  const c=document.createElement('canvas');
+  const w=el.clientWidth||100,h=el.clientHeight||52;
+  const dp=Math.min(devicePixelRatio||1,2);
+  c.width=w*dp;c.height=h*dp;
+  const g=c.getContext('2d');g.setTransform(dp,0,0,dp,0,0);
+  g.fillStyle='#0a0f16';g.fillRect(0,0,w,h);
+
+  if(d.cat==='skin'){
+    const pts=[];for(let i=0;i<26;i++){
+      const t=i/25;pts.push({x:10+t*(w-20),y:h/2+Math.sin(t*5.2)*(h*.24)});
+    }
+    g.lineCap='round';g.lineJoin='round';
+    if(d.pat==='void'){g.strokeStyle=d.glow;g.globalAlpha=.3;g.lineWidth=13;
+      g.beginPath();g.moveTo(pts[0].x,pts[0].y);pts.forEach(p=>g.lineTo(p.x,p.y));g.stroke();g.globalAlpha=1}
+    g.strokeStyle=d.body;g.lineWidth=9;
+    g.beginPath();g.moveTo(pts[0].x,pts[0].y);pts.forEach(p=>g.lineTo(p.x,p.y));g.stroke();
+    if(d.pat==='bands'){g.strokeStyle=d.glow;g.lineWidth=6.5;
+      for(let i=0;i<pts.length-2;i+=4){g.beginPath();g.moveTo(pts[i].x,pts[i].y);
+        g.lineTo(pts[i+1].x,pts[i+1].y);g.stroke()}}
+    if(d.pat==='grad'){g.strokeStyle=d.glow;g.lineWidth=3.6;
+      g.beginPath();g.moveTo(pts[0].x,pts[0].y);
+      for(let i=0;i<12;i++)g.lineTo(pts[i].x,pts[i].y);g.stroke()}
+    const hd=pts[pts.length-1];
+    g.fillStyle='#fff';g.beginPath();g.arc(hd.x-1,hd.y-3,2.1,0,7);g.fill();
+    g.beginPath();g.arc(hd.x-1,hd.y+3,2.1,0,7);g.fill();
+  } else {
+    const ic={ability:'⚡',charm:'◈',core:'⬢'}[d.cat];
+    g.fillStyle=RAR[d.rar].c;g.globalAlpha=.14;
+    g.beginPath();g.arc(w/2,h/2,h*.42,0,7);g.fill();g.globalAlpha=1;
+    g.font='700 '+Math.round(h*.42)+'px -apple-system,sans-serif';
+    g.textAlign='center';g.textBaseline='middle';
+    g.fillStyle=RAR[d.rar].c;g.fillText(ic,w/2,h/2+1);
+  }
+  el.innerHTML='';el.appendChild(c);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   13 · CICLO DI GIOCO
+   ═══════════════════════════════════════════════════════════════ */
+let M=null,MODE='free',running=false,last=0,accum=0,hudT=0;
+let ptr={x:0,y:0,on:false},boostKey=false,keys={};
+const bt=$('#hBoost');
+// Joystick virtuale (solo touch): conta il TRASCINAMENTO dal punto d'appoggio,
+// non la posizione assoluta del dito. Un tocco fermo non sterza: niente scatti
+// al primo tocco, e il pollice può stare comodo ovunque sullo schermo.
+let joy={on:false,sx:0,sy:0,x:0,y:0,ang:null};
+const DEAD=16;
+const isTouch=matchMedia('(pointer:coarse)').matches;
+if(!isTouch)document.body.classList.add('desktop');
+
+cv.addEventListener('pointermove',e=>{
+  if(isTouch){if(joy.on){joy.x=e.clientX;joy.y=e.clientY}return}
+  ptr.x=e.clientX;ptr.y=e.clientY;ptr.on=true;
+});
+let lastTap=0;
+cv.addEventListener('pointerdown',e=>{
+  if(isTouch){
+    joy.on=true;joy.sx=joy.x=e.clientX;joy.sy=joy.y=e.clientY;
+    // Doppio tocco = boost, senza staccare il pollice dalla guida
+    const t=performance.now();
+    if(t-lastTap<300){boostKey=true;bt.classList.add('on')}
+    lastTap=t;
+    return;
+  }
+  ptr.x=e.clientX;ptr.y=e.clientY;ptr.on=true;
+  if(e.button===0)boostKey=true;
+});
+addEventListener('pointerup',()=>{
+  if(isTouch){joy.on=false;boostKey=false;bt.classList.remove('on')}
+  else boostKey=false;
+});
+addEventListener('pointercancel',()=>{joy.on=false;boostKey=false});
+addEventListener('keydown',e=>{
+  // Mentre si scrive in un campo la tastiera è di chi scrive, non del gioco.
+  const t=e.target;
+  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable))return;
+  const inGame=running&&$('#game').classList.contains('on');
+  keys[e.code]=true;
+  if(e.code==='Space'){if(inGame){boostKey=true;e.preventDefault()}return}
+  if(inGame){if(e.code.indexOf('Arrow')===0)e.preventDefault();return}
+  // Fuori partita: Esc chiude, 1–5 cambiano scheda
+  if(e.code==='Escape'){
+    if($('#modal').classList.contains('on'))closeModal();
+    else if($('#res').classList.contains('on'))app.toHub();
+    return;
+  }
+  const d={Digit1:'play',Digit2:'inv',Digit3:'mkt',Digit4:'sea',Digit5:'eco'}[e.code];
+  if(d&&!$('#res').classList.contains('on')&&!$('#modal').classList.contains('on'))go(d);
+});
+addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='Space')boostKey=false});
+bt.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();
+  boostKey=true;bt.classList.add('on')});
+['pointerup','pointercancel','pointerleave'].forEach(ev=>
+  bt.addEventListener(ev,()=>{boostKey=false;bt.classList.remove('on')}));
+
+function readAng(){
+  const me=M.snakes[0];
+  if(isTouch){
+    if(joy.on){
+      const dx=joy.x-joy.sx,dy=joy.y-joy.sy;
+      if(dx*dx+dy*dy>DEAD*DEAD)joy.ang=Math.atan2(dy,dx);
+    }
+    return joy.ang===null?me.ang:joy.ang;   // dito fermo o alzato: si va dritti
+  }
+  let kx=0,ky=0;
+  if(keys.ArrowLeft||keys.KeyA)kx--; if(keys.ArrowRight||keys.KeyD)kx++;
+  if(keys.ArrowUp||keys.KeyW)ky--;   if(keys.ArrowDown||keys.KeyS)ky++;
+  if(kx||ky)return Math.atan2(ky,kx);
+  if(ptr.on){
+    const z=cam.z,sx=W/2+(me.x-cam.x)*z,sy=H/2+(me.y-cam.y)*z;
+    const dx=ptr.x-sx,dy=ptr.y-sy;
+    if(dx*dx+dy*dy>90)return Math.atan2(dy,dx);
+  }
+  return me.ang;
+}
+
+function frame(ts){
+  requestAnimationFrame(frame);
+  if(!running||!M)return;
+  if(!W||!H)resize();   // il canvas può essere stato misurato da nascosto
+  const dt=Math.min(.1,(ts-last)/1000||0);last=ts;
+  accum+=dt;
+  let g=0;
+  while(accum>=R.tick&&g++<6&&!M.finished){
+    step(M,readAng(),boostKey);   // l'energia decide da sola se il boost parte
+    accum-=R.tick;
+  }
+  draw(M);
+  hud(dt);
+  if(M.finished){running=false;settle()}
+}
+requestAnimationFrame(frame);
+
+const mapCv=$('#hMap'), mapCtx=mapCv.getContext('2d');
+function drawMap(){
+  const me=M.snakes[0];
+  const S=Math.round(mapCv.clientWidth)||88, dp=Math.min(devicePixelRatio||1,2);
+  const k=S/88;                     // la mappa cresce su tablet e PC: i simboli con lei
+  if(mapCv.width!==S*dp){mapCv.width=S*dp;mapCv.height=S*dp}
+  const g=mapCtx; g.setTransform(dp,0,0,dp,0,0);
+  g.clearRect(0,0,S,S);
+  const sc=S/R.world, cx=S/2, cy=S/2;
+  // zona sicura
+  g.beginPath();g.arc(cx,cy,M.zone*sc,0,7);
+  g.fillStyle='rgba(45,212,191,.09)';g.fill();
+  g.strokeStyle='rgba(239,90,90,.6)';g.lineWidth=1.4*k;g.stroke();
+  const pt=o=>[o.x*sc,o.y*sc];
+  if(me.mod.radar){
+    for(const o of M.snakes){
+      if(!o.alive||o.id===0)continue;
+      const [x,y]=pt(o);
+      g.beginPath();g.arc(x,y,2*k,0,7);
+      g.fillStyle=o.mass>me.mass?'rgba(239,90,90,.9)':'rgba(232,238,247,.55)';g.fill();
+    }
+  } else {
+    for(const o of M.snakes){
+      if(!o.alive||o.id===0||!o.mod.visible)continue;
+      const [x,y]=pt(o);
+      g.beginPath();g.arc(x,y,2.2*k,0,7);g.fillStyle='rgba(239,90,90,.85)';g.fill();
+    }
+  }
+  const [px,py]=pt(me);
+  g.beginPath();g.arc(px,py,3.2*k,0,7);g.fillStyle='#2dd4bf';g.fill();
+  g.beginPath();g.arc(px,py,5.4*k,0,7);g.strokeStyle='rgba(45,212,191,.5)';g.lineWidth=k;g.stroke();
+}
+
+function hud(dt){
+  const me=M.snakes[0];
+  $('#hMass').textContent=Math.round(me.mass);
+  $('#hKills').textContent=me.kills;
+  $('#hAlive').textContent=M.alive;
+  $('#hWarn').classList.toggle('on',!!me.outside);
+
+  const en=me.energy/R.enMax*100;
+  $('#hEn').style.width=en.toFixed(0)+'%';
+  $('#hEnWrap').classList.toggle('low',me.lock||en<25);
+  $('#hBoost').classList.toggle('on',me.boosting);
+
+  drawMap();
+
+  hudT+=dt;if(hudT<.2)return;hudT=0;
+
+  const top=M.snakes.filter(s=>s.alive).sort((a,b)=>b.mass-a.mass).slice(0,5);
+  $('#hBoard').innerHTML=top.map((s,i)=>
+    '<div class="'+(s.id===0?'me':'')+'">'+(i+1)+'. '+s.name+' <b>'+Math.round(s.mass)+'</b></div>').join('');
+
+  const z=$('#hZone');
+  if(M.t<R.zoneDelay){
+    z.textContent='La zona si restringe fra '+Math.ceil(R.zoneDelay-M.t)+'s';
+    z.classList.remove('hot');
+  } else if(M.zone>R.zoneEnd+8){
+    z.textContent='⬤ ZONA IN CHIUSURA';z.classList.add('hot');
+  } else {z.textContent='⬤ ZONA MINIMA';z.classList.add('hot')}
+
+  const rec=M.feed.filter(f=>M.t-f.t<5);
+  $('#hFeed').innerHTML=rec.slice(-3).map(f=>
+    '<div>'+(f.me?'<b>TU</b>':f.by)+' → '+(f.mine?'<i>TU</i>':f.who)+'</div>').join('');
+}
+
+function startMatch(mode){
+  const chk=canPlay(mode);
+  if(!chk.ok){toast(chk.why);return}
+  const M0=MODES[mode];
+  let usedTicket=false;
+
+  if(M0.tk){ DB.tickets.left-=M0.tk; usedTicket=true; }
+  else if(M0.cur==='SNK'){
+    post('match_entry',mode,[[ACC.pSnk,-M0.fee],[ACC.prize,M0.fee]]);
+    DB.stats.spent+=M0.fee;
+    // Le quote dei 9 avversari entrano nel montepremi
+    post('match_entry_opp',mode,[[ACC.opp,-M0.fee*9],[ACC.prize,M0.fee*9]]);
+  }
+
+  MODE=mode;
+  const lm=loadoutMods(isRanked(mode)?'ranked':'casual');
+  const pm=baseMods();
+  for(const k of ['speed','radius','growth','startMass','leech','boostCost','boostMul',
+    'enRegen','zoneRes','shield','visible','radar','magnet','regen'])pm[k]=lm[k];
+  pm.skin=lm.skin;pm.ability=lm.ability;
+
+  const seed=(Math.random()*4294967295)>>>0;
+  const mmr0=DB.player.mmr;              // l'MMR cambia a fine partita: il replay
+  M=createMatch(seed,pm,mmr0);           // deve usare quello di PARTENZA
+  M.eco=lm; M.mode=mode; M.ticket=usedTicket; M.mmr0=mmr0;
+  cam={x:M.snakes[0].x,y:M.snakes[0].y,z:1};
+  ptr.on=false;boostKey=false;accum=0;last=performance.now();
+  joy.on=false;joy.ang=null;   // il tocco del menù non deve sterzare la partita
+  {const h=$('#hHint');
+   h.textContent=isTouch
+     ?'Trascina il dito per guidare · doppio tocco per il boost'
+     :'Muovi il mouse per guidare · Spazio o click per il boost · frecce o WASD';
+   h.style.opacity=1;setTimeout(()=>h.style.opacity=0,4000)}
+
+  const abName=lm.ability?DEFS[lm.ability].name:'Nessuna abilità';
+  $('#hAbil').innerHTML='<b>'+abName+'</b>'+(DEFS[lm.skin]?DEFS[lm.skin].name:'');
+  // Prima si mostra la schermata, POI si misura il canvas: finché #game è
+  // display:none, clientWidth vale 0 e il gioco renderizzerebbe nel vuoto.
+  $('#game').classList.add('on');
+  $('#res').classList.remove('on');
+  resize();
+  // Lo zoom parte già al valore giusto per questo schermo: senza, la prima
+  // secondo di partita era una zoomata da 1 al valore da monitor.
+  cam.z=Math.min(1,Math.max(.52,62/(radiusOf(M.snakes[0])+38)))
+       *Math.max(1,Math.min(2.2,Math.min(W,H)/420));
+  running=true;
+  save();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   14 · SETTLEMENT
+   Il montepremi si azzera esattamente: premi + rake + residuo bruciato.
+   ═══════════════════════════════════════════════════════════════ */
+function settle(){
+  // Idempotenza (§11.1): una partita si liquida UNA volta sola. Senza questo
+  // guardia un retry — o una richiesta duplicata su rete mobile — pagherebbe
+  // il premio due volte e sbilancerebbe il montepremi.
+  if(!M||M.settled)return;
+  M.settled=true;
+
+  const r=finalize(M),me=r.parts[0],M0=MODES[MODE];
+  const lm=M.eco,dim=diminish();
+  // Premio "nudo" (quota del montepremi) e premio con i bonus dei talismani.
+  // Il montepremi copre SOLO il nudo: il bonus è un premio in più, e i token
+  // per pagarlo devono già esistere — escono dalla riserva alimentata dal rake,
+  // mai dal nulla. È la regola del §5.4: nessuna emissione non coperta.
+  const base=computePayout(MODE,me.place,me.kills,null);
+  const pay=computePayout(MODE,me.place,me.kills,lm);
+  const baseMine=Math.round((base.place+base.kills)*dim);
+  const ecoMine=Math.round((pay.place+pay.kills)*dim);
+  const bonus=Math.max(0,ecoMine-baseMine);
+  let mine=baseMine+bonus;
+  let coinPay=0,burnRes=0,oppPay=0;
+
+  if(M0.cur==='COINS'){
+    mine=0;
+    coinPay=pay.place+pay.kills;
+    post('match_reward_coins',MODE,[[ACC.emis,-coinPay],[ACC.pCoin,coinPay]]);
+  } else {
+    const pool=M0.fee*10,rake=Math.round(pool*M0.rake),dist=pool-rake;
+    // Quote degli avversari (nudo: i bot non hanno talismani)
+    let others=0;
+    for(const p of r.parts){
+      if(p.id===0)continue;
+      const q=computePayout(MODE,p.place,p.kills,null);
+      others+=q.place+q.kills;
+    }
+    burnRes=Math.max(0,dist-baseMine-others);
+    oppPay=others;
+
+    const bRake=Math.round(rake*.4),res=Math.round(rake*.3),
+          ops=Math.round(rake*.2),cre=rake-bRake-res-ops;
+    const moves=[
+      [ACC.prize,-pool],
+      [ACC.pSnk,baseMine+bonus],[ACC.opp,oppPay],
+      [ACC.burn,bRake+burnRes],[ACC.resv,res-bonus],[ACC.ops,ops],[ACC.crea,cre]
+    ];
+    const sum=moves.reduce((a,m)=>a+m[1],0);
+    if(Math.abs(sum)>1e-6)moves.push([ACC.burn,-sum]); // arrotondamenti → burn
+    post('match_settle',MODE,moves);
+
+    DB.eco.burned+=bRake+burnRes; DB.eco.sunk+=rake+burnRes;
+    DB.eco.weekSink+=rake+burnRes; DB.eco.rakeTot+=rake;
+    DB.stats.earned+=mine;
+  }
+
+  // Progressione
+  const xp=Math.round(40+me.kills*28+(11-me.place)*16+(me.place===1?90:0));
+  const ups=addXp(xp);
+  DB.player.mmr=Math.round(DB.player.mmr+(6-me.place)*7*(isRanked(MODE)?1:.3));
+  DB.player.mmr=clamp(DB.player.mmr,600,2400);
+
+  DB.stats.played++; DB.stats.kills+=me.kills;
+  if(me.place===1)DB.stats.wins++;
+  if(me.place<=3)DB.stats.top3++;
+  if(me.mass>DB.stats.bestMass)DB.stats.bestMass=me.mass;
+  DB.risk.count++;
+
+  questProgress({played:1,kills:me.kills,wins:me.place===1?1:0,
+    top3:me.place<=3?1:0,mass150:me.mass>=150?1:0,ranked:isRanked(MODE)?1:0});
+  checkAch();
+
+  // Durabilità: si consuma solo in ranked
+  if(isRanked(MODE)){
+    for(const id of lm.used){
+      const n=nftById(id);
+      if(n&&n.dur!==null)n.dur=Math.max(0,n.dur-1);
+    }
+  }
+
+  // Replay firmato
+  const rep={id:uid('rep'),seed:M.seed,ticks:M.tickN,log:M.log,
+    mods:{speed:lm.speed,radius:lm.radius,growth:lm.growth,startMass:lm.startMass,
+      leech:lm.leech,boostCost:lm.boostCost,boostMul:lm.boostMul,enRegen:lm.enRegen,
+      shield:lm.shield,visible:lm.visible,radar:lm.radar,magnet:lm.magnet,
+      regen:lm.regen,zoneRes:lm.zoneRes,skin:lm.skin},
+    mmr:M.mmr0,hash:r.hash,mode:MODE,at:now()};
+  DB.replays.unshift(rep); if(DB.replays.length>12)DB.replays.pop();
+  DB.matches.unshift({at:now(),mode:MODE,place:me.place,kills:me.kills,
+    mass:me.mass,net:MODE==='free'?0:mine-(M.ticket?0:M0.fee),xp,rep:rep.id});
+  if(DB.matches.length>40)DB.matches.pop();
+
+  if(!ledgerOk())console.error('LEDGER SBILANCIATO');
+  save();
+
+  showResult({r,me,pay,mine,coinPay,burnRes,dim,xp,ups,M0,ticket:M.ticket,rep});
+  $('#game').classList.remove('on');
+  renderAll();
+}
+
+function showResult(o){
+  const {r,me,pay,mine,coinPay,burnRes,dim,xp,ups,M0,ticket,rep}=o;
+  const fee=M0.cur==='COINS'?0:M0.fee;
+  const net=M0.cur==='COINS'?coinPay:mine-fee;
+  const t=r.dur|0;
+  const eco=M.eco;
+  const bonus=eco&&(eco.earn||eco.killEarn||eco.placeEarn);
+
+  $('#resIn').innerHTML=`
+    <div class="rplace">
+      <div class="n">${me.place}°</div>
+      <div class="l">${me.place===1?'VITTORIA — ultimo sopravvissuto'
+        :'posto su 10 · '+MODES[MODE].name}</div>
+      ${me.place!==1&&me.by?`<div class="l" style="margin-top:6px;color:var(--dan)">
+        eliminato ${me.by==='zona'?'dalla zona':'da <b>'+me.by+'</b>'}</div>`:''}
+    </div>
+    <div class="rcols"><div class="rcol">
+    <div class="rstats">
+      <div class="rstat"><b>${me.kills}</b><small>Eliminazioni</small></div>
+      <div class="rstat"><b>${me.mass}</b><small>Massa max</small></div>
+      <div class="rstat"><b>${(t/60|0)}:${String(t%60).padStart(2,'0')}</b><small>Durata</small></div>
+    </div>
+    <div class="card">
+      ${MODES[MODE].cur==='COINS'?`
+        <div class="kv"><span>Ingresso</span><b>${ticket?'1 Ticket':'gratis'}</b></div>
+        <div class="kv"><span>Premio piazzamento</span><b class="pos">+${nf(pay.place)} ●</b></div>
+        <div class="kv"><span>Premio eliminazioni</span><b class="pos">+${nf(pay.kills)} ●</b></div>
+        <div class="kv" style="border-top:1px solid var(--line);margin-top:7px;padding-top:11px">
+          <span>Totale</span><b class="pos" style="font-size:18px">+${nf(coinPay)} ● Coins</b></div>
+        <div class="muted" style="margin-top:8px">I Coins non sono scambiabili: servono per i Ticket e le riparazioni.</div>
+      `:`
+        <div class="kv"><span>Quota d'ingresso</span><b class="neg">−${nf(fee)} ◈</b></div>
+        <div class="kv"><span>Premio piazzamento</span><b class="pos">+${nf(pay.place)} ◈</b></div>
+        <div class="kv"><span>Premio eliminazioni</span><b class="pos">+${nf(pay.kills)} ◈</b></div>
+        ${bonus?`<div class="kv"><span>Bonus talismani</span><b class="pos">incluso sopra</b></div>`:''}
+        ${dim<1?`<div class="kv"><span>Rendimenti decrescenti</span><b class="neg">×${dim.toFixed(2)}</b></div>`:''}
+        <div class="kv" style="border-top:1px solid var(--line);margin-top:7px;padding-top:11px">
+          <span>Risultato netto</span><b class="${net>=0?'pos':'neg'}" style="font-size:18px">${net>=0?'+':''}${nf(net)} ◈</b></div>
+      `}
+    </div>
+    </div><div class="rcol">
+    <div class="card flat">
+      <div class="kv"><span>Esperienza</span><b class="pos">+${xp} XP${ups?' · LIVELLO '+DB.player.level+'!':''}</b></div>
+      ${burnRes>0?`<div class="kv"><span>Bruciato dal montepremi</span><b>${nf(burnRes)} ◈</b></div>`:''}
+      <div class="kv"><span>Rating</span><b>${DB.player.mmr}</b></div>
+    </div>
+    <div class="card flat">
+      <div class="row">
+        <div class="grow">
+          <div style="font-size:12px;font-weight:700;margin-bottom:2px">Replay verificabile</div>
+          <div class="muted">seed ${rep.seed} · ${rep.ticks} tick · ${rep.log.length} input</div>
+        </div>
+        <button class="btn g sm" onclick="__app.doVerify('${rep.id}')">Verifica</button>
+      </div>
+      <div id="vres" class="muted" style="margin-top:8px"></div>
+    </div>
+    </div></div>
+    <div class="ractions">
+      <button class="btn wide" onclick="__app.again()">RIGIOCA</button>
+      <button class="btn g wide" style="margin-top:8px" onclick="__app.toHub()">Torna al menu</button>
+    </div>
+  `;
+  $('#res').classList.add('on');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   15 · INTERFACCIA
+   ═══════════════════════════════════════════════════════════════ */
+function renderTop(){
+  $('#bSnk').textContent=nf(snk());
+  $('#bCoin').textContent=nf(coins());
+  const w=$('#wbtn');
+  w.classList.toggle('on',!!DB.player.addr);
+  $('#wtxt').textContent=DB.player.addr
+    ? DB.player.addr.slice(0,4)+'…'+DB.player.addr.slice(-3) : 'Collega';
+}
+
+/* ── Gioca ─────────────────────────────────────────────────── */
+function renderPlay(){
+  const lm=loadoutMods('ranked'),lc=loadoutMods('casual');
+  const tk=ticketsLeft();
+  const modes=Object.values(MODES).map(m=>{
+    const c=canPlay(m.key);
+    const cost=m.tk?'1 🎟':m.fee?nf(m.fee)+' ◈':'GRATIS';
+    const col=m.tk?'var(--gold)':m.fee?'var(--ac)':'var(--dim)';
+    return `<div class="card" style="${c.ok?'':'opacity:.55'}">
+      <div class="row">
+        <div class="grow">
+          <div style="font-size:15px;font-weight:700">${m.name}
+            <span class="pill" style="background:${m.cur==='SNK'?'rgba(45,212,191,.14);color:var(--ac)'
+              :'rgba(245,196,81,.14);color:var(--gold)'}">${m.cur==='SNK'?'$SNK':'COINS'}</span></div>
+          <div class="muted" style="margin-top:3px">${m.d}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:800;color:${col}">${cost}</div>
+          <button class="btn sm" style="margin-top:6px" ${c.ok?'':'disabled'}
+            onclick="__app.play('${m.key}')">${c.ok?'GIOCA':'🔒'}</button>
+        </div>
+      </div>
+      ${c.ok?'':'<div class="muted" style="margin-top:7px;color:var(--dan)">'+c.why
+        +(c.needTicket?' — <span style="color:var(--gold)">comprane uno qui sotto</span>':'')+'</div>'}
+    </div>`;
+  }).join('');
+
+  const eq=(cat,mode)=>{
+    const id=DB.loadout[mode][cat];
+    if(!id)return '<span style="color:var(--dim2)">vuoto</span>';
+    const n=nftById(id);if(!n)return '<span style="color:var(--dim2)">vuoto</span>';
+    return '<span style="color:'+RAR[n.rar].c+'">'+defOf(n).name+'</span>'
+      +(isBroken(n)?' <span style="color:var(--dan)">(rotto)</span>':'');
+  };
+
+  $('#p-play').innerHTML=`
+    <h2>Snake Royale</h2>
+    <p class="sub">Livello ${DB.player.level} · Rating ${DB.player.mmr} · ${tk} ticket gratis oggi</p>
+    <div class="card flat">
+      <div class="bar"><i style="width:${Math.round(DB.player.xp/lvlNeed(DB.player.level)*100)}%"></i></div>
+      <div class="muted" style="margin-top:6px">${DB.player.xp} / ${lvlNeed(DB.player.level)} XP al livello ${DB.player.level+1}</div>
+    </div>
+    <h3>Equipaggiamento ranked</h3>
+    <div class="card flat">
+      <div class="kv"><span>Skin</span><b>${eq('skin','ranked')}</b></div>
+      <div class="kv"><span>Abilità</span><b>${eq('ability','ranked')}</b></div>
+      <div class="kv"><span>Talismano</span><b>${eq('charm','ranked')}</b></div>
+      <div class="kv"><span>Core</span><b style="color:var(--dim2)">disattivato in ranked</b></div>
+      ${lm.earn||lm.killEarn||lm.placeEarn?`<div class="muted" style="margin-top:6px;color:var(--ac)">
+        Bonus attivi: ${[lm.earn?'+'+Math.round(lm.earn*100)+'% guadagni':'',
+          lm.killEarn?'+'+Math.round(lm.killEarn*100)+'% da kill':'',
+          lm.placeEarn?'+'+Math.round(lm.placeEarn*100)+'% da podio':''].filter(Boolean).join(' · ')}</div>`:''}
+    </div>
+    <h3>Ticket</h3>
+    <div class="card">
+      <div class="row">
+        <div class="grow">
+          <div style="font-size:15px;font-weight:700">🎟 ${tk} Ticket</div>
+          <div class="muted" style="margin-top:3px">${TICKET_FREE} gratis ogni giorno.
+            Servono per l'Arena e si comprano <b style="color:var(--gold)">in Coins</b>,
+            mai in $SNK.</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:800;color:var(--gold)">${nf(ticketCost())} ●</div>
+          <button class="btn sm gold" style="margin-top:6px"
+            ${(DB.tickets.bought||0)>=TICKET_MAX?'disabled':''}
+            onclick="__app.buyTicket()">COMPRA</button>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:8px">Ogni acquisto costa il 35% in più del
+        precedente, con un tetto di ${TICKET_MAX} al giorno: così nessun bot può
+        trasformare i Coins in una fabbrica di partite.</div>
+    </div>
+
+    <h3>Modalità</h3>
+    <div class="cwrap">${modes}</div>
+    ${DB.matches.length?`<h3>Ultime partite</h3><div class="cwrap">${DB.matches.slice(0,6).map(h=>`
+      <div class="card flat" style="padding:9px 11px">
+        <div class="row">
+          <div class="grow"><b style="font-size:13px">${h.place}° · ${h.kills} kill</b>
+            <div class="muted">${MODES[h.mode].name} · massa ${h.mass}</div></div>
+          <b class="${h.net>=0?'pos':'neg'}">${h.mode==='free'?'—':(h.net>=0?'+':'')+nf(h.net)+' ◈'}</b>
+        </div>
+      </div>`).join('')}</div>`:''}
+  `;
+}
+
+/* ── Inventario ────────────────────────────────────────────── */
+let invMode='ranked';
+function renderInv(){
+  const cats=['skin','ability','charm','core'];
+  const L=DB.loadout[invMode];
+  const blocks=cats.map(cat=>{
+    const items=owned(cat);
+    const dis=cat==='core'&&invMode==='ranked';
+    return `<h3>${SLOT[cat]}${dis?' · disattivato in ranked':''}</h3>
+      ${items.length?`<div class="nftgrid">${items.map(n=>{
+        const d=defOf(n),sel=L[cat]===n.id;
+        const dp=n.dur!==null?n.dur/n.durMax:1;
+        return `<div class="nft ${sel?'sel':''} ${dis||isBroken(n)?'off':''}"
+            onclick="__app.tapNft('${n.id}',event)">
+          ${sel?'<div class="eq">USATO</div>':''}
+          <div class="art" data-def="${n.def}"></div>
+          <div class="nm">${d.name}</div>
+          <div class="rr" style="color:${RAR[n.rar].c}">${RAR[n.rar].n}</div>
+          ${n.dur!==null?`<div class="dur"><i style="width:${dp*100}%;background:${
+            dp>.5?'var(--ac)':dp>.2?'var(--gold)':'var(--dan)'}"></i></div>`:''}
+        </div>`;
+      }).join('')}</div>`:'<div class="empty">Nessun oggetto in questa categoria</div>'}`;
+  }).join('');
+
+  const cr=craftables();
+  $('#p-inv').innerHTML=`
+    <h2>Inventario</h2>
+    <p class="sub">${DB.nfts.length} NFT posseduti · tocca per equipaggiare, tieni premuto per i dettagli</p>
+    <div class="seg">
+      <button class="${invMode==='ranked'?'on':''}" onclick="__app.invMode('ranked')">Ranked</button>
+      <button class="${invMode==='casual'?'on':''}" onclick="__app.invMode('casual')">Casual</button>
+    </div>
+    ${blocks}
+    <h3>Fusione</h3>
+    ${cr.length?'<div class="cwrap">'+cr.map(([k,v])=>{
+      const [cat,rar]=k.split('|');
+      const up=RARORD[RARORD.indexOf(rar)+1];
+      return `<div class="card"><div class="row">
+        <div class="grow"><b style="font-size:13px">3 × ${SLOT[cat]} ${RAR[rar].n}</b>
+          <div class="muted">→ 1 ${SLOT[cat]} <span style="color:${RAR[up].c}">${RAR[up].n}</span>
+            · costa ${nf(craftCost(rar))} ◈ (bruciati)</div></div>
+        <button class="btn sm" onclick="__app.craft('${cat}','${rar}')">FONDI</button>
+      </div></div>`;
+    }).join('')+'</div>':'<div class="empty">Servono 3 oggetti della stessa categoria e rarità</div>'}
+  `;
+  paintArt('#p-inv');
+}
+function paintArt(scope){
+  $$((scope||'')+' .art[data-def]').forEach(el=>nftArt(el,el.dataset.def));
+}
+
+/* ── Mercato ───────────────────────────────────────────────── */
+let mktTab='buy';
+function renderMkt(){
+  tickMarket();
+  const mine=DB.market.listings.filter(l=>l.mine);
+  const buy=DB.market.listings.filter(l=>!l.mine);
+  const fee=Math.round(marketFee()*1000)/10;
+
+  let inner='';
+  if(mktTab==='buy'){
+    inner=buy.length?'<div class="lstwrap">'+buy.map(l=>{
+      const d=DEFS[l.defId];
+      const auc=l.kind==='auction';
+      const left=Math.max(0,l.ends-now());
+      const hh=Math.floor(left/36e5),mm=Math.floor(left%36e5/6e4);
+      return `<div class="lst">
+        <div class="art" data-def="${l.defId}"></div>
+        <div class="info">
+          <div class="nm">${d.name}</div>
+          <div class="meta"><span style="color:${RAR[d.rar].c}">${RAR[d.rar].n}</span>
+            · ${SLOT[d.cat]}${l.dur?' · durabilità '+l.dur+'%':''}</div>
+          <div class="meta">${auc?'⏱ asta · chiude fra '+hh+'h '+mm+'m':'prezzo fisso'}</div>
+        </div>
+        <div class="buy">
+          <div class="price">${nf(auc?l.bid:l.price)} ◈</div>
+          <button class="btn sm" onclick="__app.openListing('${l.id}')">${auc?'RILANCIA':'COMPRA'}</button>
+        </div>
+      </div>`;
+    }).join('')+'</div>':'<div class="empty">Mercato vuoto</div>';
+  } else {
+    const sellable=owned().filter(n=>{
+      for(const s in DB.loadout)for(const k in DB.loadout[s])if(DB.loadout[s][k]===n.id)return true;
+      return true;
+    });
+    inner=`${mine.length?`<h3>Le tue inserzioni</h3><div class="lstwrap">${mine.map(l=>{
+      const n=nftById(l.nft),d=n?defOf(n):null;if(!d)return '';
+      return `<div class="lst">
+        <div class="art" data-def="${n.def}"></div>
+        <div class="info"><div class="nm">${d.name}</div>
+          <div class="meta">${l.kind==='auction'?'asta · miglior offerta '+nf(l.bid)+' ◈':'in vendita'}</div></div>
+        <div class="buy"><div class="price">${nf(l.price)} ◈</div>
+          <button class="btn dan sm" onclick="__app.cancel('${l.id}')">RITIRA</button></div>
+      </div>`;
+    }).join('')}</div>`:''}
+    <h3>Metti in vendita</h3>
+    ${sellable.length?`<div class="nftgrid">${sellable.map(n=>`
+      <div class="nft" onclick="__app.sellDlg('${n.id}')">
+        <div class="art" data-def="${n.def}"></div>
+        <div class="nm">${defOf(n).name}</div>
+        <div class="rr" style="color:${RAR[n.rar].c}">${RAR[n.rar].n}</div>
+      </div>`).join('')}</div>`:'<div class="empty">Niente da vendere</div>'}`;
+  }
+
+  $('#p-mkt').innerHTML=`
+    <h2>Mercato</h2>
+    <p class="sub">Royalty creator 5% · fee protocollo ${fee}% (metà bruciata)</p>
+    <div class="seg">
+      <button class="${mktTab==='buy'?'on':''}" onclick="__app.mktTab('buy')">Compra</button>
+      <button class="${mktTab==='sell'?'on':''}" onclick="__app.mktTab('sell')">Vendi</button>
+    </div>
+    <div class="card flat"><div class="row" style="gap:16px">
+      ${['skin','ability','charm'].map(c=>`<div class="grow" style="text-align:center">
+        <div class="muted">Floor ${SLOT[c]}</div>
+        <b style="color:var(--ac)">${floorOf(c)?nf(floorOf(c))+' ◈':'—'}</b></div>`).join('')}
+    </div></div>
+    ${inner}
+  `;
+  paintArt('#p-mkt');
+}
+
+/* ── Stagione ──────────────────────────────────────────────── */
+function renderSeason(){
+  refreshQuests();
+  const t=bpTier(),pct=(DB.season.bpXp%BP_STEP)/BP_STEP*100;
+  const days=Math.max(0,Math.ceil((DB.season.end-now())/DAY));
+
+  const tiers=[];
+  for(let i=Math.max(1,t-2);i<=Math.min(BP_TIERS,Math.max(6,t+4));i++){
+    const r=bpReward(i),got=DB.season.claimed.includes(i),can=i<=t&&!got;
+    const lbl=r.type==='nft'?'NFT '+RAR[r.v].n:r.type==='snk'?nf(r.v)+' ◈':nf(r.v)+' ●';
+    tiers.push(`<div class="card flat" style="padding:9px 11px;${can?'border-color:var(--ac)':''}">
+      <div class="row">
+        <div style="width:34px;font-weight:800;color:${i<=t?'var(--ac)':'var(--dim2)'}">${i}</div>
+        <div class="grow"><b style="font-size:12.5px">${lbl}</b>
+          ${DB.season.premium?`<div class="muted">premium: ${i%5===0?nf(110+i*14)+' ◈':nf(200+i*20)+' ●'}</div>`:''}</div>
+        ${got?'<span class="muted">riscosso</span>':
+          can?`<button class="btn sm" onclick="__app.bpClaim(${i})">RISCUOTI</button>`:
+          '<span class="muted">🔒</span>'}
+      </div></div>`);
+  }
+
+  const qz=list=>'<div class="cwrap">'+list.map(q=>`
+    <div class="card flat" style="padding:10px 11px">
+      <div class="row">
+        <div class="grow">
+          <b style="font-size:12.5px">${q.t}</b>
+          <div class="bar" style="margin-top:6px"><i style="width:${q.p/q.n*100}%"></i></div>
+          <div class="muted" style="margin-top:4px">${q.p}/${q.n} · premio ${
+            q.r.type==='snk'?nf(q.r.v)+' ◈':nf(q.r.v)+' ●'}</div>
+        </div>
+        ${q.taken?'<span class="muted">✓</span>':q.done?
+          `<button class="btn sm" onclick="__app.claimQ('${q.id}')">RISCUOTI</button>`:''}
+      </div></div>`).join('')+'</div>';
+
+  const board=[{n:'Vipera_99',m:2180},{n:'kaito.ton',m:2040},{n:'NovaX',m:1890},
+    {n:'TU',m:DB.player.mmr,me:true},{n:'Zenit',m:1520},{n:'Mamba7',m:1410}]
+    .sort((a,b)=>b.m-a.m);
+
+  $('#p-sea').innerHTML=`
+    <h2>Stagione ${DB.season.id}</h2>
+    <p class="sub">Finisce fra ${days} giorni · livello Pass ${t}/${BP_TIERS}</p>
+    <div class="card">
+      <div class="row"><div class="grow">
+        <b>Battle Pass</b>
+        <div class="bar" style="margin-top:7px"><i style="width:${pct}%"></i></div>
+        <div class="muted" style="margin-top:5px">${DB.season.bpXp%BP_STEP}/${BP_STEP} XP al livello ${t+1}</div>
+      </div></div>
+      ${DB.season.premium?'<div class="muted" style="margin-top:9px;color:var(--gold)">★ Premium attivo</div>':
+        `<button class="btn gold wide" style="margin-top:11px" onclick="__app.buyBP()">
+          SBLOCCA PREMIUM · ${nf(BP_PRICE)} ◈</button>
+         <div class="muted" style="margin-top:6px">Il 60% del prezzo viene bruciato</div>`}
+    </div>
+    <h3>Ricompense</h3><div class="cwrap">${tiers.join('')}</div>
+    <h3>Quest giornaliere</h3>${qz(DB.quests.daily)}
+    <h3>Quest settimanali</h3>${qz(DB.quests.weekly)}
+    <h3>Classifica stagionale</h3>
+    ${board.map((b,i)=>`<div class="card flat" style="padding:8px 11px;${b.me?'border-color:var(--ac)':''}">
+      <div class="row"><div style="width:26px;font-weight:800;color:var(--dim)">${i+1}</div>
+      <div class="grow" style="${b.me?'color:var(--ac);font-weight:700':''}">${b.n}</div>
+      <b>${b.m}</b></div></div>`).join('')}
+    <h3>Achievement</h3>
+    <div class="cwrap">${ACHS.map(a=>`<div class="card flat" style="padding:9px 11px;${DB.ach[a.id]?'':'opacity:.5'}">
+      <div class="row"><div style="font-size:17px">${DB.ach[a.id]?'🏅':'🔒'}</div>
+      <div class="grow"><b style="font-size:12.5px">${a.t}</b>
+        <div class="muted">${a.d}</div></div></div></div>`).join('')}</div>
+  `;
+}
+
+/* ── Economia ──────────────────────────────────────────────── */
+function renderEco(){
+  const g=governor();
+  const circ=DB.eco.minted-DB.eco.burned;
+  const maxV=Math.max(DB.eco.minted,DB.eco.burned,DB.eco.sunk,1);
+  const bar=(lbl,v,col)=>`<div class="ebar"><div class="lbl">${lbl}</div>
+    <div class="tr"><i style="width:${Math.min(100,v/maxV*100)}%;background:${col}"></i></div>
+    <div class="vl">${nf(v)}</div></div>`;
+
+  const acc=Object.entries(DB.accounts).filter(([,v])=>Math.abs(v)>.5)
+    .sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
+
+  $('#p-eco').innerHTML=`
+    <h2>Economia</h2>
+    <p class="sub">Tutti i movimenti passano da un ledger a partita doppia. La somma di ogni transazione è zero, sempre.</p>
+
+    <div class="card">
+      <div class="row" style="gap:14px">
+        <div class="grow" style="text-align:center">
+          <div class="muted">Coniati</div><b style="color:var(--blu);font-size:16px">${nf(DB.eco.minted)}</b></div>
+        <div class="grow" style="text-align:center">
+          <div class="muted">Bruciati</div><b style="color:var(--dan);font-size:16px">${nf(DB.eco.burned)}</b></div>
+        <div class="grow" style="text-align:center">
+          <div class="muted">Netto</div><b style="color:${circ>=0?'var(--gold)':'var(--ac)'};font-size:16px">${circ>=0?'+':''}${nf(circ)}</b></div>
+      </div>
+    </div>
+
+    <h3>Le due monete</h3>
+    <div class="card">
+      <div class="row" style="align-items:stretch;gap:9px">
+        <div class="grow" style="background:#0e141d;border-radius:10px;padding:11px">
+          <b style="color:var(--gold);font-size:13px">● Coins</b>
+          <div class="muted" style="margin-top:5px;line-height:1.6">
+            Si guadagnano giocando · rubinetto libero<br>
+            <b>Non scambiabili, nessun prezzo</b><br>
+            Servono per: Ticket, riparazioni</div>
+        </div>
+        <div class="grow" style="background:#0e141d;border-radius:10px;padding:11px">
+          <b style="color:var(--ac);font-size:13px">◈ $SNK</b>
+          <div class="muted" style="margin-top:5px;line-height:1.6">
+            Solo dagli altri giocatori · somma zero<br>
+            <b>Scambiabili on-chain</b><br>
+            Servono per: NFT, mercato, ranked</div>
+        </div>
+      </div>
+      <div class="card flat" style="margin:11px 0 0;text-align:center">
+        <div style="font-size:13px;font-weight:700;color:var(--ac)">◈ ⟶ ● senso unico</div>
+        <div class="muted" style="margin-top:5px">I $SNK possono diventare Coins bruciandosi.
+          I Coins <b>non tornano mai</b> $SNK. Senza questa regola un bot coltiverebbe
+          Coins gratis e li incasserebbe: è così che sono morti i play-to-earn
+          della generazione precedente.</div>
+      </div>
+      <div class="kv" style="margin-top:8px"><span>Coins assorbiti dai sink</span>
+        <b>${nf(bal(ACC.coinSink))} ●</b></div>
+    </div>
+
+    <h3>Flussi cumulati</h3>
+    <div class="card flat">
+      ${bar('Coniati',DB.eco.minted,'var(--blu)')}
+      ${bar('Bruciati',DB.eco.burned,'var(--dan)')}
+      ${bar('Consumi',DB.eco.sunk,'var(--pur)')}
+      ${bar('Rake',DB.eco.rakeTot,'var(--gold)')}
+    </div>
+
+    <h3>Emission Governor</h3>
+    <div class="card">
+      <div class="muted" style="margin-bottom:9px">E<sub>w</sub> = min(CAP , k × SINK<sub>w−1</sub>) con k = ${K_FACTOR}.
+      L'emissione non può mai superare i consumi: è ciò che impedisce l'inflazione.</div>
+      <div class="kv"><span>Consumi settimana</span><b>${nf(DB.eco.weekSink)} ◈</b></div>
+      <div class="kv"><span>Emissione consentita</span><b>${nf(g.allowed)} ◈</b></div>
+      <div class="kv"><span>Emissione usata</span><b class="${g.used>g.allowed?'neg':'pos'}">${nf(g.used)} ◈</b></div>
+      <div class="kv"><span>Rapporto sink/source</span>
+        <b class="${g.ratio>=1?'pos':'neg'}">${g.ratio===Infinity?'∞':g.ratio.toFixed(2)}</b></div>
+      <div class="bar" style="margin-top:8px"><i style="width:${
+        clamp(g.used/Math.max(g.allowed,1)*100,0,100)}%;background:${g.used>g.allowed?'var(--dan)':'var(--ac)'}"></i></div>
+    </div>
+
+    <h3>Conti del ledger</h3>
+    <div class="card flat">
+      ${acc.map(([k,v])=>`<div class="kv"><span>${k}</span><b class="${v>=0?'':'neg'}">${nf(v)}</b></div>`).join('')}
+      <div class="kv" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px">
+        <span>Invariante (somma = 0)</span>
+        <b class="${ledgerOk()?'pos':'neg'}">${ledgerOk()?'✓ quadra':'✗ SBILANCIATO'}</b></div>
+    </div>
+
+    <h3>Ultime transazioni</h3>
+    <div class="card flat">
+      ${DB.txs.slice(-14).reverse().map(t=>{
+        const es=DB.entries.filter(e=>e.t===t.id&&e.a===ACC.pSnk);
+        const v=es.reduce((a,e)=>a+e.v,0);
+        return `<div class="kv"><span>${t.type}</span><b class="${v>0?'pos':v<0?'neg':''}">${
+          v?(v>0?'+':'')+nf(v)+' ◈':'—'}</b></div>`;
+      }).join('')||'<div class="empty">Nessuna transazione</div>'}
+    </div>
+
+    <h3>Anti-cheat</h3>
+    <div class="card flat">
+      <div class="kv"><span>Partite oggi</span><b>${DB.risk.count}</b></div>
+      <div class="kv"><span>Moltiplicatore guadagni</span>
+        <b class="${diminish()<1?'neg':'pos'}">×${diminish().toFixed(2)}</b></div>
+      <div class="kv"><span>Punteggio di rischio</span>
+        <b class="${riskScore()>50?'neg':'pos'}">${riskScore()}/100</b></div>
+      <div class="muted" style="margin-top:6px">Oltre 25 partite al giorno i guadagni decadono dell'85% cumulativo: rende inutile il farming automatizzato senza penalizzare nessun umano.</div>
+    </div>
+
+    <h3>Replay archiviati</h3>
+    ${DB.replays.length?'<div class="cwrap">'+DB.replays.slice(0,5).map(r=>`
+      <div class="card flat" style="padding:9px 11px"><div class="row">
+        <div class="grow"><b style="font-size:12px">seed ${r.seed}</b>
+          <div class="muted">${r.ticks} tick · ${r.log.length} input · ${MODES[r.mode].name}</div></div>
+        <button class="btn g sm" onclick="__app.doVerify('${r.id}',this)">Verifica</button>
+      </div></div>`).join('')+'</div>':'<div class="empty">Gioca una partita per generare un replay</div>'}
+
+    <button class="btn dan wide" style="margin-top:16px" onclick="__app.reset(event)">Azzera tutti i dati</button>
+  `;
+}
+
+/* ── Modali ────────────────────────────────────────────────── */
+function openModal(html,opt){
+  opt=opt||{};
+  const b=$('#mbox');
+  b.classList.toggle('wide',!!opt.wide);   // dialogo largo su richiesta (≥1080px)
+  $('#mIn').innerHTML=html;
+  b.scrollTop=0;                           // riaprendo, la modale ripartiva a metà
+  $('#modal').classList.add('on');
+  paintArt('#mIn');
+}
+function closeModal(){$('#modal').classList.remove('on')}
+$('#mx').addEventListener('click',closeModal);
+/* La chiusura sullo sfondo vale solo se ANCHE la pressione è partita
+   dallo sfondo: col mouse, selezionare il testo di un campo dentro la
+   modale e rilasciare fuori la chiudeva per sbaglio. */
+let mDownBg=false;
+$('#modal').addEventListener('pointerdown',e=>{mDownBg=(e.target.id==='modal')});
+$('#modal').addEventListener('click',e=>{
+  if(e.target.id==='modal'&&mDownBg)closeModal();
+  mDownBg=false;
+});
+
+function openWallet(){
+  const w=DB.player.addr;
+  const pend=DB.withdrawals.filter(x=>x.st!=='pagato');
+  openModal(`
+    <h4>Wallet</h4>
+    <p class="muted" style="margin:0 0 13px">${w?'TON Connect · collegato':'Nessun wallet collegato. Puoi giocare lo stesso: serve solo per prelevare.'}</p>
+    <div class="mcols"><div>
+    ${w?`<div class="card flat" style="word-break:break-all;font-size:10.5px;color:var(--dim);font-family:ui-monospace,monospace">${w}</div>`:''}
+    <div class="card">
+      <div class="kv"><span>Saldo giocabile</span><b style="color:var(--ac)">${nf(snk())} ◈ $SNK</b></div>
+      <div class="kv"><span>Coins (non prelevabili)</span><b style="color:var(--gold)">${nf(coins())} ●</b></div>
+      <div class="kv"><span>Stake</span><b>${nf(DB.player.stake)} ◈</b></div>
+    </div>
+    ${w?`
+      <h3>Preleva</h3>
+      <div class="row">
+        <input id="wAmt" type="number" placeholder="importo" class="grow"
+          style="background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:11px;color:var(--txt);font:inherit;width:100%">
+        <button class="btn sm" onclick="__app.withdraw()">PRELEVA</button>
+      </div>
+      <div class="muted" style="margin-top:7px">Sotto 100 ◈ è istantaneo · fino a 1.000 coda di 1 ora · oltre, 24 ore. La coda è la finestra di clawback: se l'anti-cheat rileva frode il prelievo si annulla prima di toccare la chain.</div>
+      ${pend.length?`<h3>In corso</h3>${pend.map(x=>`
+        <div class="card flat" style="padding:9px 11px"><div class="row">
+          <div class="grow"><b>${nf(x.amt)} ◈</b><div class="muted">${x.label}</div></div>
+          <span class="pill" style="background:rgba(245,196,81,.15);color:var(--gold)">${x.st}</span>
+        </div></div>`).join('')}`:''}
+      <h3>Stake</h3>
+      <button class="btn g wide" onclick="__app.stake(2000)">Metti in stake 2.000 ◈ (sblocca T3)</button>
+    `:`<button class="btn wide" onclick="__app.connect()">COLLEGA WALLET TON</button>`}
+    </div><div>
+    <h3>Cambia $SNK in Coins</h3>
+    <div class="card flat">
+      <div class="muted" style="margin-bottom:9px">Senso unico: i $SNK si <b>bruciano</b>
+        e diventano Coins. Il percorso inverso non esiste, ed è la regola che tiene
+        in piedi tutta l'economia — se i Coins potessero tornare $SNK, un bot li
+        coltiverebbe gratis e li incasserebbe.</div>
+      <div class="row">
+        <button class="btn g sm grow" onclick="__app.conv(50)">50 ◈ → 2.250 ●</button>
+        <button class="btn g sm grow" onclick="__app.conv(200)">200 ◈ → 9.000 ●</button>
+      </div>
+    </div>
+
+    <h3>Ricarica (simulata)</h3>
+    <div class="row">
+      <button class="btn g sm grow" onclick="__app.dep(500)">+500 ◈</button>
+      <button class="btn g sm grow" onclick="__app.dep(2000)">+2.000 ◈</button>
+      <button class="btn gold sm grow" onclick="__app.stars()">⭐ Stars</button>
+    </div>
+    <div class="muted" style="margin-top:7px">Telegram richiede che i beni digitali si paghino in Stars: qui è simulato.</div>
+    </div></div>
+  `,{wide:true});
+}
+
+function openListing(lid){
+  const l=DB.market.listings.find(x=>x.id===lid);if(!l)return;
+  const d=DEFS[l.defId],auc=l.kind==='auction';
+  const min=auc?Math.ceil((l.bid||0)*1.05)+1:0;
+  const fee=Math.round(l.price*marketFee()),roy=Math.round(l.price*ROY);
+  openModal(`
+    <h4>${d.name}</h4>
+    <div class="row" style="margin:10px 0 14px">
+      <div class="art" data-def="${l.defId}" style="width:74px;height:74px;border-radius:11px;overflow:hidden;background:#0a0f16;flex:none"></div>
+      <div class="grow">
+        <span class="pill" style="background:${RAR[d.rar].c}22;color:${RAR[d.rar].c}">${RAR[d.rar].n}</span>
+        <div class="muted" style="margin-top:7px">${d.d}</div>
+        ${l.dur?`<div class="muted" style="margin-top:5px">Durabilità ${l.dur}%</div>`:''}
+      </div>
+    </div>
+    ${d.cat==='core'?'<div class="card flat" style="color:var(--gold);font-size:12px">⚠ I Core funzionano solo in Casual. In Ranked vengono disattivati per non rompere l\'equilibrio competitivo.</div>':''}
+    ${auc?`
+      <div class="card">
+        <div class="kv"><span>Miglior offerta</span><b style="color:var(--ac)">${nf(l.bid)} ◈</b></div>
+        <div class="kv"><span>Rilancio minimo</span><b>${nf(min)} ◈</b></div>
+        <div class="kv"><span>Chi conduce</span><b>${l.bidder==='me'?'TU':'un altro giocatore'}</b></div>
+      </div>
+      <div class="row">
+        <input id="bidAmt" type="number" value="${min}" class="grow"
+          style="background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:11px;color:var(--txt);font:inherit;width:100%">
+        <button class="btn sm" onclick="__app.bid('${lid}')">RILANCIA</button>
+      </div>
+      <div class="muted" style="margin-top:7px">Anti-sniping: ogni rilancio negli ultimi 3 minuti estende l'asta di 3 minuti.</div>
+    `:`
+      <div class="card">
+        <div class="kv"><span>Prezzo</span><b style="color:var(--ac);font-size:16px">${nf(l.price)} ◈</b></div>
+        <div class="kv"><span>Royalty creator (5%)</span><b>${nf(roy)} ◈</b></div>
+        <div class="kv"><span>Fee protocollo</span><b>${nf(fee)} ◈ (metà bruciata)</b></div>
+      </div>
+      <button class="btn wide" onclick="__app.buy('${lid}')" ${l.price>snk()?'disabled':''}>
+        ${l.price>snk()?'$SNK INSUFFICIENTI':'COMPRA'}</button>
+    `}
+  `);
+}
+
+function sellDlg(id){
+  const n=nftById(id),d=defOf(n);
+  const sugg=Math.round(d.price*(n.dur!==null?(.55+.45*n.dur/100):1));
+  openModal(`
+    <h4>Vendi ${d.name}</h4>
+    <div class="muted" style="margin:6px 0 13px">Prezzo di riferimento del catalogo: ${nf(d.price)} ◈${
+      n.dur!==null?' · durabilità '+n.dur+'% → suggerito '+nf(sugg)+' ◈':''}</div>
+    <div class="row">
+      <input id="sPrice" type="number" value="${sugg}" class="grow"
+        style="background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:11px;color:var(--txt);font:inherit;width:100%">
+    </div>
+    <div class="row" style="margin-top:11px">
+      <button class="btn grow" onclick="__app.doSell('${id}','fixed')">PREZZO FISSO</button>
+      <button class="btn g grow" onclick="__app.doSell('${id}','auction')">ASTA 24H</button>
+    </div>
+    <div class="muted" style="margin-top:9px">Alla vendita: 5% di royalty al creator e ${
+      Math.round(marketFee()*100)}% di fee al protocollo, metà della quale bruciata.</div>
+  `);
+}
+
+function nftDetail(id){
+  const n=nftById(id),d=defOf(n);
+  const eff=[];
+  if(d.mods)for(const k in d.mods){
+    const lbl={speed:'Velocità',radius:'Spessore',growth:'Crescita',startMass:'Massa iniziale',
+      leech:'Assorbimento kill',boostCost:'Costo boost',boostMul:'Potenza boost',
+      shield:'Scudo (cooldown s)',visible:'Visibile a tutti'}[k]||k;
+    const v=d.mods[k];
+    eff.push(`<div class="kv"><span>${lbl}</span><b class="${
+      k==='visible'?'neg':(k==='boostCost'?(v<1?'pos':'neg'):(v>1?'pos':'neg'))}">${
+      k==='shield'?v+'s':k==='visible'?'sì':(v>1?'+':'')+Math.round((v-1)*100)+'%'}</b></div>`);
+  }
+  if(d.eco)for(const k in d.eco){
+    const lbl={earn:'Guadagni totali',killEarn:'Premi da kill',placeEarn:'Premi da podio',
+      fee:'Fee marketplace',tickets:'Ticket giornalieri'}[k]||k;
+    const v=d.eco[k];
+    eff.push(`<div class="kv"><span>${lbl}</span><b class="pos">${
+      k==='tickets'?'+'+v:(v>0?'+':'')+Math.round(v*100)+'%'}</b></div>`);
+  }
+  openModal(`
+    <h4>${d.name}</h4>
+    <div class="row" style="margin:10px 0 14px">
+      <div class="art" data-def="${n.def}" style="width:74px;height:74px;border-radius:11px;overflow:hidden;background:#0a0f16;flex:none"></div>
+      <div class="grow">
+        <span class="pill" style="background:${RAR[n.rar].c}22;color:${RAR[n.rar].c}">${RAR[n.rar].n}</span>
+        <span class="pill" style="background:var(--panel2);color:var(--dim)">${SLOT[d.cat]}</span>
+        <div class="muted" style="margin-top:7px">${d.d}</div>
+      </div>
+    </div>
+    ${eff.length?`<div class="card flat">${eff.join('')}</div>`:''}
+    ${n.dur!==null?`<div class="card">
+      <div class="kv"><span>Durabilità</span><b class="${n.dur>20?'':'neg'}">${n.dur}/${n.durMax}</b></div>
+      <div class="bar"><i style="width:${n.dur/n.durMax*100}%;background:${
+        n.dur>50?'var(--ac)':n.dur>20?'var(--gold)':'var(--dan)'}"></i></div>
+      <div class="muted" style="margin-top:7px">Si consuma di 1 punto per ogni partita ranked. A zero i bonus si spengono ma l'oggetto resta tuo.</div>
+      ${n.dur<n.durMax?`<button class="btn wide" style="margin-top:11px" onclick="__app.repair('${n.id}')">
+        RIPARA · ${nf(repairCost(n))} ◈ (bruciati)</button>`:''}
+    </div>`:'<div class="muted">Cosmetico puro: non si consuma mai.</div>'}
+    <div class="muted" style="margin-top:11px;font-family:ui-monospace,monospace;font-size:10px;word-break:break-all">
+      ${n.addr.slice(0,42)}</div>
+    <button class="btn g wide" style="margin-top:11px" onclick="__app.sellDlg('${n.id}')">METTI IN VENDITA</button>
+  `);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   16 · ROUTER E AVVIO
+   ═══════════════════════════════════════════════════════════════ */
+let page='play';
+function go(p){
+  page=p;
+  $$('.page').forEach(e=>e.classList.remove('on'));
+  $('#p-'+p).classList.add('on');
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.p===p));
+  renderPage(p);
+}
+function renderPage(p){
+  ({play:renderPlay,inv:renderInv,mkt:renderMkt,sea:renderSeason,eco:renderEco})[p]();
+}
+function renderAll(){renderTop();renderPage(page)}
+$$('.tab').forEach(t=>t.addEventListener('click',()=>go(t.dataset.p)));
+
+let holdT=null;
+function tapNft(id,ev){
+  clearTimeout(holdT);
+  // Col mouse il doppio clic è un evento vero (detail>=2): apre la scheda
+  // dell'oggetto. Al tocco non cambia nulla — lì detail resta 1 e il gesto
+  // documentato (tocco per equipaggiare) è intatto.
+  if(ev&&ev.detail>=2&&!isTouch){nftDetail(id);return}
+  equip(invMode,id);
+}
+
+/* ── API pubblica per gli handler inline + i test ──────────── */
+const app={
+  play:startMatch,
+  again(){$('#res').classList.remove('on');startMatch(MODE)},
+  toHub(){$('#res').classList.remove('on');$('#game').classList.remove('on');go('play')},
+  invMode(m){invMode=m;renderInv()},
+  mktTab(t){mktTab=t;renderMkt()},
+  tapNft, nftDetail, openListing, sellDlg, craft, repair, bpClaim, buyBP,
+  buyTicket, conv:convertToCoins,
+  claimQ:claimQuest, connect:connectWallet, openWallet,
+  buy:buyListing, cancel:cancelListing,
+  bid(lid){const v=+($('#bidAmt')||{}).value;placeBid(lid,v);closeModal()},
+  doSell(id,kind){const v=+($('#sPrice')||{}).value;if(v>0){listNft(id,v,kind,24);closeModal()}},
+  withdraw(){const v=+($('#wAmt')||{}).value;requestWithdraw(v);closeModal()},
+  dep(v){deposit(v)},
+  stars(){deposit(1500);toast('Pagamento Stars simulato: +1.500 ◈')},
+  stake(v){if(v>snk()){toast('$SNK insufficienti');return}
+    post('stake',null,[[ACC.pSnk,-v],[ACC.treas,v]]);
+    DB.player.stake+=v;save();toast('Stake attivo — T3 sbloccato');openWallet();renderAll()},
+  doVerify(id,btn){
+    const r=DB.replays.find(x=>x.id===id);if(!r)return;
+    if(btn)btn.textContent='…';
+    setTimeout(()=>{
+      const v=verifyReplay(r);
+      const msg=v.ok
+        ? '✓ Replay verificato: la ri-simulazione produce lo stesso hash ('+v.got+'). La partita non è stata alterata.'
+        : '✗ Divergenza: atteso '+v.want+', ottenuto '+v.got+'.';
+      const el=$('#vres');
+      if(el){el.innerHTML='<span style="color:'+(v.ok?'var(--ac)':'var(--dan)')+'">'+msg+'</span>'}
+      else toast(v.ok?'✓ Replay verificato':'✗ Replay divergente');
+      if(btn)btn.textContent='Verifica';
+    },30);
+  },
+  reset(ev){
+    // confirm() è bloccato nelle pagine sandbox: doppio tocco esplicito
+    const b=ev&&ev.target;
+    if(b&&!b.dataset.armed){
+      b.dataset.armed='1';b.textContent='Sicuro? Tocca di nuovo per cancellare';
+      setTimeout(()=>{if(b){delete b.dataset.armed;b.textContent='Azzera tutti i dati'}},3000);
+      return;
+    }
+    try{localStorage.removeItem(KEY)}catch(e){}
+    genesis(); refreshQuests(); renderAll(); go('play');
+    toast('Dati azzerati — si riparte da capo');
+  },
+  // Superficie di test headless
+  _:{DB:()=>DB,getM:()=>M,post,ledgerOk,createMatch,tick,step,finalize,verifyReplay,
+     stateHash,computePayout,loadoutMods,mint,DEFS,MODES,R,governor,startMatch,settle,
+     tickMarket,craftables,repairCost,save,bal,ACC,genListing,equip,nftById,
+     buyTicket,convertToCoins,ticketCost,canPlay,
+     genesis:()=>{genesis();refreshQuests();go('play')},
+     stopLoop:()=>{running=false}}
+};
+window.__app=app;
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTROLLORE DI LAYOUT — unica sorgente di verità
+   Le @media del foglio di stile e queste classi usano le STESSE
+   soglie (720 / 1080 / landscape<=520): non possono divergere.
+   Le classi restano agganci condivisi fra CSS e JS: qui servono
+   soprattutto al punto d'ingresso unico qui sotto, perché le @media
+   da sole non sanno dire al JS che il layout è cambiato — e i canvas
+   (tela di gioco, minimappa, anteprime NFT) sono disegnati a pixel
+   fissi e resterebbero della misura vecchia.
+   ═══════════════════════════════════════════════════════════════ */
+const MQ={
+  t   :matchMedia('(min-width:720px)'),
+  d   :matchMedia('(min-width:1080px)'),
+  land:matchMedia('(orientation:landscape) and (max-height:520px)'),
+  side:matchMedia('(min-aspect-ratio:13/10)'),
+  fine:matchMedia('(hover:hover) and (pointer:fine)')
+};
+let LAY='';
+function applyLayout(){
+  const c=document.body.classList;
+  const d=MQ.d.matches, t=MQ.t.matches&&!d;
+  c.toggle('lay-d',d);
+  c.toggle('lay-t',t);
+  c.toggle('lay-land',MQ.land.matches);
+  c.toggle('lay-side',MQ.side.matches);
+  c.toggle('lay-fine',MQ.fine.matches);
+  const n=(d?'D':t?'T':'M')+(MQ.land.matches?'L':'')+(MQ.side.matches?'S':'');
+  const changed=n!==LAY; LAY=n;
+  return changed;
+}
+applyLayout();
+
+/* Un solo punto d'ingresso per QUALSIASI cambio di viewport: la tela
+   della partita si ridimensiona subito (altrimenti si vede un salto),
+   mentre le anteprime su canvas aspettano 90ms per non far partire una
+   raffica di ridisegni mentre si trascina il bordo della finestra. */
+let vpT=0;
+function onViewportChange(){
+  applyLayout();
+  const inGame=$('#game').classList.contains('on');
+  if(inGame)resize();
+  clearTimeout(vpT);
+  vpT=setTimeout(()=>{
+    if($('#game').classList.contains('on')){resize();if(M)drawMap()}
+    paintArt('#p-'+page);
+    if($('#modal').classList.contains('on'))paintArt('#mIn');
+  },90);
+}
+addEventListener('orientationchange',()=>setTimeout(onViewportChange,240));
+addEventListener('resize',onViewportChange);
+if(window.visualViewport)visualViewport.addEventListener('resize',onViewportChange);
+for(const k in MQ)MQ[k].addEventListener('change',onViewportChange);
+
+/* ── Avvio ─────────────────────────────────────────────────── */
+/** Stato di genesi. Estratto perché i test possano ripartire puliti. */
+function genesis(){
+  DB=fresh();
+  // Grant di benvenuto: passa dal ledger come emissione, non appare dal nulla
+  post('welcome_grant',null,[[ACC.emis,-1500],[ACC.pSnk,1500]]);
+  post('welcome_coins',null,[[ACC.emis,-2000],[ACC.pCoin,2000]]);
+  // Allocazione di genesi: conta nella supply totale ma NON nel tetto
+  // settimanale del governor, che misura l'emissione ricorrente.
+  DB.eco.minted+=1500;
+  const s=mint('sk_verde','starter');
+  DB.loadout.ranked.skin=s.id; DB.loadout.casual.skin=s.id;
+  const a=mint('ab_viper','starter');
+  DB.loadout.ranked.ability=a.id; DB.loadout.casual.ability=a.id;
+  for(let i=0;i<12;i++)DB.market.listings.push(genListing());
+  M=null;
+  save();
+}
+
+function boot(){
+  DB=load();
+  const first=!DB;
+  if(first)genesis();
+  refreshQuests();
+  tickMarket();
+  resize();
+  go('play');
+  if(first)setTimeout(()=>toast('Benvenuto: 1.500 ◈, una skin e l\'abilità Viper'),600);
+}
+boot();
+})();
+</script>
+</body>
+</html>
