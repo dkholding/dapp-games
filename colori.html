@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quattro Mondi</title>
+<style>
+:root{--bg:#0b0c10;--pan:#14161c;--line:#242833;--txt:#f0f2f6;--dim:#98a1b2;--dim2:#69738a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:0 18px}
+header{padding:46px 0 8px}
+.eyebrow{margin:0 0 14px;font-size:11px;font-weight:700;letter-spacing:1.7px;
+  text-transform:uppercase;color:var(--dim2)}
+h1{margin:0;font-size:clamp(30px,5.5vw,50px);font-weight:800;letter-spacing:-1.4px;line-height:1.05}
+.lede{margin:16px 0 0;max-width:60ch;color:var(--dim);font-size:15px}
+.lede b{color:var(--txt);font-weight:600}
+
+.scene{margin:26px 0;border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  background:var(--pan)}
+.scene canvas{display:block;width:100%;height:auto;aspect-ratio:16/7}
+.info{padding:16px 18px 18px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.info .t{flex:1;min-width:240px}
+.info h2{margin:0;font-size:19px;font-weight:700;letter-spacing:-.3px}
+.info h2 span{color:var(--dim2);font-weight:600;font-size:13px;margin-left:8px;letter-spacing:0}
+.info p{margin:6px 0 0;font-size:13.5px;color:var(--dim);max-width:62ch}
+.swatches{display:flex;gap:0;border-radius:8px;overflow:hidden;flex:none;border:1px solid var(--line)}
+.swatches i{width:34px;height:34px;display:block}
+@media (max-width:640px){.swatches i{width:28px;height:28px}}
+footer{padding:34px 0 60px;color:var(--dim2);font-size:13px}
+footer b{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="eyebrow">Codazzo · direzione dei colori</p>
+  <h1>Quattro mondi,<br>la stessa scena.</h1>
+  <p class="lede">Stessa collina, stesso villaggio, stesso fuoco, stessa fila di gente col
+    vessillo. Cambia solo la luce. Guarda quale ti fa venire voglia di entrarci e
+    <b>dimmi il numero</b> — poi il gioco lo dipingo così.</p>
+</header>
+<div id="out"></div>
+<footer>
+  Sono disegnate con lo stesso codice che userà il gioco: nessuna immagine, tutto
+  procedurale. <b>Il 3D cambierà le forme, non la tavolozza.</b>
+</footer>
+</div>
+
+<script>
+(()=>{
+/* Quattro tavolozze. La differenza vera non è "più colore": è il rapporto fra la luce
+   calda del sole e il freddo dell'ombra, e quanto l'aria smangia i colori in lontananza.
+   È quello che fa sembrare grande un paesaggio. */
+const MONDI=[
+ {n:'Ora d\'oro', s:'il sole basso di fine giornata',
+  d:'Sole caldo e ombre blu-viola, mai grigie. L\'aria che si mangia le colline lontane. '+
+    'È la luce dei film e dei giochi che vendono: piace a tutti, e per un motivo — fa '+
+    'sembrare eroico anche un contadino che porta un sacco.',
+  cieloA:'#f6c56a', cieloB:'#6f8fc4', sole:'#ffe6a3',
+  lontano:'#8fa2c6', medio:'#7f9a55', vicino:'#9fb34c',
+  campo:'#d9b64e', bosco:'#3d6b3a', acqua:'#4f93b8',
+  ombra:'#3a3f77', ombraA:.34, foschia:'#c9d4e8', foschiaA:.62,
+  terra:'#8a6a3a', fuoco:'#ff9a2e', vess:'#e04a3a', pelle:'#e8b98a', veste:'#d9c08a'},
+
+ {n:'Terre alte', s:'nordico, aria fredda e limpida',
+  d:'Verdi smeraldo saturi, pietra ardesia, cielo alto e pulito. Più severo e più adulto: '+
+    'non è caldo, è imponente. Il vessillo rosso spicca come una ferita nel verde.',
+  cieloA:'#bcd8e6', cieloB:'#3f6f96', sole:'#eaf4ff',
+  lontano:'#5f7f96', medio:'#2f6b52', vicino:'#3d8a58',
+  campo:'#b9a94a', bosco:'#1d4a3c', acqua:'#2f7fa6',
+  ombra:'#16304a', ombraA:.40, foschia:'#9fc2d4', foschiaA:.55,
+  terra:'#6b5a45', fuoco:'#ff8c3a', vess:'#c8342c', pelle:'#e0b184', veste:'#c3cbd2'},
+
+ {n:'Miniatura', s:'come una pagina miniata, oro e colori pieni',
+  d:'Colori pieni e piatti, contorni netti, oro vero negli accenti. Non imita la realtà: '+
+    'sembra un\'illustrazione antica che si muove. È la scelta più riconoscibile — la '+
+    'sola in cui, da una schermata, capisci che è questo gioco e non un altro.',
+  cieloA:'#f0e2bd', cieloB:'#d9a441', sole:'#fff3cf',
+  lontano:'#a88a5c', medio:'#5f7a2e', vicino:'#7fa032',
+  campo:'#e8bc3c', bosco:'#2f5a24', acqua:'#3f86a8',
+  ombra:'#5a3d1e', ombraA:.30, foschia:'#efdcae', foschiaA:.40,
+  terra:'#a8763c', fuoco:'#ff7b1c', vess:'#b3202a', pelle:'#eec39a', veste:'#e4d3a8'},
+
+ {n:'Brace', s:'il crepuscolo, e il fuoco è l\'unica cosa che scalda',
+  d:'Mondo scuro e freddo, e ogni luce conta: il fuoco, il vessillo che brucia, le finestre. '+
+    'Il più drammatico e il più cupo. Bellissimo di notte, faticoso di giorno — e questo '+
+    'gioco si gioca soprattutto di giorno.',
+  cieloA:'#8a5a54', cieloB:'#241f3a', sole:'#ffbe8a',
+  lontano:'#3c3552', medio:'#31402f', vicino:'#3d5233',
+  campo:'#9a7a35', bosco:'#1e2c22', acqua:'#2a4a63',
+  ombra:'#120f22', ombraA:.52, foschia:'#4a4260', foschiaA:.58,
+  terra:'#5a4630', fuoco:'#ff8a20', vess:'#e8523a', pelle:'#caa078', veste:'#a89a86'}
+];
+
+const rnd=(s)=>{let a=s;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}};
+
+function scena(cv,M){
+  const c=cv.getContext('2d'), W=cv.width, H=cv.height, r=rnd(7);
+  const oriz=H*.34;
+
+  // CIELO — metà dell'atmosfera sta qui
+  let g=c.createLinearGradient(0,0,0,oriz);
+  g.addColorStop(0,M.cieloB); g.addColorStop(1,M.cieloA);
+  c.fillStyle=g; c.fillRect(0,0,W,oriz);
+  // il sole, basso
+  const sx=W*.74, sy=oriz*.62;
+  const sg=c.createRadialGradient(sx,sy,0,sx,sy,H*.42);
+  sg.addColorStop(0,M.sole); sg.addColorStop(.25,M.sole+'00'.slice(0,0)||M.sole);
+  c.globalAlpha=.55; c.fillStyle=sg; c.fillRect(0,0,W,oriz); c.globalAlpha=1;
+  c.beginPath(); c.arc(sx,sy,H*.035,0,7); c.fillStyle=M.sole; c.fill();
+  // nuvole lunghe
+  c.globalAlpha=.28; c.fillStyle=M.foschia;
+  for(let i=0;i<7;i++){
+    const y=oriz*(.15+r()*.6), w=W*(.10+r()*.22), x=r()*W, h=H*.012;
+    c.beginPath(); c.ellipse(x,y,w,h,0,0,7); c.fill();
+  }
+  c.globalAlpha=1;
+
+  // COLLINE LONTANE — l'aria se le mangia: è questo che dà la profondità
+  const strati=[{y:oriz,col:M.lontano,a:.85,amp:.055},
+                {y:oriz+H*.07,col:M.medio,a:.92,amp:.07},
+                {y:oriz+H*.16,col:M.vicino,a:1,amp:.05}];
+  strati.forEach((s,k)=>{
+    c.beginPath(); c.moveTo(0,H);
+    for(let x=0;x<=W;x+=6){
+      const t=x/W;
+      const y=s.y+Math.sin(t*7+k*2.2)*H*s.amp*.5+Math.sin(t*17+k)*H*s.amp*.22;
+      c.lineTo(x,y);
+    }
+    c.lineTo(W,H); c.closePath();
+    c.fillStyle=s.col; c.globalAlpha=s.a; c.fill(); c.globalAlpha=1;
+    if(k<2){ c.save(); c.clip(); c.globalAlpha=M.foschiaA*(1-k*.55);
+      c.fillStyle=M.foschia; c.fillRect(0,0,W,H); c.globalAlpha=1; c.restore() }
+  });
+
+  // IL CAMPO DI GRANO in primo piano
+  const suolo=oriz+H*.30;
+  c.fillStyle=M.campo; c.fillRect(0,suolo,W,H-suolo);
+  c.globalAlpha=.18; c.fillStyle=M.ombra;
+  for(let i=0;i<260;i++){ const x=r()*W, y=suolo+r()*(H-suolo);
+    c.fillRect(x,y,2,3+r()*4) }
+  c.globalAlpha=1;
+  // striscia d'acqua a sinistra
+  c.fillStyle=M.acqua;
+  c.beginPath(); c.moveTo(0,suolo+H*.10);
+  c.quadraticCurveTo(W*.16,suolo+H*.02,W*.26,suolo+H*.18);
+  c.lineTo(W*.20,H); c.lineTo(0,H); c.closePath(); c.fill();
+  c.globalAlpha=.30; c.fillStyle='#ffffff';
+  for(let i=0;i<16;i++){ const y=suolo+H*.12+r()*(H-suolo)*.7;
+    c.fillRect(W*.02+r()*W*.16,y,W*.03,1.4) }
+  c.globalAlpha=1;
+
+  // ALBERI, con ombra lunga nella direzione giusta
+  const alberi=[[.34,.62,1],[.40,.72,1.25],[.30,.80,1.5],[.46,.66,.9],[.88,.70,1.2],[.94,.82,1.5]];
+  for(const [ax,ay,s] of alberi){
+    const x=W*ax, y=suolo+(H-suolo)*ay, h=H*.10*s;
+    c.globalAlpha=M.ombraA*.8; c.fillStyle=M.ombra;
+    c.beginPath(); c.ellipse(x-h*.55,y+2,h*.55,h*.14,0,0,7); c.fill(); c.globalAlpha=1;
+    c.fillStyle=M.terra; c.fillRect(x-h*.05,y-h*.34,h*.10,h*.34);
+    c.beginPath(); c.ellipse(x,y-h*.55,h*.30,h*.34,0,0,7); c.fillStyle=M.bosco; c.fill();
+    c.globalAlpha=.35; c.beginPath();
+    c.ellipse(x+h*.10,y-h*.68,h*.18,h*.16,0,0,7); c.fillStyle=M.sole; c.fill(); c.globalAlpha=1;
+  }
+
+  // IL VILLAGGIO: terra battuta, capanne, il fuoco
+  const vx=W*.66, vy=suolo+(H-suolo)*.52;
+  c.globalAlpha=.30; c.fillStyle=M.terra;
+  c.beginPath(); c.ellipse(vx,vy+H*.02,W*.115,H*.055,0,0,7); c.fill(); c.globalAlpha=1;
+  for(const [dx,dy,s] of [[-.055,-.02,1],[.045,-.035,.9],[.02,.03,1.05]]){
+    const x=vx+W*dx, y=vy+H*dy, w=W*.036*s, h=H*.062*s;
+    c.globalAlpha=M.ombraA*.75; c.fillStyle=M.ombra;
+    c.beginPath(); c.ellipse(x-w*.7,y+2,w*.75,h*.16,0,0,7); c.fill(); c.globalAlpha=1;
+    c.fillStyle=M.terra; c.fillRect(x-w/2,y-h*.55,w,h*.55);
+    c.beginPath(); c.moveTo(x-w*.62,y-h*.55); c.lineTo(x,y-h);
+    c.lineTo(x+w*.62,y-h*.55); c.closePath();
+    c.fillStyle=M.bosco; c.fill();
+    c.globalAlpha=.30; c.fillStyle=M.sole;
+    c.beginPath(); c.moveTo(x,y-h); c.lineTo(x+w*.62,y-h*.55); c.lineTo(x+w*.1,y-h*.55);
+    c.closePath(); c.fill(); c.globalAlpha=1;
+  }
+  const fx=vx-W*.005, fy=vy+H*.012;
+  const fg=c.createRadialGradient(fx,fy,0,fx,fy,H*.16);
+  fg.addColorStop(0,M.fuoco); fg.addColorStop(1,M.fuoco+'00');
+  c.globalAlpha=.5; c.fillStyle=fg; c.fillRect(0,0,W,H); c.globalAlpha=1;
+  c.beginPath(); c.ellipse(fx,fy,H*.012,H*.02,0,0,7); c.fillStyle=M.fuoco; c.fill();
+  c.beginPath(); c.ellipse(fx,fy-H*.008,H*.006,H*.011,0,0,7); c.fillStyle=M.sole; c.fill();
+
+  // LA FILA: il capo col vessillo e la sua gente dietro, sulle sue impronte
+  const cammino=t=>({x:W*(.10+t*.42), y:suolo+(H-suolo)*(.86-Math.sin(t*2.4)*.16)});
+  const alt=H*.075;
+  for(let i=7;i>=0;i--){
+    const p=cammino(.06*i);
+    const capo=i===0;
+    const s=capo?1.22:1;
+    c.globalAlpha=M.ombraA; c.fillStyle=M.ombra;
+    c.beginPath(); c.ellipse(p.x-alt*.5*s,p.y+1,alt*.42*s,alt*.11,0,0,7); c.fill();
+    c.globalAlpha=1;
+    // gambe, busto, testa: la sagoma è tutto a questa dimensione
+    const bw=alt*.20*s, bh=alt*.44*s;
+    c.strokeStyle=M.ombra; c.globalAlpha=.75; c.lineWidth=Math.max(1.2,alt*.055*s);
+    c.lineCap='round';
+    const sw=Math.sin(i*1.7)*alt*.10;
+    c.beginPath(); c.moveTo(p.x-bw*.3,p.y-bh*.5); c.lineTo(p.x-bw*.3+sw,p.y); c.stroke();
+    c.beginPath(); c.moveTo(p.x+bw*.3,p.y-bh*.5); c.lineTo(p.x+bw*.3-sw,p.y); c.stroke();
+    c.globalAlpha=1;
+    c.fillStyle=capo?M.vess:M.veste;
+    c.fillRect(p.x-bw,p.y-bh-alt*.5*s,bw*2,bh);
+    c.beginPath(); c.arc(p.x,p.y-bh-alt*.5*s-alt*.13*s,alt*.13*s,0,7);
+    c.fillStyle=M.pelle; c.fill();
+    if(i>2&&i<6){  // qualcuno porta il sacco: si vede il carico, non un numero
+      c.beginPath(); c.ellipse(p.x-bw*1.1,p.y-bh*.9-alt*.5,alt*.15,alt*.13,0,0,7);
+      c.fillStyle=M.campo; c.fill();
+    }
+    if(capo){      // il vessillo
+      const ax=p.x+bw*1.5, ay=p.y-alt*.5;
+      c.strokeStyle=M.terra; c.lineWidth=Math.max(1.4,alt*.06);
+      c.beginPath(); c.moveTo(ax,ay); c.lineTo(ax,ay-alt*1.55); c.stroke();
+      c.beginPath(); c.moveTo(ax,ay-alt*1.55); c.lineTo(ax+alt*.62,ay-alt*1.28);
+      c.lineTo(ax,ay-alt*1.03); c.closePath();
+      c.fillStyle=M.vess; c.fill();
+    }
+  }
+
+  // L'aria davanti a tutto: lega la scena e la fa sembrare grande
+  const ag=c.createLinearGradient(0,oriz,0,H);
+  ag.addColorStop(0,M.foschia); ag.addColorStop(1,M.foschia+'00');
+  c.globalAlpha=.16; c.fillStyle=ag; c.fillRect(0,oriz,W,H-oriz); c.globalAlpha=1;
+}
+
+const out=document.getElementById('out');
+MONDI.forEach((M,i)=>{
+  const d=document.createElement('div'); d.className='scene';
+  d.innerHTML='<canvas width="1400" height="612"></canvas>'+
+    '<div class="info"><div class="t"><h2>'+(i+1)+'. '+M.n+'<span>'+M.s+'</span></h2>'+
+    '<p>'+M.d+'</p></div><div class="swatches">'+
+    [M.cieloA,M.campo,M.vicino,M.bosco,M.acqua,M.vess,M.fuoco,M.ombra]
+      .map(c=>'<i style="background:'+c+'"></i>').join('')+
+    '</div></div>';
+  out.appendChild(d);
+  try{ scena(d.querySelector('canvas'),M) }catch(e){ console.error(M.n,e) }
+});
+})();
+</script>
+</body>
+</html>

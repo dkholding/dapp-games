@@ -1,0 +1,3422 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Codazzo</title>
+<style>
+/* Nessuna dipendenza esterna. Nessun menu, nessuna scheda, nessun pannello:
+   c'e' il mondo e ci sei dentro. Tutto quello che segue serve solo a non
+   coprire il mondo. */
+:root{
+  --txt:#f3ece0; --dim:#b8a68c; --dim2:#7d6e5c;
+  --ac:#e0a44a; --dan:#e0574a; --grn:#8fc45f; --blu:#7fc0e8;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#12100c;color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  font-variant-numeric:tabular-nums;overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;border:none;background:none;padding:0}
+
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
+#cv.grab{cursor:grab}
+
+#hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+
+/* ── L'indirizzo. Non e' un'interfaccia, e' un cartello ── */
+#addr{position:absolute;top:calc(10px + env(safe-area-inset-top));left:12px;
+  font-size:11px;font-weight:600;color:var(--dim);letter-spacing:.4px;opacity:.75;
+  text-shadow:0 1px 3px rgba(0,0,0,.8);line-height:1.45}
+#addr b{color:var(--txt);font-weight:700;display:block;font-size:12.5px;letter-spacing:-.1px}
+
+/* ── Le scorte: si vedono solo quando sei al fuoco ── */
+#store{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px;
+  display:flex;flex-direction:column;gap:3px;align-items:flex-end;
+  opacity:0;transition:opacity .35s}
+#store.on{opacity:1}
+#store div{font-size:12px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.85);
+  display:flex;gap:5px;align-items:center}
+#store small{color:var(--dim2);font-size:9.5px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.5px}
+
+/* ── Una riga sola, un secondo, poi sparisce ── */
+#say{position:absolute;left:0;right:0;top:calc(52px + env(safe-area-inset-top));
+  text-align:center;font-size:13px;font-weight:600;color:var(--txt);
+  text-shadow:0 2px 8px rgba(0,0,0,.9);opacity:0;transition:opacity .5s;
+  padding:0 24px;line-height:1.5}
+#say.on{opacity:1}
+
+/* ── I due tasti. Grandi, in basso a destra, sempre lì ── */
+#pad{position:absolute;right:calc(16px + env(safe-area-inset-right));
+  bottom:calc(24px + env(safe-area-inset-bottom));pointer-events:auto;
+  display:flex;flex-direction:column;align-items:center;gap:12px}
+.tasto{border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border:2px solid rgba(243,236,224,.35);background:rgba(30,24,17,.42);
+  backdrop-filter:blur(3px);transition:transform .07s,background .12s,opacity .2s;
+  touch-action:none}
+.tasto:active,.tasto.giu{transform:scale(.93);background:rgba(224,164,74,.3)}
+.tasto b{font-size:9px;font-weight:800;letter-spacing:.8px;color:var(--txt);
+  text-shadow:0 1px 3px #000;opacity:.85}
+#tArma{width:62px;height:62px}
+#tArma.spento{opacity:.28}
+#tAsta{width:86px;height:86px;border-color:rgba(224,164,74,.55)}
+#tAsta.carica{border-color:#ff9d3c;background:rgba(255,120,30,.35);
+  box-shadow:0 0 22px rgba(255,140,40,.5)}
+/* l'anello che si riempie mentre tieni premuto */
+#anello{position:absolute;inset:-6px;border-radius:50%;pointer-events:none}
+
+/* ── La manina del primo avvio: l'unico insegnamento del gioco ── */
+#manina{position:absolute;width:54px;height:54px;border-radius:50%;
+  border:2px solid rgba(243,236,224,.85);pointer-events:none;opacity:0;
+  transition:opacity .6s;animation:pulsa 1.6s infinite ease-in-out}
+#manina.on{opacity:.9}
+@keyframes pulsa{0%,100%{transform:scale(1);opacity:.35}50%{transform:scale(1.28);opacity:.9}}
+
+/* ── Il simbolo del salvataggio, al fuoco ── */
+#salva{position:absolute;left:12px;bottom:calc(20px + env(safe-area-inset-bottom));
+  pointer-events:auto;width:44px;height:44px;border-radius:12px;
+  border:1px solid rgba(243,236,224,.22);background:rgba(30,24,17,.5);
+  display:none;align-items:center;justify-content:center;font-size:18px}
+#salva.on{display:flex}
+
+/* ── L'unica finestra del gioco: il codice del villaggio ── */
+/* ── La porta d'ingresso ─────────────────────── */
+#porta{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
+  padding:20px;background:radial-gradient(ellipse at 50% 30%,#2a4a5e 0%,#0e1a24 60%,#070c11 100%)}
+#porta.on{display:flex}
+#pfoglio{width:100%;max-width:520px;text-align:center}
+.peye{margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:#8fb8c8}
+#pfoglio h2{margin:0 0 8px;font-size:clamp(24px,6vw,34px);font-weight:800;letter-spacing:-.8px;line-height:1.1}
+#pfoglio p{margin:0 auto 18px;max-width:44ch;font-size:13.5px;color:#b8c9d2;line-height:1.6}
+#pfoglio .pnota{font-size:11.5px;color:#6f8793;margin-top:16px}
+#pscelte{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pc{background:rgba(16,30,40,.7);border:1px solid rgba(143,184,200,.22);border-radius:14px;
+  padding:12px 8px 12px;cursor:pointer;transition:transform .12s,border-color .12s}
+.pc:hover,.pc:focus-visible{border-color:#c8342c;transform:translateY(-2px);outline:none}
+.pc canvas{display:block;width:100%;height:auto;aspect-ratio:1;margin:0 auto 8px}
+.pc b{display:block;font-size:13px;font-weight:700}
+.pc small{display:block;font-size:10.5px;color:#8fb8c8;margin-top:3px;line-height:1.4}
+@media (max-width:420px){#pscelte{grid-template-columns:1fr 1fr 1fr;gap:6px}.pc{padding:8px 5px}.pc small{display:none}}
+
+#velo{position:fixed;inset:0;background:rgba(8,6,4,.86);z-index:20;display:none;
+  align-items:center;justify-content:center;padding:20px}
+#velo.on{display:flex}
+#foglio{width:100%;max-width:440px;background:#1b1510;border:1px solid #35291d;
+  border-radius:16px;padding:18px}
+#foglio h2{margin:0 0 4px;font-size:17px;font-weight:700}
+#foglio p{margin:0 0 14px;font-size:12.5px;color:var(--dim);line-height:1.6}
+#foglio textarea{width:100%;height:84px;resize:none;background:#0f0c08;color:var(--txt);
+  border:1px solid #35291d;border-radius:10px;padding:10px;font-size:11px;
+  font-family:ui-monospace,Menlo,Consolas,monospace;line-height:1.5}
+#foglio .riga{display:flex;gap:8px;margin-top:12px}
+#foglio button{flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:700;
+  background:#2a2118;border:1px solid #3d2f21;color:var(--txt)}
+#foglio button.forte{background:var(--ac);color:#241601;border-color:var(--ac)}
+
+@media (min-width:900px){
+  #tAsta{width:74px;height:74px}
+  #tArma{width:54px;height:54px}
+  #pad{opacity:.55}
+  #addr{font-size:12px}
+}
+@media (hover:hover) and (pointer:fine){
+  .tasto:hover{background:rgba(224,164,74,.22)}
+  #foglio button:hover{filter:brightness(1.12)}
+}
+@media (prefers-reduced-motion:reduce){#manina{animation:none}}
+</style>
+</head>
+<body>
+
+<canvas id="cv"></canvas>
+
+<div id="hud">
+  <div id="addr"><b id="aNome">—</b><span id="aCoord">—</span></div>
+
+  <div id="store">
+    <div><small>grano</small><span id="sGrano">0</span></div>
+    <div><small>legno</small><span id="sLegno">0</span></div>
+    <div><small>ferro</small><span id="sFerro">0</span></div>
+    <div><small>sale</small><span id="sSale">0</span></div>
+    <div id="sCiboR"><small>uova e latte</small><span id="sCibo">0</span></div>
+  </div>
+
+  <div id="say"></div>
+  <div id="manina"></div>
+
+  <button id="salva">🪶</button>
+
+  <div id="pad">
+    <button class="tasto" id="tArma"><b>ARMA</b></button>
+    <button class="tasto" id="tAsta"><b>ASTA</b><svg id="anello" viewBox="0 0 100 100">
+      <circle id="anelloArc" cx="50" cy="50" r="46" fill="none" stroke="#ff9d3c"
+        stroke-width="4" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"
+        transform="rotate(-90 50 50)"/></svg></button>
+  </div>
+</div>
+
+<!-- La porta. Senza un condottiero non si entra: è l'unico NFT obbligatorio
+     del gioco, e il solo menu che vedrai mai. Tre segnaposto, il catalogo
+     vero arriva dal contratto. -->
+<div id="porta"><div id="pfoglio">
+  <p class="peye">Codazzo</p>
+  <h2>Scegli il tuo condottiero</h2>
+  <p>Il condottiero è il personaggio con cui giochi, ed è un NFT: è tuo, e il
+     villaggio che fonderai è legato a lui. Senza un condottiero non si entra.</p>
+  <div id="pscelte"></div>
+  <p class="pnota">Anteprima: questi tre sono segnaposto. Nel gioco vero li compri su TON e
+     il portafoglio te li mostra qui.</p>
+</div></div>
+
+<div id="velo"><div id="foglio">
+  <h2>Il tuo villaggio</h2>
+  <p>Questo codice è il tuo villaggio. Copialo e tienilo da parte: incollandolo su un altro
+     telefono ritrovi tutto. Non c'è nessun account, e senza questo codice un cambio di
+     telefono cancella il villaggio.</p>
+  <textarea id="codice" spellcheck="false"></textarea>
+  <div class="riga">
+    <button id="bCopia" class="forte">Copia</button>
+    <button id="bCarica">Carica</button>
+    <button id="bChiudi">Chiudi</button>
+  </div>
+</div></div>
+
+<script>
+(()=>{
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   0 · UTILITÀ
+   ═══════════════════════════════════════════════════════════════ */
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
+const nf=n=>Math.round(n).toLocaleString('it-IT');
+const now=()=>Date.now();
+const TAU=Math.PI*2;
+
+/* ── Il substrato del movimento ──────────────────────────────────
+   Il passo della simulazione è FISSO: sessanta volte al secondo, sempre,
+   qualunque cosa faccia lo schermo. Il fotogramma non decide più quanto
+   avanza il mondo — decide solo quanto sta in mezzo fra due passi, ed è
+   quel resto (ALFA) che il disegno usa per non mostrare mai uno scatto.
+   Prima la velocità veniva assegnata di colpo ogni fotogramma puntando il
+   bersaglio: a 144 Hz il mondo correva, a 30 strisciava, e chi era arrivato
+   vibrava sul posto. Con dt costante ogni coefficiente di smorzamento
+   diventa una costante calcolata UNA volta: nessun Math.exp per persona
+   per fotogramma, e il peso si sente col pollice senza costare niente. */
+const H=1/60;
+let ALFA=0;
+const ix=o=>o.px+(o.x-o.px)*ALFA;
+const iy=o=>o.py+(o.y-o.py)*ALFA;
+/* Chi salta di colpo da una parte all'altra deve saltare anche nel passato,
+   o l'interpolazione gli disegna una strisciata lunga mezzo schermo. */
+function teletrasporta(o,x,y){ o.x=o.px=x; o.y=o.py=y }
+/** Il coefficiente di un inseguimento esponenziale con costante di tempo t. */
+const smorzo=t=>1-Math.exp(-H/t);
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+/** Hash intero stabile: stesse coordinate, stesso risultato, per sempre. */
+function h2(x,y,s){
+  let n=x*374761393+y*668265263+(s|0)*1442695040888963407;
+  n=(n^(n>>>13))*1274126177; n=n^(n>>>16);
+  return ((n>>>0)%100000)/100000;
+}
+function hInt(x,y,s,n){return Math.floor(h2(x,y,s)*n)}
+
+/* ═══════════════════════════════════════════════════════════════
+   1 · IL MONDO
+   Uno solo. Generato da un seme scritto nel codice: le montagne
+   stanno sempre nello stesso punto, oggi e fra un anno. Non si
+   rigenera mai. Esistono in memoria solo i pezzi attorno a te.
+   ═══════════════════════════════════════════════════════════════ */
+const SEED=20260822;
+const W=30000;                 // lato del mondo, in unità (1 u = 1 px a zoom 1)
+const CH=500;                  // lato del chunk
+const NCH=W/CH|0;
+
+/** Rumore di valore a due ottave, puro: nessuno stato, nessuna cache obbligatoria. */
+function vnoise(x,y,scala,s){
+  const fx=x/scala, fy=y/scala;
+  const x0=Math.floor(fx), y0=Math.floor(fy);
+  const tx=fx-x0, ty=fy-y0;
+  const sx=tx*tx*(3-2*tx), sy=ty*ty*(3-2*ty);
+  const a=h2(x0,y0,s),     b=h2(x0+1,y0,s);
+  const c=h2(x0,y0+1,s),   d=h2(x0+1,y0+1,s);
+  return lerp(lerp(a,b,sx),lerp(c,d,sx),sy);
+}
+function campo(x,y,s){
+  return vnoise(x,y,2600,s)*.62 + vnoise(x,y,780,s+7)*.27 + vnoise(x,y,240,s+13)*.11;
+}
+
+/* Le cinque terre. Ognuna dà una cosa sola, e una sola terra dà il ferro. */
+/* TERRE ALTE. Nordico, aria fredda e limpida: smeraldo saturo, ardesia,
+   cielo alto. La regola che tiene in piedi tutto: nessun suolo sta nella
+   stessa banda di luminosità delle vesti, così la fila si legge sempre —
+   e il Bosco Nero resta l'unico buco scuro della mappa. */
+const BIOMI={
+  piana:      {n:'Piana Dorata',   suolo:'#3f8a56', suolo2:'#4a9a62', da:'grano'},
+  bosco:      {n:'Bosco Nero',     suolo:'#1b4537', suolo2:'#225243', da:'legno'},
+  riva:       {n:'Riva Salsa',     suolo:'#6f8e95', suolo2:'#7e9ca3', da:'sale'},
+  brughiera:  {n:'Brughiera',      suolo:'#6e7a4e', suolo2:'#7b8858', da:null},
+  costolone:  {n:'Costolone di Ferro', suolo:'#5c6a78', suolo2:'#687786', da:'ferro'}
+};
+const BORDI=['piana','bosco','riva','brughiera','costolone'];
+
+/** Funzione pura: dato un punto del mondo, che terra è. */
+function bioma(x,y){
+  const alt=campo(x,y,101);
+  const umi=campo(x+9000,y-4000,211);
+  if(alt>.70) return 'costolone';
+  if(umi>.72 && alt<.46) return 'riva';
+  if(umi>.52 && alt<.66) return 'bosco';
+  if(umi<.31) return 'brughiera';
+  return 'piana';
+}
+/** Fertilità locale: quanto è ricco questo punto della sua risorsa. */
+function fert(x,y){ return clamp(campo(x+2200,y+7700,317)*1.35-.12,0,1) }
+
+/* ── Le cose che stanno nel mondo ──────────────────────────────
+   Non c'è una lista globale: ogni chunk sa da sé cosa contiene,
+   perché lo ricava dal seme. Visitare non consuma memoria.
+   ───────────────────────────────────────────────────────────── */
+const COSA={
+  spiga:  {res:'grano', vita:26, r:9,  raccolta:2.6},
+  albero: {res:'legno', vita:60, r:13, raccolta:1.5},
+  vena:   {res:'ferro', vita:70, r:12, raccolta:1.0},
+  salina: {res:'sale',  vita:22, r:11, raccolta:1.2},
+  sasso:  {res:null,    vita:0,  r:10, raccolta:0}
+};
+
+/** Genera il contenuto di un chunk. Deterministico: stesso chunk, stesso contenuto. */
+function genChunk(ci,cj){
+  const cose=[];
+  const bx=ci*CH, by=cj*CH;
+  const q=hInt(ci,cj,55,100);
+  const n=14+q%10;
+  for(let k=0;k<n;k++){
+    const x=bx+h2(ci*97+k,cj*31,71)*CH;
+    const y=by+h2(ci*17,cj*89+k,73)*CH;
+    const b=bioma(x,y), f=fert(x,y);
+    let t=null;
+    if(b==='piana'&&f>.30)      t='spiga';
+    else if(b==='bosco'&&f>.22) t='albero';
+    else if(b==='costolone'&&f>.42) t='vena';
+    else if(b==='riva'&&f>.34)  t='salina';
+    else if(h2(x,y,91)>.82)     t='sasso';
+    if(!t)continue;
+    const vita=Math.round(COSA[t].vita*(.55+f*.9));
+    cose.push({t,x,y,v:vita,vmax:vita,tag:0});
+  }
+  return {ci,cj,cose,ora:0};
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   2 · PERSISTENZA
+   Due chiavi separate, come farebbe un server: il mondo condiviso
+   da una parte, tu dall'altra. Il giorno che c'è un server, una
+   diventa una tabella e l'altra una riga, senza toccare il gioco.
+   ═══════════════════════════════════════════════════════════════ */
+const K_MONDO='codazzo.world.v1';
+const K_ME='codazzo.me.v1';
+
+let MONDO=null, ME=null;
+const chunks=new Map();          // solo quelli attorno a te
+
+function chunkAt(ci,cj){
+  const k=ci+','+cj;
+  let c=chunks.get(k);
+  if(!c){
+    c=genChunk(ci,cj);
+    const salvato=MONDO.chunks[k];
+    if(salvato){
+      // Quello che è stato raccolto resta raccolto, e ricresce col tempo.
+      c.ora=salvato.t;
+      const eta=(now()-salvato.t)/1000;
+      const ricresce=clamp(eta/240,0,1);
+      for(const o of c.cose){
+        if(o.t==='spiga'||o.t==='salina') o.v=Math.round(o.vmax*Math.max(salvato.r||0,ricresce));
+        else o.v=Math.round(o.vmax*(salvato.r||0));
+      }
+    }
+    chunks.set(k,c);
+    if(chunks.size>64){          // tetto duro: non si accumula mai
+      for(const kk of chunks.keys()){ if(chunks.size<=48)break; if(kk!==k)chunks.delete(kk) }
+    }
+  }
+  return c;
+}
+function segnaChunk(c){
+  let resto=0,tot=0;
+  for(const o of c.cose){tot+=o.vmax;resto+=o.v}
+  MONDO.chunks[c.ci+','+c.cj]={t:now(),r:tot?resto/tot:1};
+  const ks=Object.keys(MONDO.chunks);
+  if(ks.length>512){ for(let i=0;i<ks.length-512;i++) delete MONDO.chunks[ks[i]] }
+}
+function coseIntorno(x,y,r){
+  const out=[];
+  const i0=Math.floor((x-r)/CH), i1=Math.floor((x+r)/CH);
+  const j0=Math.floor((y-r)/CH), j1=Math.floor((y+r)/CH);
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+    if(i<0||j<0||i>=NCH||j>=NCH)continue;
+    const c=chunkAt(i,j);
+    for(const o of c.cose) if(o.v>0&&dist(o.x,o.y,x,y)<r) out.push(o);
+  }
+  return out;
+}
+
+/** I 512 indirizzi possibili. Il tuo dipende da chi sei, non dal caso. */
+function tavolaSpawn(){
+  const r=mulberry32(SEED^0x5f3a);
+  const punti=[];
+  let tent=0;
+  while(punti.length<512&&tent<40000){
+    tent++;
+    const x=2000+r()*(W-4000), y=2000+r()*(W-4000);
+    if(bioma(x,y)!=='piana')continue;
+    // Serve del bosco a portata di popolo, o il gioco si blocca al secondo giorno
+    let bosco=false;
+    for(let a=0;a<10;a++){
+      const an=a/10*TAU, d=1300+r()*700;
+      if(bioma(x+Math.cos(an)*d,y+Math.sin(an)*d)==='bosco'){bosco=true;break}
+    }
+    if(!bosco)continue;
+    if(punti.some(p=>dist(p.x,p.y,x,y)<3800))continue;
+    punti.push({x:Math.round(x),y:Math.round(y)});
+  }
+  return punti;
+}
+const NOMI_LUOGO=['Valle di Corno','Fossa Chiara','Pian del Lupo','Cà Bruciata','Riva Storta',
+  'Sasso Rosso','Campo Lungo','Vento Basso','Tre Querce','Guado Vecchio','Costa Nera',
+  'Fonte Alta','Prato Muto','Selva Bassa','Passo Stretto','Terra Rossa'];
+function nomeLuogo(i){ return NOMI_LUOGO[i%NOMI_LUOGO.length]+(i>=16?' '+(1+(i/16|0)):'') }
+
+function nuovoIo(spawn){
+  const pid='p-'+Math.random().toString(36).slice(2,10);
+  let idx=0; for(let i=0;i<pid.length;i++) idx=(idx*31+pid.charCodeAt(i))>>>0;
+  idx%=spawn.length;
+  const p=spawn[idx];
+  return {
+    v:1, pid, idx,
+    borgo:{vid:'v-me', nome:nomeLuogo(idx), x:p.x, y:p.y},
+    capo:{x:p.x+40, y:p.y+30, px:p.x+40, py:p.y+30, vx:0, vy:0, vita:8, vitaMax:8, porta:[]},
+    scorte:{grano:30, legno:24, ferro:0, sale:0, cibo:0},
+    animali:[],
+    respiro:1500,
+    rastrelliera:['falce','falce','randello'],
+    gente:[], aste:[], edifici:[], terra:[], pietre:[],
+    moneta:{soft:0, hard:0},
+    /* Il condottiero è un NFT: senza, non si gioca. Qui c'è il segnaposto del
+       contratto — l'id del token e il tratto che lo distingue a vista. Il
+       catalogo vero lo fa Aless; il gioco legge solo questi tre campi. */
+    condottiero:null,
+    nft:['pennone','falce-prima','campana'],
+    orologio:{visto:now(), tempo:0.28},
+    visto:{primoPasso:false, primaAsta:false, primaArma:false},
+    stat:{nati:0, morti:0, armati:0, giorni:0}
+  };
+}
+
+function carica(){
+  try{
+    const m=JSON.parse(localStorage.getItem(K_MONDO)||'null');
+    const i=JSON.parse(localStorage.getItem(K_ME)||'null');
+    if(m&&m.v===1&&i&&i.v===1)return {m,i};
+  }catch(e){}
+  return null;
+}
+/* px, py, acc, rank e polv sono lavagne dell'interpolazione e del disegno:
+   il passo le riscrive da zero sessanta volte al secondo. Salvarle vuol dire
+   solo far pagare all'utente qualche centinaio di caratteri in più da copiare
+   nel codice del villaggio, che di suo è già lungo. */
+const NOSALVA=(k,v)=>(k==='px'||k==='py'||k==='sx'||k==='sy'||k==='acc'||k==='rank'||k==='polv')?undefined:v;
+let salvaT=0, salvaPend=false;
+function salva(subito){
+  const t=now();
+  if(!subito&&t-salvaT<800){ salvaPend=true; return }
+  salvaT=t; salvaPend=false;
+  try{
+    ME.orologio.visto=t;
+    localStorage.setItem(K_MONDO,JSON.stringify(MONDO));
+    localStorage.setItem(K_ME,JSON.stringify(ME,NOSALVA));
+  }catch(e){}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3 · LA GENTE
+   Non esiste un contatore della popolazione. Esistono persone, una
+   per una, con un mestiere che si legge dalla sagoma e un'arma che
+   è un oggetto vero, contato, che si può posare e raccogliere.
+   ═══════════════════════════════════════════════════════════════ */
+const ARMI={
+  falce:   {n:'Falce',    mest:'contadino',  dmg:.5,  port:1,   costo:{legno:6},  era:0},
+  randello:{n:'Randello', mest:'guerriero',  dmg:1.7, port:.7,  costo:{legno:12}, era:0},
+  lancia:  {n:'Lancia',   mest:'lanciere',   dmg:2.3, port:.55, gitt:38, costo:{legno:30}, era:1},
+  arco:    {n:'Arco',     mest:'arciere',    dmg:1.6, port:.45, gitt:250,costo:{legno:40}, era:3},
+  spada:   {n:'Spada',    mest:'spadaccino', dmg:3.3, port:.5,  costo:{ferro:45}, era:4}
+};
+/* Chi ti segue deve essere piu' svelto di te, o non ti sta dietro e la fila
+   si sfilaccia da sola: il capo cammina a 105. Il ritardo deve venire dal
+   carico sulle spalle, non dalle gambe — e infatti il sacco pieno taglia
+   la velocita' del 28%, e quello si vede. */
+const MESTIERI={
+  contadino:{n:'Contadino', vel:116, vita:4, alt:16},
+  guerriero:{n:'Guerriero', vel:114, vita:6, alt:16},
+  lanciere: {n:'Lanciere',  vel:110, vita:7, alt:16},
+  arciere:  {n:'Arciere',   vel:118, vita:4, alt:16},
+  spadaccino:{n:'Spadaccino',vel:108,vita:9, alt:17},
+  bambino:  {n:'Bambino',   vel:132, vita:2, alt:9}
+};
+const mestDi=a=>a&&ARMI[a]?ARMI[a].mest:'contadino';
+
+const NOMI=['Bruno','Nella','Tazio','Mena','Orso','Vanda','Cecco','Lia','Gorio','Nuta',
+  'Bardo','Sesta','Mino','Rea','Toldo','Ianna','Baldo','Cita','Fosco','Gemma'];
+
+let UID=1;
+function nuovaPersona(x,y,arma){
+  const a=arma||null, m=mestDi(a);
+  return {uid:UID++, arma:a, mest:m, x, y, px:x, py:y, vx:0, vy:0,
+    vita:MESTIERI[m].vita, vitaMax:MESTIERI[m].vita, vig:100,
+    stato:'segue', asta:null, obb:null, carico:null,
+    trasf:0, invulno:0, colpo:0, fase:Math.random()*TAU, nome:null,
+    nato:now(), notti:0, uccisioni:0, cresce:0};
+}
+const gentePiedi=()=>ME.gente.filter(p=>p.stato!=='morto');
+const seguaci=()=>ME.gente.filter(p=>p.stato==='segue');
+function postiTot(){ return 6+ME.edifici.filter(e=>e.tipo==='capanna'&&e.prog>=1).length*4 }
+function scortaTot(){ return 60+ME.edifici.filter(e=>e.tipo==='granaio'&&e.prog>=1).length*40 }
+function armiTot(){ return 6+ME.edifici.filter(e=>e.tipo==='rastrell'&&e.prog>=1).length*6 }
+function haForgia(){ return ME.edifici.some(e=>e.tipo==='forgia'&&e.prog>=1) }
+
+function nomina(p){
+  if(p.nome)return p.nome;
+  const usati=new Set(ME.gente.map(g=>g.nome).filter(Boolean));
+  const liberi=NOMI.filter(n=>!usati.has(n));
+  p.nome=liberi.length?liberi[hInt(p.uid,7,3,liberi.length)]:'Senzanome';
+  return p.nome;
+}
+
+/* ── La scia. Il cuore del gioco: non ti inseguono, inseguono le
+      tue impronte. Se curvi largo, la coda si scopre. ────────── */
+const scia=[];                   // {x,y,d} d = distanza percorsa cumulata
+let sciaD=0;
+function scriviScia(x,y){
+  const u=scia[scia.length-1];
+  if(!u){ scia.push({x,y,d:0}); return }
+  const dd=dist(x,y,u.x,u.y);
+  if(dd<5)return;
+  sciaD+=dd;
+  scia.push({x,y,d:sciaD});
+  // tetto: quanto serve a 24 persone distanziate di 22 u, più margine
+  while(scia.length>2 && sciaD-scia[0].d>720) scia.shift();
+}
+/** Il punto della scia a `ritardo` unità dietro la testa. */
+function puntoScia(ritardo){
+  const bersaglio=sciaD-ritardo;
+  if(!scia.length)return null;
+  if(bersaglio<=scia[0].d)return scia[0];
+  for(let i=scia.length-1;i>0;i--){
+    if(scia[i-1].d<=bersaglio){
+      const a=scia[i-1], b=scia[i];
+      const t=(bersaglio-a.d)/Math.max(.001,b.d-a.d);
+      return {x:lerp(a.x,b.x,t), y:lerp(a.y,b.y,t)};
+    }
+  }
+  return scia[0];
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4 · LE ASTE
+   Un solo verbo in tutto il gioco. La pianti e la lasci: chi è nel
+   cerchio resta a lavorare anche quando te ne vai. Torni sopra, la
+   strappi, e quelli tornano in fila. Tre al massimo, perché tre
+   sono le decisioni che uno riesce a tenere in testa.
+   ═══════════════════════════════════════════════════════════════ */
+const R_ASTA=115;
+const MAX_ASTE=3;
+let ASTA_UID=1;
+
+function astaSotto(x,y,r){
+  for(const a of ME.aste) if(dist(a.x,a.y,x,y)<(r||46)) return a;
+  return null;
+}
+function piantaAsta(x,y,fuoco,cantiere){
+  if(ME.aste.length>=MAX_ASTE){ dire('Hai già tre aste piantate'); return null }
+  const a={id:ASTA_UID++, x, y, fuoco:!!fuoco, nato:now(),
+    tipo:cantiere?'cantiere':'lavoro', edificio:cantiere||null, mat:0};
+  ME.aste.push(a);
+  let n=0;
+  for(const p of seguaci()){
+    if(dist(p.x,p.y,x,y)<R_ASTA*1.5){ p.stato='lavora'; p.asta=a.id; p.obb=null; n++ }
+  }
+  if(cantiere) dire('Cantiere aperto: '+EDIFICI[cantiere].n);
+  else if(fuoco) dire('Il vessillo brucia — arriveranno');
+  else if(!n) dire('Nessuno ti stava seguendo');
+  ME.visto.primaAsta=true;
+  borgoSporco=true;              // è nato un sentiero: la terra battuta va ridipinta
+  salva();
+  return a;
+}
+function strappaAsta(a){
+  for(const p of ME.gente) if(p.asta===a.id){ p.stato='segue'; p.asta=null; p.obb=null }
+  ME.aste=ME.aste.filter(x=>x!==a);
+  borgoSporco=true;              // e qui un sentiero è morto: idem
+  salva();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5 · GLI EDIFICI
+   In città si costruisce. Non c'è un menu: c'è un tavolo con sopra
+   i progetti, si tocca per girarlo, e si pianta l'asta dove lo vuoi.
+   ═══════════════════════════════════════════════════════════════ */
+const EDIFICI={
+  capanna: {n:'Capanna',      ic:'🛖', costo:{legno:30},            d:'quattro posti in più'},
+  granaio: {n:'Granaio',      ic:'🏚️', costo:{legno:45},            d:'quaranta di scorta in più'},
+  rastrell:{n:'Rastrelliera', ic:'🗡️', costo:{legno:25},            d:'sei armi appese in più'},
+  forgia:  {n:'Forgia',       ic:'🔥', costo:{legno:60,ferro:20},   d:'il ferro diventa lame'},
+  torre:   {n:'Torre',        ic:'🗼', costo:{legno:50,ferro:10},   d:'un arciere che veglia'}
+};
+const ORD_EDIF=Object.keys(EDIFICI);
+
+function puoPagare(c){ for(const r in c) if(ME.scorte[r]<c[r]) return false; return true }
+function paga(c){ for(const r in c) ME.scorte[r]-=c[r] }
+
+function inBorgo(x,y){ return dist(x,y,ME.borgo.x,ME.borgo.y)<230 }
+
+/* ═══════════════════════════════════════════════════════════════
+   6 · ARMARE
+   Mezzo secondo, ed è la cosa più vistosa dello schermo. La falce
+   gli cade di mano e resta lì per terra come oggetto vero.
+   ═══════════════════════════════════════════════════════════════ */
+const T_TRASF=.5;
+
+function armaPiuVicino(){
+  const c=ME.capo;
+  // Prima l'arma: a terra, addosso al capo, o sulla rastrelliera se sei al borgo
+  let fonte=null, arma=null, ax=c.x, ay=c.y;
+  let md=1e9;
+  for(const o of ME.terra){
+    if(!ARMI[o.t])continue;
+    const d=dist(o.x,o.y,c.x,c.y);
+    if(d<150&&d<md){md=d;fonte='terra';arma=o.t;ax=o.x;ay=o.y}
+  }
+  if(!arma&&c.porta.length){ arma=c.porta[c.porta.length-1]; fonte='schiena' }
+  if(!arma&&inBorgo(c.x,c.y)&&ME.rastrelliera.length){
+    const i=ME.rastrelliera.findIndex(a=>a!=='falce');
+    if(i>=0){ arma=ME.rastrelliera[i]; fonte='rastrelliera' }
+  }
+  if(!arma)return false;
+
+  // Poi la persona: il contadino più vicino a quell'arma
+  let scelto=null; md=1e9;
+  for(const p of gentePiedi()){
+    if(p.mest!=='contadino'||p.trasf>0||p.cresce>0)continue;
+    const d=dist(p.x,p.y,ax,ay);
+    if(d<190&&d<md){md=d;scelto=p}
+  }
+  if(!scelto)return false;
+
+  // L'arma vecchia cade e resta a terra, come oggetto vero
+  if(scelto.arma) posaATerra(scelto.arma,scelto.x,scelto.y);
+  if(scelto.carico){ posaATerra('sacco',scelto.x,scelto.y,scelto.carico); scelto.carico=null }
+
+  if(fonte==='terra') ME.terra=ME.terra.filter(o=>!(o.t===arma&&o.x===ax&&o.y===ay));
+  else if(fonte==='schiena') c.porta.pop();
+  else if(fonte==='rastrelliera'){ const i=ME.rastrelliera.indexOf(arma); if(i>=0)ME.rastrelliera.splice(i,1) }
+
+  /* Sei scintille in cerchio: non un sistema di particelle nuovo, lo stesso
+     che già accende la costruzione. La vestizione deve essere la cosa più
+     bella dello schermo, e questo è il pezzo che costa meno di tutti. */
+  for(let i=0;i<6;i++){
+    const an=i/6*TAU;
+    scintilla(scelto.x+Math.cos(an)*7,scelto.y-8+Math.sin(an)*4,'#ffe9bd');
+  }
+  scelto.trasf=T_TRASF;
+  scelto.armaIn=arma;
+  scelto.invulno=-T_TRASF*.6;      // negativo = VULNERABILE, danno doppio
+  ME.visto.primaArma=true;
+  ME.stat.armati++;
+  if(ME.stat.armati===1||scelto.uccisioni>0) nomina(scelto);
+  salva();
+  return true;
+}
+/** Alla rastrelliera, il verso si inverte: torna curvo con la falce. */
+function disarmaPiuVicino(){
+  const c=ME.capo;
+  let scelto=null,md=1e9;
+  for(const p of gentePiedi()){
+    if(p.mest==='contadino'||p.mest==='bambino'||p.trasf>0)continue;
+    const d=dist(p.x,p.y,c.x,c.y);
+    if(d<170&&d<md){md=d;scelto=p}
+  }
+  if(!scelto)return false;
+  if(ME.rastrelliera.length>=armiTot()){ dire('La rastrelliera è piena'); return false }
+  ME.rastrelliera.push(scelto.arma);
+  scelto.arma='falce'; scelto.mest='contadino';
+  scelto.vitaMax=MESTIERI.contadino.vita;
+  scelto.vita=Math.min(scelto.vita,scelto.vitaMax);
+  salva();
+  return true;
+}
+function posaATerra(t,x,y,extra){
+  ME.terra.push({t,x:x+(Math.random()-.5)*14,y:y+(Math.random()-.5)*14,
+    fino:now()+360000, q:extra||null});
+  if(ME.terra.length>32) ME.terra.shift();
+}
+function finisciTrasf(p){
+  p.arma=p.armaIn; p.armaIn=null;
+  p.mest=mestDi(p.arma);
+  p.vitaMax=MESTIERI[p.mest].vita;
+  p.vita=p.vitaMax;
+  p.grido=.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   7 · IL MONDO CHE TI VUOLE MALE
+   ═══════════════════════════════════════════════════════════════ */
+const NEMICI={
+  lupo:  {n:'Lupo',   vel:118, vita:4,  dmg:1,   ric:.85, r:9,  vede:520, bottino:null},
+  ladro: {n:'Ladro',  vel:104, vita:5,  dmg:.6,  ric:1.2, r:10, vede:600, bottino:'randello'},
+  predone:{n:'Predone',vel:88, vita:9,  dmg:1.8, ric:1.0, r:11, vede:700, bottino:'spada'}
+};
+let nemici=[], frecce=[], scintille=[];
+/* Un contatore a parte, negativo, solo per il disegno: serve un'identità
+   STABILE per nemico o taglia e verso gli sfarfallano a ogni fotogramma.
+   Negativo per non collidere mai con gli uid della gente, e fuori da ME
+   perché i nemici non si salvano — non gonfia il codice del villaggio. */
+let NUID=1;
+
+function generaNemico(t,x,y){
+  const N=NEMICI[t];
+  nemici.push({t,x,y,px:x,py:y,uid:-(NUID++),vx:0,vy:0,vita:N.vita,ric:0,fase:Math.random()*TAU,
+    preda:null,fuga:false,rubato:null,nato:now()});
+}
+/** Arrivano dalla brughiera, di notte molti di più, e il vessillo che brucia li chiama. */
+function ondata(dt){
+  const c=ME.capo;
+  const notte=luceOra()<.35;
+  const fuoco=ME.aste.some(a=>a.fuoco);
+  let p=(notte?.055:.014)*dt*(fuoco?4.5:1);
+  p*=clamp(VIVI.length/8,.5,2.2);
+  if(nemici.length>=16)p=0;
+  if(Math.random()<p){
+    const an=Math.random()*TAU, d=560+Math.random()*260;
+    const x=c.x+Math.cos(an)*d, y=c.y+Math.sin(an)*d;
+    const r=Math.random();
+    let t='lupo';
+    if(ME.scorte.grano>28&&r<.34)t='ladro';
+    else if(ME.stat.giorni>=3&&r>.82)t='predone';
+    generaNemico(t,x,y);
+  }
+}
+/* Le due si chiamano UNA volta per nemico per passo: con sedici nemici sono
+   trentadue array buttati via al passo, cioè quasi duemila al secondo. Adesso
+   leggono le liste già pronte del passo e non allocano niente. */
+function ultimoDellaFila(){
+  if(!SEG.length)return null;
+  let peggio=null,md=-1;
+  for(let i=0;i<SEG.length;i++){ const p=SEG[i];
+    const d=dist(p.x,p.y,ME.capo.x,ME.capo.y); if(d>md){md=d;peggio=p} }
+  return peggio;
+}
+function piuCarico(){
+  let best=null,mq=0;
+  for(let i=0;i<VIVI.length;i++){ const p=VIVI[i];
+    if(p.carico&&p.carico.q>mq){mq=p.carico.q;best=p} }
+  return best;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   8 · IL PASSO DEL MONDO
+   ═══════════════════════════════════════════════════════════════ */
+const V_CAPO=105;
+const GIORNO=360;                 // secondi reali per un giorno intero
+function luceOra(){
+  const t=ME.orologio.tempo;      // 0..1
+  const s=Math.sin((t-.22)*TAU);
+  return clamp(.5+s*.62,0,1);
+}
+function capacita(p){ return Math.round(26*(ARMI[p.arma]?ARMI[p.arma].port:1)*(conCavallo(p)?3:1)) }
+
+/* Le costanti dello smorzamento. Sono qui, in chiaro, perché sono la
+   sensazione del gioco messa in numeri: quanto ci mette una cosa a prendere
+   la velocità che vuole. Il capo è il più svelto di tutti — lo si comanda col
+   dito, e un capo che parte molle fa sembrare molle tutto il resto. */
+const K_PART=smorzo(.09);          // la gente prende passo
+const K_FREN=smorzo(.05);          // la gente si ferma
+const K_CAPO=smorzo(.055);         // il capo parte: tre fotogrammi, non di più
+const K_FCAPO=smorzo(.038);        // il capo si ferma
+const K_DIR=smorzo(.07);           // la direzione insegue, non salta
+const RAMPA=14;                    // dentro questo raggio si arriva posandosi
+/* Perché 14 e non di più: il raggio di raccolta più stretto è quello della
+   spiga (9+9=18) e il più stretto d'attacco è quello del lupo (9+11=20).
+   La rampa sta tutta DENTRO quei raggi, quindi non rallenta né una mietitura
+   né un colpo: rallenta solo chi si sta posando su un punto della scia. */
+
+/* Le liste calde, allocate una volta sola. seguaci() e gentePiedi()
+   costruivano un array nuovo a ogni chiamata, e dentro il ciclo sui nemici
+   venivano chiamate una volta per nemico: era spazzatura a ritmo di
+   fotogramma, cioè una micro-pausa ogni pochi secondi. */
+const SEG=[], VIVI=[], FERITI=[];
+function rifaiListe(){
+  SEG.length=0; VIVI.length=0; FERITI.length=0;
+  for(let i=0;i<ME.gente.length;i++){
+    const p=ME.gente[i];
+    if(p.stato==='morto')continue;
+    VIVI.push(p);
+    if(p.stato==='segue')SEG.push(p);
+    else if(p.stato==='ferito')FERITI.push(p);
+  }
+  SEG.sort((a,b)=>a.uid-b.uid);
+  // il posto in fila scritto addosso: il seg.indexOf(p) dentro il ciclo era O(n²)
+  for(let i=0;i<SEG.length;i++)SEG[i].rank=i;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   6b · LA FAME E LE BESTIE
+   La fame è una perdita lenta sul fondo del granaio: decide quanto
+   grande puoi diventare, non cosa fai nei prossimi due minuti.
+   Le bestie sono selvatiche e stanno nel mondo: si prendono con lo
+   stesso verbo di tutto il resto — pianti l'asta dove pascolano e
+   la tua gente le accerchia. Nessun comando nuovo.
+   ═══════════════════════════════════════════════════════════════ */
+const FAME={AL_GIORNO:1, vuoto:false, detto:false};
+
+const BESTIE={
+  gallina:{n:'Gallina', vel:70,  r:6,  fuga:90,  pren:1.4, da:'uova',  resa:.9,  bioma:['piana','brughiera'], gregge:4},
+  mucca:  {n:'Mucca',   vel:42,  r:11, fuga:140, pren:3.2, da:'latte', resa:3.4, bioma:['piana'],             gregge:2},
+  cavallo:{n:'Cavallo', vel:150, r:10, fuga:260, pren:5.0, da:null,    resa:0,   bioma:['piana','brughiera'], gregge:2}
+};
+let BUID=1;
+
+/** Le bestie selvatiche vivono nei chunk come tutto il resto: deterministiche. */
+function bestieDelChunk(c){
+  if(c.bestie!==undefined)return c.bestie;
+  c.bestie=[];
+  const k=MONDO.bestiePrese&&MONDO.bestiePrese[c.ci+','+c.cj];
+  const q=h2(c.ci,c.cj,577);
+  if(q<.72)return c.bestie;                       // tre chunk su dieci hanno bestie
+  const bx=c.ci*CH+h2(c.ci,c.cj,579)*CH, by=c.cj*CH+h2(c.ci,c.cj,581)*CH;
+  const b=bioma(bx,by);
+  const tipi=Object.keys(BESTIE).filter(t=>BESTIE[t].bioma.includes(b));
+  if(!tipi.length)return c.bestie;
+  const t=tipi[hInt(c.ci,c.cj,583,tipi.length)];
+  const n=BESTIE[t].gregge;
+  for(let i=0;i<n;i++){
+    if(k&&k.includes(i))continue;               // già presa: non rinasce
+    const an=i/n*TAU;
+    c.bestie.push({t,i,x:bx+Math.cos(an)*30,y:by+Math.sin(an)*30,px:0,py:0,vx:0,vy:0,
+      fase:i*1.3,paura:0,dir:an});
+  }
+  return c.bestie;
+}
+function bestieIntorno(x,y,r){
+  const out=[];
+  const i0=Math.floor((x-r)/CH), i1=Math.floor((x+r)/CH);
+  const j0=Math.floor((y-r)/CH), j1=Math.floor((y+r)/CH);
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+    if(i<0||j<0||i>=NCH||j>=NCH)continue;
+    const c=chunkAt(i,j);
+    for(const b of bestieDelChunk(c)) if(dist(b.x,b.y,x,y)<r) out.push(b);
+  }
+  return out;
+}
+function prendiBestia(b,c){
+  const ch=chunks.get(Math.floor(b.x/CH)+','+Math.floor(b.y/CH));
+  if(ch){ ch.bestie=ch.bestie.filter(x=>x!==b);
+    MONDO.bestiePrese=MONDO.bestiePrese||{};
+    const k=ch.ci+','+ch.cj; (MONDO.bestiePrese[k]=MONDO.bestiePrese[k]||[]).push(b.i) }
+  ME.animali.push({uid:BUID++,t:b.t,x:b.x,y:b.y,px:b.x,py:b.y,vx:0,vy:0,fase:b.fase,dir:b.dir,
+    resa:0,segue:b.t==='cavallo',portato:null});
+  dire(BESTIE[b.t].n+' presa');
+  salva(true);
+}
+
+function passoAnimali(dt){
+  const c=ME.capo;
+  /* 1 · le selvatiche vicino a un'asta: chi lavora lì le accerchia */
+  for(const a of ME.aste){
+    if(a.tipo!=='lavoro')continue;
+    const sel=bestieIntorno(a.x,a.y,R_ASTA*1.4);
+    if(!sel.length)continue;
+    const cacciatori=ME.gente.filter(p=>p.asta===a.id&&p.stato==='lavora');
+    if(!cacciatori.length)continue;
+    for(const b of sel){
+      const B=BESTIE[b.t];
+      b.px=b.x; b.py=b.y;
+      // ognuno punta la bestia più vicina; la bestia scappa da chi è più vicino
+      let vic=null,md=1e9;
+      for(const p of cacciatori){ const d=dist(p.x,p.y,b.x,b.y); if(d<md){md=d;vic=p} }
+      if(md<B.r+10){
+        b.paura=Math.min(1,b.paura+dt*.55);
+        b.presa=(b.presa||0)+dt*(cacciatori.filter(p=>dist(p.x,p.y,b.x,b.y)<B.r+14).length);
+        if(b.presa>=B.pren){ prendiBestia(b,c); continue }
+      } else b.presa=Math.max(0,(b.presa||0)-dt);
+      const an=Math.atan2(b.y-vic.y,b.x-vic.x);
+      const scappa=md<B.fuga;
+      const tx=scappa?b.x+Math.cos(an)*80:b.x+Math.cos(b.fase)*20, ty=scappa?b.y+Math.sin(an)*80:b.y+Math.sin(b.fase)*20;
+      // si tiene dentro il cerchio dell'asta: accerchiata, non in fuga libera
+      const dA=dist(tx,ty,a.x,a.y);
+      muovi(b,dA<R_ASTA*1.5?tx:a.x,dA<R_ASTA*1.5?ty:a.y,B.vel*(scappa?1:.3),dt);
+      for(const p of cacciatori) if(md<B.r+14&&p===vic){ p.obb=null; p.lavora=.2 }
+    }
+    // chi caccia va verso la bestia più vicina
+    for(const p of cacciatori){
+      let vb=null,md=1e9;
+      for(const b of sel){ const d=dist(p.x,p.y,b.x,b.y); if(d<md){md=d;vb=b} }
+      if(vb){ p.caccia={x:vb.x,y:vb.y} } else p.caccia=null;
+    }
+  }
+  /* 2 · le bestie selvatiche lontane da aste pascolano pigre */
+  for(const ch of chunks.values()){
+    if(!ch.bestie)continue;
+    for(const b of ch.bestie){
+      if(b.presa>0||ME.aste.some(a=>dist(a.x,a.y,b.x,b.y)<R_ASTA*1.4))continue;
+      b.px=b.x; b.py=b.y;
+      b.fase+=dt*.3;
+      muovi(b,b.x+Math.cos(b.fase)*12,b.y+Math.sin(b.fase)*12,BESTIE[b.t].vel*.12,dt);
+    }
+  }
+  /* 3 · le tue: la gallina e la mucca stanno al villaggio e rendono;
+        il cavallo ti segue e porta per chi gli sta vicino */
+  const verde=fert(ME.borgo.x,ME.borgo.y);
+  for(const a of ME.animali){
+    const B=BESTIE[a.t];
+    a.px=a.x; a.py=a.y;
+    if(a.t==='cavallo'){
+      const q=puntoScia(22*(seguaci().length+1)+18);
+      muovi(a,q?q.x:c.x,q?q.y:c.y,B.vel,dt);
+      if(a.vx*a.vx+a.vy*a.vy>9)a.fase+=dt*6;
+      continue;
+    }
+    /* Pascola attorno al fuoco, ma mai dentro: un anello fra le capanne e il
+       bordo del villaggio, ciascuna sul suo giro così non si ammucchiano. */
+    a.fase+=dt*.22;
+    const rg=70+(a.uid%4)*18;
+    const tx=ME.borgo.x+Math.cos(a.fase+a.uid*1.9)*rg, ty=ME.borgo.y+Math.sin(a.fase*.85+a.uid*1.9)*rg*.8;
+    muovi(a,tx,ty,B.vel*.25,dt);
+    // la resa: uova costanti; il latte rende quanto è verde la terra sotto il villaggio
+    const k=a.t==='mucca'?Math.max(.15,verde):1;
+    a.resa+=B.resa*k*dt/GIORNO;
+    if(a.resa>=1){ a.resa-=1; ME.scorte.cibo=Math.min(scortaTot()*.5,ME.scorte.cibo+1);
+      if(Math.random()<.3)scintilla(a.x,a.y-8,a.t==='mucca'?'#f4f4ee':'#f7e6b0') }
+  }
+}
+/** Quanto porta chi ha il cavallo vicino: tre volte tanto, senza rallentare. */
+function conCavallo(p){
+  for(const a of ME.animali) if(a.t==='cavallo'&&dist(a.x,a.y,p.x,p.y)<48) return true;
+  return false;
+}
+
+function passo(dt){
+  const c=ME.capo;
+  PASSI++;
+  ME.orologio.tempo=(ME.orologio.tempo+dt/GIORNO)%1;
+  if(ME.orologio.tempo<dt/GIORNO) ME.stat.giorni++;
+
+  /* Il passato di tutti, congelato prima di muovere niente. Da qui in poi la
+     simulazione è l'unica verità: il disegno interpola fra questo e il dopo,
+     e non scrive mai una posizione. */
+  c.px=c.x; c.py=c.y;
+  for(let i=0;i<ME.gente.length;i++){ const p=ME.gente[i]; p.px=p.x; p.py=p.y }
+  for(let i=0;i<nemici.length;i++){ const n=nemici[i]; n.px=n.x; n.py=n.y }
+
+  /* ── Il capo ──────────────────────────────────────────────── */
+  /* Non riceve più la posizione: riceve una velocità DESIDERATA, e la vera ci
+     arriva in tre fotogrammi. V_CAPO e i moltiplicatori del carico non si
+     toccano — cambia solo come ci si arriva, e cioè che si sente il peso. */
+  const mv=leggiMovimento();
+  const vmax=V_CAPO*(c.porta.length>2?.9:1)*(c.spalla?.75:1);
+  const dvx=mv.x*vmax*Math.min(1,mv.f), dvy=mv.y*vmax*Math.min(1,mv.f);
+  const ovx=c.vx||0, ovy=c.vy||0;
+  const kc=mv.f>.02?K_CAPO:K_FCAPO;
+  c.vx=ovx+(dvx-ovx)*kc; c.vy=ovy+(dvy-ovy)*kc;
+  const sp=Math.hypot(c.vx,c.vy);
+  if(sp>1.2){
+    c.x=clamp(c.x+c.vx*dt,20,W-20);
+    c.y=clamp(c.y+c.vy*dt,20,W-20);
+    /* La direzione insegue per l'arco più corto invece di saltare: senza
+       questo, il pollice che gira di scatto ribalta la sagoma in un
+       fotogramma e sembra che il capo teletrasporti la faccia. */
+    const an=Math.atan2(c.vy,c.vx);
+    if(c.dir===undefined)c.dir=an;
+    else{ let d=an-c.dir; d=((d+Math.PI)%TAU+TAU)%TAU-Math.PI; c.dir+=d*K_DIR }
+    c.cammina=Math.min(1,sp/V_CAPO);
+    scriviScia(c.x,c.y);
+    ME.visto.primoPasso=true;
+  } else { c.vx=c.vy=0; c.cammina=0 }
+  /* La fase della camminata è legata allo SPAZIO percorso, non al tempo: a
+     mezza levetta si fa mezzo passo, e i piedi smettono di scivolare.
+     L'oscillazione del fermo se ne va per conto suo, in c.fiato. */
+  c.fase=(c.fase||0)+sp*dt/9;
+  c.fiato=(c.fiato||0)+dt*4;
+  /* L'accelerazione lungo il moto: è quella che inclina il busto in avanti
+     quando parte e all'indietro quando frena, e che alza la polvere. */
+  c.acc=sp>1.2?((c.vx-ovx)*c.vx+(c.vy-ovy)*c.vy)/sp/dt:0;
+  if(c.acc>620||c.acc<-620) polvere(c);
+  if(c.colpo>0)c.colpo-=dt;
+  if(c.colpito>0)c.colpito-=dt;
+  if(c.inv>0)c.inv-=dt;
+
+  /* ── La gente ─────────────────────────────────────────────── */
+  rifaiListe();
+  const seg=SEG;
+  const dentro=dist(c.x,c.y,ME.borgo.x,ME.borgo.y)<ME.respiro;
+
+  for(let i=0;i<ME.gente.length;i++){
+    const p=ME.gente[i];
+    if(p.stato==='morto')continue;
+    /* I timer del disegno stanno nel passo, non nel disegno. Erano scalati di
+       1/60 dentro le funzioni di disegno, cioè legati al numero di fotogrammi:
+       con il passo fisso sarebbe stato proprio sbagliato, e a 144 Hz un lampo
+       di colpo durava meno della metà. */
+    if(p.colpito>0)p.colpito-=dt;
+    if(p.lavora>0)p.lavora-=dt;
+
+    /* trasformazione: mezzo secondo inchiodato, e vulnerabile */
+    if(p.trasf>0){
+      p.trasf-=dt;
+      if(p.trasf<=0){ p.trasf=0; finisciTrasf(p) }
+      p.vx=p.vy=0;
+      continue;
+    }
+    if(p.grido>0)p.grido-=dt;
+    if(p.cresce>0){ p.cresce-=dt; if(p.cresce<=0){ p.mest='contadino'; p.arma='falce';
+      p.vitaMax=MESTIERI.contadino.vita; p.vita=p.vitaMax } }
+    if(p.colpo>0)p.colpo-=dt;
+    if(p.invulno<0)p.invulno=Math.min(0,p.invulno+dt);
+    else if(p.invulno>0)p.invulno-=dt;
+
+    /* respiro: fuori dal cerchio ci si consuma, e si torna a casa da soli */
+    const dBorgo=dist(p.x,p.y,ME.borgo.x,ME.borgo.y);
+    if(dBorgo>ME.respiro){ p.vig-=8*dt } else { p.vig=Math.min(100,p.vig+6*dt) }
+    if(p.vig<=15&&p.stato!=='torna'&&p.stato!=='ferito'){
+      p.stato='torna'; p.asta=null; p.attesa=3; p.obb=null;
+    }
+    /* La fame è a lungo termine: non la vedi mai mentre giochi, la vedi nel
+       fondo del granaio. Un grano al giorno a testa — i guerrieri una volta e
+       mezza, i bambini la metà. Quando il granaio è vuoto la gente rallenta,
+       poi molla il lavoro e torna al fuoco, e solo DOPO comincia a rimetterci
+       la salute. Minuti di preavviso, non secondi. */
+    if(FAME.vuoto){
+      p.fame=Math.min(1,(p.fame||0)+dt/240);
+      if(p.fame>.55&&p.stato==='lavora'){ p.stato='torna'; p.asta=null; p.attesa=1; p.obb=null }
+      if(p.fame>.85&&p.stato!=='ferito'){ p.vita-=dt*.012; if(p.vita<=0){ p.vita=0; p.stato='ferito'; p.agonia=0 } }
+    } else if(p.fame>0) p.fame=Math.max(0,p.fame-dt/60);
+
+    let bx=null,by=null, corri=CONDOTTIERO().tratto==='passo'?1.08:1;
+    if(p.fame>.3) corri*=1-(p.fame-.3)*.45;   // la fame si vede nelle gambe, mai in una barra
+
+    if(p.stato==='ferito'){
+      // striscia verso casa lasciando una scia; se il capo lo raggiunge, lo carica
+      bx=ME.borgo.x; by=ME.borgo.y; corri=.32;
+      if(dist(p.x,p.y,c.x,c.y)<30&&!c.spalla){ c.spalla=p.uid; p.stato='inspalla' }
+      p.agonia=(p.agonia||0)+dt;
+      if(p.agonia>90){ muore(p); continue }
+    }
+    else if(p.stato==='inspalla'){
+      // in spalla si sta addosso al capo: è un salto, e va saltato anche nel passato
+      teletrasporta(p,c.x,c.y-6);
+      if(dist(c.x,c.y,ME.borgo.x,ME.borgo.y)<70){
+        p.stato='segue'; p.vita=Math.max(1,p.vitaMax*.5); c.spalla=null; p.agonia=0;
+        dire(nomina(p)+' è a casa');
+      }
+      continue;
+    }
+    else if(p.stato==='torna'){
+      if(p.attesa>0){ p.attesa-=dt; p.vx=p.vy=0; }
+      else{
+        bx=ME.borgo.x; by=ME.borgo.y;
+        if(dBorgo<70){ p.stato='segue'; p.vig=Math.max(p.vig,40); scaricaSacco(p) }
+      }
+      corri=p.vig<25?.7:1;
+    }
+    else if(p.stato==='lavora'){
+      const a=ME.aste.find(x=>x.id===p.asta);
+      if(!a){ p.stato='segue'; p.asta=null; }
+      else if(a.tipo==='cantiere'){
+        // costruire: ci si mette attorno e si lavora
+        const an=(p.uid*2.4)%TAU;
+        bx=a.x+Math.cos(an)*26; by=a.y+Math.sin(an)*26;
+        if(dist(p.x,p.y,a.x,a.y)<44){
+          const e=ME.edifici.find(e=>e.asta===a.id);
+          if(e&&e.prog<1){
+            e.prog=Math.min(1,e.prog+dt*.055);
+            if(Math.random()<dt*3)scintilla(p.x,p.y-10,'#d9c08a');
+            if(e.prog>=1){ dire(EDIFICI[e.tipo].n+' finita'); strappaAsta(a); salva(true) }
+          }
+        }
+      }
+      else {
+        const cap=capacita(p);
+        if(!p.obb||p.obb.v<=0||dist(p.obb.x,p.obb.y,a.x,a.y)>R_ASTA*1.35){
+          p.obb=trovaCosa(a.x,a.y,R_ASTA*1.3,p);
+        }
+        // Si torna al fuoco col sacco pieno — ma anche quando qui non c'è
+        // più niente da prendere: altrimenti restano lì col sacco a metà
+        // e la roba raccolta non arriva mai a casa.
+        const pieno=p.carico&&p.carico.q>=cap;
+        const secco=!p.obb&&p.carico&&p.carico.q>=1;
+        if(pieno||secco){
+          bx=ME.borgo.x; by=ME.borgo.y; corri=.66;
+          if(dBorgo<70) scaricaSacco(p);
+        }
+        else if(p.caccia){ bx=p.caccia.x; by=p.caccia.y; corri=1.1 }
+        else if(p.obb){
+          bx=p.obb.x; by=p.obb.y;
+          if(dist(p.x,p.y,p.obb.x,p.obb.y)<COSA[p.obb.t].r+9){
+            raccogli(p,p.obb,dt*(a.fuoco?2:1));
+            bx=null;by=null;p.vx=p.vy=0;
+          }
+        }
+        else {
+          // terra esaurita: si dice una volta sola, e si resta lì ad aspettare ordini
+          if(!a.detto){ a.detto=true; dire('Qui non c\'è più niente') }
+          const an=(p.uid*1.7)%TAU;
+          bx=a.x+Math.cos(an)*(30+((p.uid*13)%50)); by=a.y+Math.sin(an)*(30+((p.uid*7)%50));
+        }
+      }
+    }
+    else {  /* segue */
+      const q=puntoScia(22*(p.rank+1));
+      if(q){ bx=q.x; by=q.y }
+      corri=p.carico&&!conCavallo(p)?.72:1;      // col cavallo accanto il sacco non pesa
+      if(p.vig<25)corri*=.7;
+    }
+
+    /* combattere: chi ha un'arma vera reagisce da solo a quello che gli capita addosso */
+    if(p.mest!=='contadino'&&p.mest!=='bambino'&&p.colpo<=0){
+      const A=ARMI[p.arma], g=A.gitt||24;
+      let bers=null,md=1e9;
+      for(const n of nemici){ const d=dist(n.x,n.y,p.x,p.y); if(d<g&&d<md){md=d;bers=n} }
+      if(bers){
+        p.colpo=A.gitt&&A.gitt>100?1.5:.8;
+        p.guarda=Math.atan2(bers.y-p.y,bers.x-p.x);
+        if(A.gitt&&A.gitt>100){ frecce.push({x:p.x,y:p.y-8,tx:bers.x,ty:bers.y,t:0,dmg:A.dmg,da:p.uid}) }
+        else { ferisciNemico(bers,A.dmg,p) }
+        if(A.gitt&&A.gitt>100){ bx=null;by=null;p.vx=p.vy=0 }   // l'arciere si ferma e tira
+      }
+    }
+
+    muovi(p,bx,by,MESTIERI[p.mest].vel*corri,dt);
+  }
+
+  /* ── La fila resta una fila ───────────────────────────────────
+     Ognuno insegue un punto a 22 unità dietro il precedente, ma quando il capo
+     frena quei punti si accalcano e le sagome finiscono una dentro l'altra: il
+     codazzo diventa un grumo, e il codazzo è il gioco. Una sola passata sui
+     VICINI CONSECUTIVI — non tutte le coppie — e solo su chi è in fila: chi
+     lavora sta in cerchio attorno all'asta e quel cerchio non si tocca.
+     Il tetto di 1.5 unità per passo è quello che rende la spinta invisibile:
+     più alto e si vede qualcuno che viene spostato da una mano. */
+  for(let i=0;i+1<seg.length;i++){
+    const a=seg[i], b=seg[i+1];
+    if(a.trasf>0||b.trasf>0)continue;
+    let dx=b.x-a.x, dy=b.y-a.y;
+    let d=Math.hypot(dx,dy);
+    if(d>=9)continue;
+    if(d<.05){ dx=Math.cos(a.uid); dy=Math.sin(a.uid); d=1 }
+    const s=Math.min(1.5,(9-d)*.5)/d;
+    a.x-=dx*s; a.y-=dy*s; b.x+=dx*s; b.y+=dy*s;
+  }
+
+  const prima=ME.gente.length;
+  ME.gente=ME.gente.filter(p=>p.stato!=='morto');
+  if(ME.gente.length!==prima)rifaiListe();   // qualcuno è caduto: le liste calde mentono
+
+  /* ── I nemici ─────────────────────────────────────────────── */
+  ondata(dt);
+  for(const n of nemici){
+    const N=NEMICI[n.t];
+    if(n.ric>0)n.ric-=dt;
+    if(n.colpito>0)n.colpito-=dt;
+    let bx=null,by=null,vel=N.vel;
+    if(luceOra()<.35&&n.t==='lupo')vel*=1.35;
+
+    /* Stordito: scivola all'indietro con la spinta che gli è rimasta addosso,
+       e non decide niente finché non si è fermato. */
+    if(n.stordito>0){
+      n.stordito-=dt;
+      n.vx*=Math.pow(.0009,dt); n.vy*=Math.pow(.0009,dt);
+      n.x=clamp(n.x+n.vx*dt,20,W-20); n.y=clamp(n.y+n.vy*dt,20,W-20);
+      continue;
+    }
+
+    if(n.fuga){
+      const an=Math.atan2(n.y-ME.borgo.y,n.x-ME.borgo.x);
+      bx=n.x+Math.cos(an)*400; by=n.y+Math.sin(an)*400;
+      if(dist(n.x,n.y,ME.capo.x,ME.capo.y)>1500){ n.morto=true }
+    } else {
+      let b=null;
+      if(n.t==='ladro'){ b=piuCarico()||ultimoDellaFila() }
+      else { b=ultimoDellaFila()||VIVI[0] }
+      if(FERITI.length&&n.t==='lupo')b=FERITI[0];
+      if(!b){ b={x:ME.capo.x,y:ME.capo.y,capo:true} }
+      n.preda=b;
+      bx=b.x; by=b.y;
+      const d=dist(n.x,n.y,b.x,b.y);
+      if(d<N.r+11&&n.ric<=0){
+        n.ric=N.ric;
+        if(n.t==='ladro'&&b.carico){ n.rubato=b.carico; b.carico=null; n.fuga=true;
+          dire('Ti hanno strappato un sacco'); }
+        else if(b.capo){ feriscilCapo(N.dmg) }
+        else { ferisciPersona(b,N.dmg) }
+      }
+    }
+    muovi(n,bx,by,vel,dt);
+  }
+  nemici=nemici.filter(n=>n.vita>0&&!n.morto);
+
+  /* ── Le frecce ────────────────────────────────────────────── */
+  for(const f of frecce){
+    f.pt=f.t;                          // anche la freccia ha un passato da interpolare
+    f.t+=dt*3.2;
+    if(f.t>=1){
+      f.fine=true;
+      for(const n of nemici) if(dist(n.x,n.y,f.tx,f.ty)<16){ ferisciNemico(n,f.dmg,null); break }
+    }
+  }
+  frecce=frecce.filter(f=>!f.fine);
+  for(const s of scintille){ s.pt=s.t; s.py=s.y; s.t+=dt*2.2; s.y-=dt*22 }
+  scintille=scintille.filter(s=>s.t<1);
+  /* La polvere si compatta sul posto invece di farsi filtrare: un array nuovo
+     ogni passo, sessanta volte al secondo, è spazzatura che si paga in
+     micro-pause. Qui non se ne alloca mai nessuno. */
+  { let w=0;
+    for(let i=0;i<POLV.length;i++){ const s=POLV[i]; s.pt=s.t; s.t+=dt*1.5; if(s.t<1)POLV[w++]=s }
+    POLV.length=w; }
+
+  /* ── Le torri vegliano ────────────────────────────────────── */
+  for(const e of ME.edifici){
+    if(e.tipo!=='torre'||e.prog<1)continue;
+    e.ric=(e.ric||0)-dt;
+    if(e.ric<=0){
+      for(const n of nemici){
+        if(dist(n.x,n.y,e.x,e.y)<300){
+          frecce.push({x:e.x,y:e.y-26,tx:n.x,ty:n.y,t:0,dmg:1.6,da:0});
+          e.ric=1.6; break;
+        }
+      }
+    }
+  }
+
+  /* ── Si mangia: il granaio cala da solo, in continuo ────────── */
+  {
+    let bocche=0;
+    for(const p of ME.gente){ if(p.stato==='morto')continue;
+      bocche+=p.mest==='bambino'?.5:p.mest==='contadino'?1:1.5 }
+    bocche+=1.5;                                   // il capo mangia come un guerriero
+    const pasto=bocche*FAME.AL_GIORNO/GIORNO*dt;
+    // le uova e il latte vanno prima del grano: è per questo che si tengono le bestie
+    let resto=pasto;
+    if(ME.scorte.cibo>0){ const q=Math.min(ME.scorte.cibo,resto); ME.scorte.cibo-=q; resto-=q }
+    if(resto>0){ ME.scorte.grano=Math.max(0,ME.scorte.grano-resto) }
+    FAME.vuoto=ME.scorte.grano<=0&&ME.scorte.cibo<=0;
+    if(FAME.vuoto&&!FAME.detto){ FAME.detto=true; dire('Il granaio è vuoto') }
+    if(!FAME.vuoto)FAME.detto=false;
+  }
+
+  /* ── Gli animali ──────────────────────────────────────────── */
+  passoAnimali(dt);
+
+  /* ── Nascite: il granaio pieno apre la porta di una capanna ── */
+  if(ME.scorte.grano>=40&&VIVI.length<postiTot()){
+    ME.natura=(ME.natura||0)+dt;
+    if(ME.natura>26){
+      ME.natura=0; ME.scorte.grano-=40;
+      const b=nuovaPersona(ME.borgo.x+(Math.random()-.5)*50,ME.borgo.y+(Math.random()-.5)*50,null);
+      b.mest='bambino'; b.arma=null; b.cresce=170; b.vitaMax=2; b.vita=2;
+      ME.gente.push(b); ME.stat.nati++;
+      dire('È nato qualcuno');
+      salva();
+    }
+  } else ME.natura=0;
+
+  /* ── Il grano ricresce, il bosco e il ferro no ────────────── */
+  ME.ricresci=(ME.ricresci||0)+dt;
+  if(ME.ricresci>2){
+    const q=ME.ricresci; ME.ricresci=0;
+    for(const c of chunks.values())
+      for(const o of c.cose)
+        if((o.t==='spiga'||o.t==='salina')&&o.v<o.vmax)
+          o.v=Math.min(o.vmax,o.v+o.vmax*q/240);
+    for(const a of ME.aste) a.detto=false;
+  }
+
+  /* ── Roba per terra che scade ─────────────────────────────── */
+  const t=now();
+  if(ME.terra.length) ME.terra=ME.terra.filter(o=>o.fino>t);
+}
+
+/* ── Pezzi del passo ────────────────────────────────────────── */
+/* Il movimento di tutti quelli che non sono il capo.
+   Prima: la velocità veniva ASSEGNATA puntando il bersaglio, ogni fotogramma,
+   piena. Da fermo a centosedici in un istante, e da centosedici a zero in un
+   altro — nessun peso, e chi era arrivato entro due unità vibrava sul posto
+   perché il bersaglio (un punto della scia) si spostava sotto ai suoi piedi.
+   Adesso c'è una velocità DESIDERATA e una vera che la insegue, e dentro la
+   rampa la desiderata cala da sola: si arriva posandosi. */
+function muovi(o,bx,by,vel,dt){
+  let dvx=0, dvy=0;
+  if(bx!==null&&bx!==undefined){
+    const dx=bx-o.x, dy=by-o.y, d=Math.hypot(dx,dy);
+    // sotto 1.2 unità si azzera la VELOCITÀ, mai la posizione: azzerare la
+    // posizione sarebbe un teletrasporto, e un teletrasporto si vede
+    if(d>1.2){ const k=vel*(d<RAMPA?d/RAMPA:1)/d; dvx=dx*k; dvy=dy*k }
+  }
+  const ovx=o.vx, ovy=o.vy;
+  const k=(dvx===0&&dvy===0)?K_FREN:K_PART;
+  o.vx=ovx+(dvx-ovx)*k; o.vy=ovy+(dvy-ovy)*k;
+  o.x=clamp(o.x+o.vx*dt,20,W-20);
+  o.y=clamp(o.y+o.vy*dt,20,W-20);
+  const v=Math.hypot(o.vx,o.vy);
+  o.and=v>4;
+  if(v>4){
+    /* La direzione insegue per l'arco più corto. Senza, chi gira attorno a un
+       albero sfarfalla fra destra e sinistra a ogni fotogramma. */
+    const an=Math.atan2(o.vy,o.vx);
+    if(o.dir===undefined)o.dir=an;
+    else{ let d=an-o.dir; d=((d+Math.PI)%TAU+TAU)%TAU-Math.PI; o.dir+=d*K_DIR }
+    o.fase=(o.fase||0)+dt*(v/9);
+  }
+  o.acc=v>1.2?((o.vx-ovx)*o.vx+(o.vy-ovy)*o.vy)/v/dt:0;
+  if(o.acc>640||o.acc<-640) polvere(o);
+}
+function trovaCosa(x,y,r,p){
+  const l=coseIntorno(x,y,r);
+  let best=null,md=1e9;
+  for(const o of l){
+    if(!COSA[o.t].res)continue;
+    const d=dist(o.x,o.y,p.x,p.y)+((o.pres||0)*40);
+    if(d<md){md=d;best=o}
+  }
+  return best;
+}
+function raccogli(p,o,dt){
+  const q=COSA[o.t].raccolta*dt*(p.mest==='contadino'?1:.55)*(CONDOTTIERO().tratto==='terra'?1.2:1);
+  const preso=Math.min(q,o.v);
+  o.v-=preso;
+  const res=COSA[o.t].res;
+  if(!p.carico||p.carico.t!==res){ if(p.carico)scaricaSacco(p); p.carico={t:res,q:0} }
+  p.carico.q+=preso;
+  p.lavora=.25;
+  if(o.v<=0){ o.v=0; p.obb=null;
+    const ci=Math.floor(o.x/CH), cj=Math.floor(o.y/CH);
+    const c=chunks.get(ci+','+cj); if(c)segnaChunk(c);
+  }
+}
+function scaricaSacco(p){
+  if(!p.carico)return;
+  const cap=scortaTot();
+  const r=p.carico.t;
+  ME.scorte[r]=Math.min(cap,ME.scorte[r]+p.carico.q);
+  if(r==='sale'){
+    const prima=ME.respiro;
+    ME.respiro=Math.min(12000,ME.respiro+600*Math.min(1,p.carico.q/12));
+    if(ME.respiro>prima+60) dire('Il sale allarga il cerchio');
+    ME.moneta.soft+=Math.round(p.carico.q);
+  }
+  p.carico=null;
+  salva();
+}
+function scintilla(x,y,col){ scintille.push({x,y,t:0,c:col||'#ffd08a'}) }
+
+/* ── La polvere ai piedi ──────────────────────────────────────────
+   Non è un effetto: è il modo in cui si VEDE che partire e fermarsi costano.
+   Nasce solo quando l'accelerazione è forte davvero — non quando uno cammina
+   — e mai più di una particella ogni ottavo di secondo a persona. Il tetto è
+   rigido e a numero, non a tempo: una partita lunga non paga più di una corta,
+   e su un telefono che soffre questa è la prima riga da cancellare. */
+let PASSI=0;
+const POLV=[];
+function polvere(o){
+  if(o.polv&&PASSI-o.polv<7)return;
+  o.polv=PASSI;
+  if(POLV.length>=40)return;
+  POLV.push({x:o.x+(Math.random()-.5)*4, y:o.y+(Math.random()-.5)*2,
+    t:0, r:1.1+Math.random()*.9});
+}
+
+function ferisciPersona(p,d){
+  const mult=p.invulno<0?2:1;                 // vestizione: danno doppio
+  p.vita-=d*mult;
+  p.colpito=.2;
+  if(p.vita<=0&&p.stato!=='ferito'){
+    p.vita=0; p.stato='ferito'; p.agonia=0; p.asta=null;
+    dire((p.nome?p.nome:'Uno dei tuoi')+' è a terra');
+  }
+}
+function feriscilCapo(d){
+  const c=ME.capo;
+  if(c.inv>0)return;
+  c.vita-=d; c.inv=.9; c.colpito=.25;
+  if(c.vita<=0){
+    c.vita=Math.max(1,Math.round(c.vitaMax*.4));
+    c.x=ME.borgo.x; c.y=ME.borgo.y+40;
+    scia.length=0; sciaD=0;
+    dire('Ti hanno buttato giù. Ti sei svegliato al fuoco.');
+  }
+}
+function ferisciNemico(n,d,da){
+  n.vita-=d; n.colpito=.2;
+  if(n.vita<=0){
+    const N=NEMICI[n.t];
+    if(N.bottino) posaATerra(N.bottino,n.x,n.y);
+    if(n.rubato) posaATerra('sacco',n.x,n.y,n.rubato);
+    if(da){ da.uccisioni=(da.uccisioni||0)+1; if(da.uccisioni===1)nomina(da) }
+  }
+}
+function muore(p){
+  p.stato='morto';
+  ME.stat.morti++;
+  ME.pietre.push({nome:p.nome||null,t:now()});
+  if(ME.pietre.length>24)ME.pietre.shift();
+  if(p.arma&&p.arma!=='falce')posaATerra(p.arma,p.x,p.y);
+  dire((p.nome||'Uno dei tuoi')+' non ce l\'ha fatta');
+  salva();
+}
+
+/* ── Il colpo d'asta: il tuo corpo è l'arma ─────────────────── */
+function colpoAsta(){
+  const c=ME.capo;
+  c.colpo=.45;
+  let presi=0;
+  for(const n of nemici){
+    const d=dist(n.x,n.y,c.x,c.y);
+    if(d>58)continue;
+    const an=Math.atan2(n.y-c.y,n.x-c.x);
+    let diff=Math.abs(((an-(c.dir||0)+Math.PI*3)%TAU)-Math.PI);
+    if(diff>1.22)continue;
+    ferisciNemico(n,1,null);
+    /* La spinta non è un teletrasporto: è una velocità che si integra e si
+       smorza, così lo si vede scivolare. E mentre scivola NON MORDE — è la
+       riga che fa del tasto grande una difesa invece di uno spostamento. */
+    const sp=(n.t==='lupo'?420:230)*(CONDOTTIERO().tratto==='asta'?1.35:1);
+    n.vx=Math.cos(an)*sp; n.vy=Math.sin(an)*sp;
+    n.stordito=.55;
+    n.ric=Math.max(n.ric,.55);
+    if(n.fuga===false&&n.t==='ladro'&&n.rubato){ posaATerra('sacco',n.x,n.y,n.rubato); n.rubato=null }
+    presi++;
+  }
+  if(presi){
+    scintilla(c.x+Math.cos(c.dir||0)*30,c.y+Math.sin(c.dir||0)*30,'#fff');
+    /* Il colpo ha un corpo: il mondo si inchioda per un battito, e il capo
+       sente il contraccolpo. Quaranta millisecondi, mai di più — oltre è un
+       rallentatore, e il rallentatore stanca. */
+    FERMO=Math.max(FERMO,.04);
+    c.vx-=Math.cos(c.dir||0)*60; c.vy-=Math.sin(c.dir||0)*60;
+    SCOSSA=Math.max(SCOSSA,presi>1?4:2.5);
+  }
+}
+let FERMO=0, SCOSSA=0;
+
+/* ── Tornare dopo essere stati via: nessuna simulazione, formule ── */
+function recuperaAssenza(){
+  const via=clamp((now()-(ME.orologio.visto||now()))/1000,0,6*3600);
+  if(via<60)return;
+  // chi era fuori è a casa, col carico un po' alleggerito
+  for(const p of ME.gente){
+    p.x=ME.borgo.x+(Math.random()-.5)*90; p.y=ME.borgo.y+(Math.random()-.5)*90;
+    p.stato='segue'; p.asta=null; p.obb=null; p.vig=100;
+    if(p.stato==='ferito'){ p.stato='segue'; p.vita=Math.max(1,p.vitaMax*.5) }
+    if(p.carico)p.carico.q=Math.round(p.carico.q*.8);
+  }
+  ME.aste=[];
+  // nascite maturate, finché il granaio regge
+  let nati=Math.floor(via/200);
+  while(nati>0&&ME.scorte.grano>=40&&gentePiedi().length<postiTot()){
+    ME.scorte.grano-=40;
+    const b=nuovaPersona(ME.borgo.x+(Math.random()-.5)*60,ME.borgo.y+(Math.random()-.5)*60,null);
+    b.mest='bambino'; b.arma=null; b.cresce=60; b.vitaMax=2; b.vita=2;
+    ME.gente.push(b); ME.stat.nati++; nati--;
+  }
+  // ladri: solo se il granaio era pieno. Fuori sessione non muore mai nessuno.
+  let rubato=0;
+  if(ME.scorte.grano>20){
+    rubato=Math.min(Math.round(ME.scorte.grano*.25),Math.round(via/3600*4)*10);
+    ME.scorte.grano-=rubato;
+    if(rubato>0)ME.rubatoMentreVia=rubato;
+  }
+  ME.capo.x=ME.borgo.x+40; ME.capo.y=ME.borgo.y+30;
+  ME.capo.vita=ME.capo.vitaMax;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   9 · DISEGNO
+   La regola: se copri il colore devi ancora sapere chi è. La
+   differenza sta nella sagoma, non nella tinta.
+   ═══════════════════════════════════════════════════════════════ */
+let cv,ct,cw,ch,DPR=1;
+const CAM={x:0,y:0,z:1};
+const ZOOM=[.75,1,1.35];
+let zi=1;
+
+function adattaTela(){
+  cv=$('#cv'); ct=cv.getContext('2d');
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  const w=cv.clientWidth, h=cv.clientHeight;
+  /* Ricreare la tela svuota ogni buffer del contesto: è lo scatto che si vede
+     sul telefono ogni volta che la barra dell'indirizzo compare o sparisce.
+     Se la misura non è cambiata davvero, non è successo niente. */
+  if(w===cw&&h===ch&&dpr===DPR)return;
+  DPR=dpr; cw=w; ch=h;
+  cv.width=Math.round(cw*DPR); cv.height=Math.round(ch*DPR);
+  ct.setTransform(DPR,0,0,DPR,0,0);
+  ct.imageSmoothingEnabled=false;
+}
+/* La barra del telefono che scorre spara decine di 'resize' di fila: si
+   aspetta che abbia finito di muoversi invece di rifare la tela a ogni pixel. */
+let tRid=0;
+function adattaTelaPiano(){ clearTimeout(tRid); tRid=setTimeout(adattaTela,120) }
+/* La proiezione, decisa una volta per fotogramma e agganciata al pixel VERO
+   dello schermo. L'aggancio va fatto qui, sull'offset finale in spazio
+   schermo: arrotondare CAM.x in spazio mondo, a zoom 0.75, farebbe saltare il
+   mondo di 1,33 unità per volta — l'esatto contrario di quello che si vuole.
+   Così invece i bordi delle lastre d'erba cadono sempre sullo stesso pixel
+   fra due fotogrammi consecutivi, e le cuciture chiare smettono di luccicare. */
+let OFX=0, OFY=0;
+function fissaProiezione(){
+  const q=1/DPR;
+  OFX=Math.round((cw/2-CAM.x*CAM.z)/q)*q;
+  OFY=Math.round((ch/2-CAM.y*CAM.z)/q)*q;
+}
+const s2w=(sx,sy)=>({x:(sx-OFX)/CAM.z, y:(sy-OFY)/CAM.z});
+const w2s=(wx,wy)=>({x:wx*CAM.z+OFX, y:wy*CAM.z+OFY});
+
+/* ── La camera ────────────────────────────────────────────────────
+   Tre difetti, tutti dello stesso tipo: si muoveva sempre, anche quando non
+   serviva, e il suo bersaglio saltava da solo. Il baricentro dei seguaci
+   cambiava di colpo ogni volta che uno passava a 'lavora', perché cambiava il
+   divisore: l'inquadratura respirava senza che nessuno l'avesse mossa. E il
+   lerp con pow(k,dt) a dt variabile non è mai due volte lo stesso filtro.
+   Adesso: bersaglio = capo interpolato più un anticipo nella direzione in cui
+   sta andando; i seguaci contano ancora ma passati in un filtro lento, così
+   non possono saltare; una zona morta dentro cui la camera sta ferma; e una
+   molla criticamente smorzata, che è stabile a qualunque dt e non rimbalza. */
+let CVX=0, CVY=0, SGX=0, SGY=0, sgPronto=false;
+function muoviCamera(dt){
+  const c=ME.capo;
+  const cx=ix(c), cy=iy(c);
+  const sp=Math.hypot(c.vx||0,c.vy||0);
+  let tx=cx, ty=cy;
+  if(sp>1){ const a=34*Math.min(1,sp/V_CAPO)/sp; tx+=c.vx*a; ty+=c.vy*a }
+
+  let mx=cx, my=cy;
+  if(SEG.length){
+    let a=0,b=0;
+    for(let i=0;i<SEG.length;i++){a+=SEG[i].x;b+=SEG[i].y}
+    mx=a/SEG.length; my=b/SEG.length;
+  }
+  if(!sgPronto){ SGX=mx; SGY=my; sgPronto=true }
+  const kf=1-Math.exp(-dt/.8);
+  SGX+=(mx-SGX)*kf; SGY+=(my-SGY)*kf;
+  tx=tx*.78+SGX*.22; ty=ty*.78+SGY*.22;
+
+  /* La zona morta si misura sul lato CORTO dello schermo: su un telefono da
+     390 di larghezza dimensionarla sul lato lungo vorrebbe dire ottanta pixel,
+     e il capo finirebbe a ridosso del bordo camminando. */
+  const dz=Math.min(40,Math.min(cw,ch)*.07);
+  const ex=(tx-CAM.x)*CAM.z, ey=(ty-CAM.y)*CAM.z;
+  const ed=Math.hypot(ex,ey);
+  if(ed<=dz){ tx=CAM.x; ty=CAM.y }
+  else{ const s=(ed-dz)/ed; tx=CAM.x+(tx-CAM.x)*s; ty=CAM.y+(ty-CAM.y)*s }
+
+  const T=.22, k1=2/T, k2=1/(T*T);
+  CVX+=(-k1*CVX-(CAM.x-tx)*k2)*dt;
+  CVY+=(-k1*CVY-(CAM.y-ty)*k2)*dt;
+  CAM.x+=CVX*dt; CAM.y+=CVY*dt;
+  /* Il sussulto del colpo: due seni a frequenze diverse, sommati alla camera
+     e non scritti dentro — così non sporca mai la posizione vera. */
+  if(SCOSSA>0){
+    const t=performance.now()/1000;
+    CAM.x+=Math.sin(t*61)*SCOSSA; CAM.y+=Math.cos(t*47)*SCOSSA*.7;
+  }
+  CAM.z=lerp(CAM.z,ZOOM[zi],1-Math.pow(.02,dt));
+}
+
+/* ── Palette ────────────────────────────────────────────────── */
+const PEL='#e0b184';
+/* Vesti chiare e di lana su un mondo smeraldo: la gente è la cosa più
+   luminosa dello schermo dopo il fuoco, ed è giusto così. */
+const VESTE={contadino:'#d9cfbb',guerriero:'#c9b9a0',lanciere:'#b9c3c8',
+  arciere:'#9fb3a0',spadaccino:'#c3cbd2',bambino:'#e3d8c4',capo:'#c8342c'};
+/* Tre tinte per mestiere invece di una. Cinque contadini in fila non devono
+   sembrare cinque stampe dello stesso timbro, e la differenza deve restare
+   piccola: se si vede il colore prima della sagoma ho sbagliato mestiere.
+   Scritte a mano e non schiarite a runtime, perché una tinta calcolata dal
+   canale vira sempre verso il rosa e rompe l'accordo con l'erba. */
+const VESTE3={
+  contadino: ['#d9cfbb','#cfc4ad','#e2d9c7'],
+  guerriero: ['#c9b9a0','#bdab90','#d3c4ad'],
+  lanciere:  ['#b9c3c8','#adb8be','#c4cdd2'],
+  arciere:   ['#9fb3a0','#92a794','#abbeac'],
+  spadaccino:['#c3cbd2','#b7c0c8','#cdd4da'],
+  bambino:   ['#e3d8c4','#d9cdb7','#ebe2d0']
+};
+/* Il lato della veste che il sole non prende. Non è la stessa tinta con
+   l'alpha addosso: è più fredda, perché quello che manca a mezzogiorno non
+   è nero, è cielo. Le stesse tinte servono anche per cappelli e cappucci,
+   così una firma di mestiere non introduce mai un colore nuovo. */
+const VESTE_SCURA={contadino:'#8a8472',guerriero:'#7e7460',lanciere:'#737c82',
+  arciere:'#62735f',spadaccino:'#79828a',bambino:'#928a79'};
+/* I nemici sono l'unico bruno-violaceo del mondo: non c'è un suolo, una
+   veste o un albero con quella tinta. Si vedono prima di essere capiti. */
+const NEM_VESTE='#5a3a4e', NEM_PEL='#9b7f8e', NEM_SCURA='#3a2432';
+const CAPELLI='#3b2a1c';
+/* Il colore della roba nel sacco: era un oggetto letterale dentro il ciclo,
+   cioè un'allocazione per persona per fotogramma per niente. */
+const ROBACOL={grano:'#d9bb52',legno:'#8a6134',ferro:'#9098a0',sale:'#e8eae4'};
+
+/* ── L'ora del sole ─────────────────────────────────────────
+   Non è realismo: è il modo più economico di dire "è tardi" senza
+   scriverlo da nessuna parte. L'ombra gira e si allunga, e basta
+   quella per sapere che ore sono senza guardare il cielo. ──── */
+const SOLE={lx:0, ly:0, op:.22};
+let TV=0;                        // tempo del vento, in secondi: uno solo per tutti
+function sole(){
+  const an=(ME.orologio.tempo-.25)*TAU;
+  const l=luceOra();
+  const L=1.1+3.6*(1-l);
+  SOLE.lx=-Math.cos(an)*L;
+  SOLE.ly=-Math.sin(an)*L*.45;   // vista dall'alto: in verticale l'ombra è schiacciata
+  SOLE.op=.09+.15*l;
+}
+/** L'ombra di una cosa piantata per terra, accodata a un path già aperto. */
+function ombra(px,py,r,z){
+  const ex=px+SOLE.lx*r*z, ey=py+SOLE.ly*r*z;
+  ct.moveTo(ex+r*z*.9,ey);
+  ct.ellipse(ex,ey,r*z*.9,r*z*.38,0,0,TAU);
+}
+
+/* ── Il suolo ───────────────────────────────────────────────
+   Il terreno è una funzione pura del seme: non cambia mai, in tutta
+   la partita. Ricalcolarlo duecento volte a fotogramma era lavoro
+   buttato. Qui si dipinge una volta su lastre di bitmap e poi lo si
+   trascina soltanto — e dentro quella volta ci si può spendere
+   quanto si vuole in grana, ciuffi e confini sfrangiati, perché non
+   costano niente a fotogramma.
+   Quello che invece cambia — una spiga mietuta, un albero abbattuto
+   — non sta qui dentro: sta in disegnaCose(), che continua a
+   ridisegnarlo ogni fotogramma. Per questo non c'è niente da
+   invalidare e il mondo non si congela mai in una foto. ────── */
+const LS=256;                    // lato della lastra, in unità di mondo
+const LT=2;                      // unità di mondo per texel: il pixelone è voluto
+const LN=LS/LT;                  // 128 texel di lato
+const SG=32;                     // passo della griglia di classificazione
+const NS=LS/SG+1;                // 9 campioni di lato: 81, non 65000
+const CT=SG/LT, NC=LN/CT, IC=1/CT;
+const MG=16;                     // passo della griglia dei segni
+const lastre=new Map();
+const teleLibere=[];             // le tele sfrattate si riusano: allocarle costa
+let lastraUso=0, tettoLastre=40, lastraScratch=null, granaTela=null;
+let lastraImg=null, lastraP32=null, LE=true;
+// riusate a ogni generazione: la lastra è sempre della stessa misura
+const CB=new Uint8Array(NS*NS), CU=new Float32Array(NS*NS), CM=new Float32Array(NS*NS);
+
+/** Le dieci tinte di suolo in fila, per indice di bioma: dentro il ciclo dei
+    texel non si va a cercare niente per nome, si legge e basta. */
+const PAL=(()=>{
+  const a=new Float32Array(BORDI.length*6);
+  BORDI.forEach((k,i)=>{
+    const c=[BIOMI[k].suolo,BIOMI[k].suolo2];
+    for(let t=0;t<2;t++)for(let n=0;n<3;n++)
+      a[i*6+t*3+n]=parseInt(c[t].slice(1+n*2,3+n*2),16);
+  });
+  return a;
+})();
+
+/** La tavola del pepe: quattromila numeri a caso, presi una volta sola.
+    Serve a sfrangiare i confini e a screziare il colore. h2() costa
+    cinquanta nanosecondi e i texel sono sedicimila per lastra: chiamarlo
+    lì dentro era il novanta per cento del conto. La tavola è larga 64
+    texel e le lastre sono allineate a 128, quindi si ripete senza
+    cuciture — e a 128 unità di distanza il ripetersi non si vede. */
+let PEPE=null;
+function pepe(){
+  if(PEPE)return PEPE;
+  PEPE=new Float32Array(4096);
+  for(let i=0;i<4096;i++) PEPE[i]=h2(i&63,i>>6,1013);
+  return PEPE;
+}
+
+/** Il bioma come lo si VEDE. Stesse soglie di bioma(), ma su coordinate
+    deformate: così il bosco entra nella piana a lingue invece che di netto.
+    È solo pittura — bioma(), quello che decide il gioco, non si tocca. */
+function vistaSuolo(x,y,out){
+  const wx=x+(vnoise(x,y,90,881)-.5)*22;
+  const wy=y+(vnoise(x,y,90,883)-.5)*22;
+  const alt=campo(wx,wy,101), umi=campo(wx+9000,wy-4000,211);
+  let b=0;
+  if(alt>.70)b=4; else if(umi>.72&&alt<.46)b=2;
+  else if(umi>.52&&alt<.66)b=1; else if(umi<.31)b=3;
+  out[0]=b; out[1]=umi; out[2]=vnoise(x,y,150,919);
+}
+
+/** La grana fine: un solo pattern di 64, steso con un fillRect invece
+    che con sessantacinquemila puntini. */
+function grana(){
+  if(granaTela)return granaTela;
+  granaTela=document.createElement('canvas');
+  granaTela.width=granaTela.height=64;
+  const g=granaTela.getContext('2d'), d=g.createImageData(64,64), p=d.data;
+  for(let i=0,n=0;i<4096;i++,n+=4){
+    const v=h2(i&63,i>>6,613);
+    const s=v>.5?255:0;
+    p[n]=p[n+1]=p[n+2]=s;
+    p[n+3]=Math.abs(v-.5)*44|0;
+  }
+  g.putImageData(d,0,0);
+  return granaTela;
+}
+
+function generaLastra(li,lj){
+  const ox=li*LS, oy=lj*LS;
+  const tela=teleLibere.pop()||document.createElement('canvas');
+  tela.width=tela.height=LS;     // riassegnare la misura è anche il modo di pulirla
+  const g=tela.getContext('2d');
+  g.imageSmoothingEnabled=false;
+
+  /* 1 · la classificazione, su griglia larga */
+  const B=CB, U=CU, M=CM, s=[0,0,0];
+  for(let j=0;j<NS;j++)for(let i=0;i<NS;i++){
+    vistaSuolo(ox+i*SG,oy+j*SG,s);
+    const k=j*NS+i; B[k]=s[0]; U[k]=s[1]; M[k]=s[2];
+  }
+
+  /* 2 · i texel. Fra due celle di bioma diverso si sceglie l'uno o l'altro
+        a sorte pesata: mescolanza a sale e pepe, non sfumata — che è quello
+        che chiede una grafica piatta. */
+  if(!lastraScratch){
+    lastraScratch=document.createElement('canvas');
+    lastraScratch.width=lastraScratch.height=LN;
+    lastraImg=lastraScratch.getContext('2d').createImageData(LN,LN);
+    /* si scrive un intero per texel invece di quattro byte con la clamp
+       addosso: è la differenza fra sessantacinquemila scritture e sedicimila */
+    lastraP32=new Uint32Array(lastraImg.data.buffer);
+    LE=(new Uint8Array(new Uint32Array([1]).buffer))[0]===1;
+  }
+  const gs=lastraScratch.getContext('2d');
+  const img=lastraImg, P=lastraP32;
+  const PP=pepe();
+  let n=0;
+  for(let ty=0;ty<LN;ty++){
+    const cj=(ty/CT)|0, fy=(ty-cj*CT)*IC, ify=1-fy;
+    const rb=cj*NS, pr=(ty&63)<<6;
+    for(let ci=0;ci<NC;ci++){
+      /* i quattro angoli della cella si leggono una volta per otto texel:
+         dentro il ciclo stretto non deve restare che aritmetica */
+      const k=rb+ci, k2=k+NS;
+      const b00=B[k], b10=B[k+1], b01=B[k2], b11=B[k2+1];
+      const uni=(b00===b10&&b00===b01&&b00===b11);
+      const m00=M[k], m10=M[k+1], m01=M[k2], m11=M[k2+1];
+      const u00=U[k], u10=U[k+1], u01=U[k2], u11=U[k2+1];
+      const tb=ci*CT;
+      for(let s=0;s<CT;s++,n++){
+        const fx=s*IC, ifx=1-fx;
+        const w00=ifx*ify, w10=fx*ify, w01=ifx*fy, w11=fx*fy;
+        const ip=pr+((tb+s)&63);
+        const q=PP[ip];
+        let b=b00;
+        if(!uni){
+          // fra due celle di bioma diverso si tira a sorte pesata: sale e
+          // pepe, non sfumatura — che è quello che chiede una grafica piatta
+          const r=PP[(ip*7+1301)&4095];
+          if(r<w00)b=b00; else if(r<w00+w10)b=b10;
+          else if(r<w00+w10+w01)b=b01; else b=b11;
+        }
+        const mc=m00*w00+m10*w10+m01*w01+m11*w11;
+        const o=b*6+((mc*.74+q*.26)>.5?3:0);
+        const lum=(q-.5)*12;
+        let R=PAL[o]+lum, G=PAL[o+1]+lum, Bl=PAL[o+2]+lum;
+        if(b===2){
+          /* la Riva Salsa è una piana salata bagnata: il velo d'acqua sta
+             sempre DENTRO la riva (0,80 contro il 0,72 che decide il bioma),
+             così non tocca mai il confine e nessuno sembra camminare sul mare */
+          const u=u00*w00+u10*w10+u01*w01+u11*w11;
+          const so=.80+(q-.5)*.016;
+          if(u>so){ R=32+q*14; G=60+q*18; Bl=63+q*18 }
+          else if(u>so-.024){ R=198+q*20; G=204+q*18; Bl=199+q*18 }
+        }
+        R=R<0?0:R>255?255:R|0; G=G<0?0:G>255?255:G|0; Bl=Bl<0?0:Bl>255?255:Bl|0;
+        P[n]=LE?(0xff000000|(Bl<<16)|(G<<8)|R):((R<<24)|(G<<16)|(Bl<<8)|255);
+      }
+    }
+  }
+  gs.putImageData(img,0,0);
+  g.drawImage(lastraScratch,0,0,LN,LN,0,0,LS,LS);
+
+  /* 3 · la grana, in un fillRect solo */
+  g.fillStyle=g.createPattern(grana(),'repeat');
+  g.fillRect(0,0,LS,LS);
+
+  /* 4 · i segni: erba, lettiera, crepe, ciuffi secchi. Le posizioni vengono
+        da h2 su griglia di mondo, così due lastre vicine combaciano. */
+  const erba=[], erba2=[], lett=[], crepe=[], ciuffi=[], incr=[], bosco=[];
+  const NM=LS/MG, FR=SG/MG;
+  const FE=new Float32Array(64);                // la fertilità basta ogni 64 unità
+  for(let j=0;j<8;j++)for(let i=0;i<8;i++) FE[j*8+i]=fert(ox+i*64+32,oy+j*64+32);
+  for(let j=0;j<NM;j++)for(let i=0;i<NM;i++){
+    const gx=ox+i*MG, gy=oy+j*MG;
+    const ht=h2(gx,gy,743);
+    const x=i*MG+h2(gx,gy,733)*MG, y=j*MG+h2(gx,gy,739)*MG;
+    if(ht>.16+FE[((j*MG)>>6)*8+((i*MG)>>6)]*.6)continue;  // dove è povero, il suolo è più nudo
+    const b=B[((j/FR)|0)*NS+((i/FR)|0)];
+    if(b===0){ (ht<.07?erba2:erba).push(x|0,y|0) }
+    else if(b===1){ bosco.push(x,y,ht*3); lett.push((x|0)+3,(y|0)+1) }
+    else if(b===2){ incr.push(x|0,y|0,4+(ht*22|0)) }
+    else if(b===3){ ciuffi.push(x|0,y|0) }
+    else { crepe.push(x|0,y|0,5+(ht*30|0)) }
+  }
+  g.fillStyle='#7f7c36'; for(let i=0;i<erba.length;i+=2)g.fillRect(erba[i],erba[i+1],3,1);
+  g.fillStyle='#5c5b26'; for(let i=0;i<erba2.length;i+=2){g.fillRect(erba2[i],erba2[i+1],3,1);
+    g.fillRect(erba2[i]+1,erba2[i+1]-1,1,1)}
+  if(bosco.length){ g.beginPath();
+    for(let i=0;i<bosco.length;i+=3){ g.moveTo(bosco[i]+2.5,bosco[i+1]);
+      g.ellipse(bosco[i],bosco[i+1],2.5,1.5,bosco[i+2],0,TAU) }
+    g.fillStyle='rgba(24,42,20,.55)'; g.fill() }
+  g.fillStyle='#415c33'; for(let i=0;i<lett.length;i+=2)g.fillRect(lett[i],lett[i+1],1,1);
+  g.fillStyle='rgba(216,224,220,.30)';
+  for(let i=0;i<incr.length;i+=3)g.fillRect(incr[i],incr[i+1],incr[i+2],1);
+  g.fillStyle='#635640';
+  for(let i=0;i<ciuffi.length;i+=2){ g.fillRect(ciuffi[i],ciuffi[i+1],1,3);
+    g.fillRect(ciuffi[i]+2,ciuffi[i+1],1,3); g.fillRect(ciuffi[i]+1,ciuffi[i+1]+3,1,1) }
+  g.fillStyle='rgba(152,146,158,.45)';
+  for(let i=0;i<crepe.length;i+=3)g.fillRect(crepe[i],crepe[i+1],crepe[i+2],1);
+
+  /* 5 · dove sta l'acqua ferma, per il luccichio: si segna adesso, così a
+        fotogramma non si ricampiona nessun rumore. */
+  const acqua=[];
+  for(let j=0;j<NS;j++)for(let i=0;i<NS;i++){
+    const k=j*NS+i;
+    if(B[k]!==2||U[k]<.835)continue;
+    const gx=ox+i*SG, gy=oy+j*SG;
+    if(h2(gx,gy,829)<.42)continue;
+    acqua.push(gx+h2(gx,gy,831)*SG, gy+h2(gx,gy,833)*SG, 6+h2(gx,gy,837)*8);
+  }
+  return {c:tela, acqua, uso:++lastraUso};
+}
+
+function metti(li,lj){
+  lastre.set(li+','+lj, generaLastra(li,lj));
+  if(lastre.size<=tettoLastre)return;
+  // sfratto delle meno guardate di recente: la memoria non cresce mai
+  const ks=[...lastre.keys()].sort((a,b)=>lastre.get(a).uso-lastre.get(b).uso);
+  const via=ks.length-Math.round(tettoLastre*.75);
+  for(let i=0;i<via;i++){
+    const L=lastre.get(ks[i]);
+    if(teleLibere.length<8) teleLibere.push(L.c);
+    lastre.delete(ks[i]);
+  }
+}
+
+const daFare=[];
+function disegnaTerra(){
+  const tl=s2w(0,0), br=s2w(cw,ch);
+  const i0=Math.floor(tl.x/LS), i1=Math.floor(br.x/LS);
+  const j0=Math.floor(tl.y/LS), j1=Math.floor(br.y/LS);
+  const sz=LS*CAM.z+1;
+  // il tetto segue la finestra: uno schermo grande e uno zoom largo ne
+  // chiedono di più, e a quel punto sfrattare quelle in vista è thrashing puro
+  tettoLastre=Math.max(24,(i1-i0+1)*(j1-j0+1)+12);
+  daFare.length=0;
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+    const p=w2s(i*LS,j*LS);
+    const L=lastre.get(i+','+j);
+    if(L){ L.uso=++lastraUso; ct.drawImage(L.c,p.x,p.y,sz,sz) }
+    else{
+      // mai un buco: finché la lastra non c'è, il colore medio del bioma
+      ct.fillStyle=BIOMI[bioma(i*LS+LS/2,j*LS+LS/2)].suolo;
+      ct.fillRect(p.x,p.y,sz,sz);
+      daFare.push(i,j);
+    }
+  }
+  /* Il tetto è a tempo, non a numero. Una macchina svelta riempie lo schermo
+     in due fotogrammi, un telefono ne fa una sola e non se ne accorge nessuno:
+     il conto lo decide la macchina, non io a tavolino. */
+  if(daFare.length){
+    const t0=performance.now();
+    for(let k=0;k<daFare.length;k+=2){
+      metti(daFare[k],daFare[k+1]);
+      if(performance.now()-t0>2.2)break;
+    }
+  }
+}
+
+/** Il luccichio sui veli d'acqua. Solo dove ci sono, e le posizioni sono
+    già cotte nella lastra: qui non si campiona più niente. */
+function disegnaAcqua(){
+  const i0=Math.floor(s2w(0,0).x/LS), i1=Math.floor(s2w(cw,ch).x/LS);
+  const j0=Math.floor(s2w(0,0).y/LS), j1=Math.floor(s2w(cw,ch).y/LS);
+  const z=CAM.z, alt=Math.max(1,1.2*z);
+  const G=[[],[],[]];
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+    const L=lastre.get(i+','+j);
+    if(!L||!L.acqua.length)continue;
+    const A=L.acqua;
+    for(let k=0;k<A.length;k+=3){
+      const p=w2s(A[k],A[k+1]);
+      if(p.x<-30||p.y<-10||p.x>cw+10||p.y>ch+10)continue;
+      G[(k/3|0)%3].push(p.x,p.y,A[k+2]*z);
+    }
+  }
+  for(let g=0;g<3;g++){
+    if(!G[g].length)continue;
+    ct.beginPath();
+    for(let k=0;k<G[g].length;k+=3) ct.rect(G[g][k],G[g][k+1],G[g][k+2],alt);
+    ct.fillStyle='rgba(216,236,236,'+(.10+.09*(Math.sin(TV*.9+g*2.1)*.5+.5))+')';
+    ct.fill();
+  }
+}
+
+/** Le impronte del capo. Esistevano già in memoria — l'array scia è il cuore
+    del gioco — ma non si vedevano: adesso si vede la fila che le ricalca. */
+function disegnaImpronte(){
+  if(scia.length<3)return;
+  const z=CAM.z, rx=2.6*z, ry=1.7*z;
+  const F=[[],[],[]];
+  for(let i=1;i<scia.length;i++){
+    const eta=1-(sciaD-scia[i].d)/720;          // 1 = appena fatta
+    const a=scia[i-1], b=scia[i];
+    const dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy)||1;
+    const lato=(i&1)?2.2:-2.2;
+    const p=w2s(b.x-dy/d*lato, b.y+dx/d*lato);
+    if(p.x<-10||p.y<-10||p.x>cw+10||p.y>ch+10)continue;
+    F[eta>.66?0:eta>.33?1:2].push(p.x,p.y,Math.atan2(dy,dx));
+  }
+  const op=[.20,.12,.05];
+  for(let f=0;f<3;f++){
+    if(!F[f].length)continue;
+    ct.beginPath();
+    for(let k=0;k<F[f].length;k+=3){
+      const x=F[f][k], y=F[f][k+1], r=F[f][k+2];
+      ct.moveTo(x+Math.cos(r)*rx, y+Math.sin(r)*rx);
+      ct.ellipse(x,y,rx,ry,r,0,TAU);
+    }
+    ct.fillStyle='rgba(38,28,18,'+op[f]+')'; ct.fill();
+  }
+}
+
+/** Ombre di nuvole: il mondo grande smette di essere fermo. Sta sotto le
+    cose e sotto la gente, non sopra: non deve togliere leggibilità a nessuno.
+    È la prima cosa da tagliare se un telefono soffre. */
+let nuvolePat=null;
+function nuvole(){
+  const l=luceOra();
+  if(l<.3)return;                  // di notte non c'è sole, e quindi non c'è ombra
+  if(!nuvolePat){
+    const c=document.createElement('canvas'); c.width=c.height=512;
+    const g=c.getContext('2d');
+    g.fillStyle='#000';
+    for(let i=0;i<14;i++){
+      const x=h2(i,1,461)*512, y=h2(i,2,463)*512;
+      const rx=60+h2(i,3,467)*130, ry=40+h2(i,4,469)*90;
+      // ricopiata sui due assi: così si ripete senza cuciture
+      for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){
+        g.globalAlpha=.13;
+        g.beginPath(); g.ellipse(x+a*512,y+b*512,rx,ry,h2(i,5,471)*TAU,0,TAU); g.fill();
+      }
+    }
+    g.globalAlpha=1;
+    nuvolePat=ct.createPattern(c,'repeat');
+  }
+  const sc=CAM.z, per=512*sc;
+  const ox=((TV*9-CAM.x)*sc)%per, oy=((TV*4-CAM.y)*sc)%per;
+  ct.save();
+  ct.globalAlpha=.10*l;
+  ct.translate(ox,oy); ct.scale(sc,sc);
+  ct.fillStyle=nuvolePat;
+  ct.fillRect(-ox/sc-8,-oy/sc-8,cw/sc+16,ch/sc+16);
+  ct.restore();
+}
+
+/* ── Il cerchio del respiro: è un posto, non un'interfaccia ──
+   Prima era un arco tratteggiato disegnato per intero anche quando il
+   raggio è dodicimila unità e il novantanove per cento sta fuori schermo.
+   Adesso si guarda solo la fetta che tocca la vista, e quella fetta è una
+   fila di cippi con lo straccio: qualcosa che INCONTRI camminando, non una
+   linea di interfaccia sovrapposta al mondo. ─────────────────────── */
+function disegnaRespiro(){
+  const b=ME.borgo, R=ME.respiro, z=CAM.z;
+  const d=dist(CAM.x,CAM.y,b.x,b.y);
+  const rs=Math.hypot(cw,ch)/2/z+80;             // il raggio dello schermo, in unità
+  if(Math.abs(d-R)>rs)return;                    // l'arco non tocca la vista: fuori
+  const anC=Math.atan2(CAM.y-b.y,CAM.x-b.x);
+  const mez=d>rs?Math.asin(clamp(rs/d,0,1))+.06:Math.PI;
+  const p=w2s(b.x,b.y);
+
+  // la terra battuta della ronda, al posto del tratteggio
+  ct.beginPath(); ct.arc(p.x,p.y,R*z,anC-mez,anC+mez);
+  ct.strokeStyle='rgba(243,236,224,.07)'; ct.lineWidth=Math.max(2,5*z); ct.stroke();
+
+  const dA=110/R;
+  let i0=Math.ceil((anC-mez)/dA), i1=Math.floor((anC+mez)/dA);
+  if(i1-i0>48)i1=i0+48;
+  for(let i=i0;i<=i1;i++){
+    const an=i*dA;
+    const q=w2s(b.x+Math.cos(an)*R, b.y+Math.sin(an)*R);
+    if(q.x<-30||q.y<-50||q.x>cw+30||q.y>ch+40)continue;
+    const hh=(10+h2(i,0,977)*7)*z;
+    ct.strokeStyle='rgba(116,97,68,.8)'; ct.lineWidth=Math.max(1,2*z);
+    ct.beginPath(); ct.moveTo(q.x,q.y); ct.lineTo(q.x,q.y-hh); ct.stroke();
+    const on=Math.sin(TV*1.2+i)*2.4*z;
+    ct.beginPath(); ct.moveTo(q.x,q.y-hh);
+    ct.lineTo(q.x+7*z+on,q.y-hh+3.5*z); ct.lineTo(q.x,q.y-hh+7*z); ct.closePath();
+    ct.fillStyle='rgba(214,196,160,.5)'; ct.fill();
+  }
+}
+
+/* ── Le cose del mondo ──────────────────────────────────────── */
+const visti=[];                  // riusato ogni fotogramma: niente spazzatura
+function disegnaCose(){
+  const tl=s2w(-60,-60), br=s2w(cw+60,ch+60);
+  const i0=Math.floor(tl.x/CH), i1=Math.floor(br.x/CH);
+  const j0=Math.floor(tl.y/CH), j1=Math.floor(br.y/CH);
+  const z=CAM.z;
+  let nv=0;
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+    if(i<0||j<0||i>=NCH||j>=NCH)continue;
+    const c=chunkAt(i,j);
+    for(const o of c.cose){
+      if(o.v<=0&&o.t!=='sasso')continue;
+      const p=w2s(o.x,o.y);
+      if(p.x<-40||p.y<-70||p.x>cw+40||p.y>ch+40)continue;
+      visti[nv++]=o; visti[nv++]=p.x; visti[nv++]=p.y;
+    }
+  }
+
+  /* Le ombre di tutte le cose in un path solo: hanno lo stesso colore,
+     e chiedere trenta fill quando ne basta uno è solo pigrizia. */
+  ct.beginPath();
+  let una=false;
+  for(let k=0;k<nv;k+=3){
+    const o=visti[k];
+    if(o.t==='spiga')continue;                    // la spiga è troppo esile per fare ombra
+    const f=o.vmax?o.v/o.vmax:1;
+    const r=o.t==='albero'?(7+4*f):o.t==='vena'?(8+3*f):o.t==='salina'?7:6;
+    ombra(visti[k+1],visti[k+2],r,z); una=true;
+  }
+  if(una){ ct.fillStyle='rgba(24,20,14,'+SOLE.op+')'; ct.fill() }
+
+  /* Il grano, tutto in un path solo: da centoventi stroke a uno. Il vento
+     entra gratis dentro il risparmio — è un'onda lenta che attraversa lo
+     schermo, non un tremolio per pianta. */
+  ct.strokeStyle='#d9c24a'; ct.lineWidth=1.6*z;
+  ct.beginPath(); una=false;
+  for(let k=0;k<nv;k+=3){
+    const o=visti[k];
+    if(o.t!=='spiga')continue;
+    const x=visti[k+1], y=visti[k+2];
+    const h=(7+6*(o.vmax?o.v/o.vmax:1))*z;
+    const v=Math.sin(TV*1.4+(o.x+o.y)*.006)*2.2*z;
+    for(let m=-1;m<=1;m++){
+      ct.moveTo(x+m*2.6*z,y);
+      ct.quadraticCurveTo(x+m*3.4*z+v*.45,y-h*.6,x+m*4.2*z+v,y-h);
+    }
+    una=true;
+  }
+  if(una)ct.stroke();
+
+  for(let k=0;k<nv;k+=3){
+    const o=visti[k], px=visti[k+1], py=visti[k+2];
+    const f=o.vmax?o.v/o.vmax:1;
+    if(o.t==='albero'){
+      const h=(16+12*f)*z, w=(9+4*f)*z;
+      const v=Math.sin(TV*1.4+(o.x+o.y)*.006)*1.2*z;   // la chioma respira di un pixel
+      ct.fillStyle='#3b2f26'; ct.fillRect(px-1.4*z,py-h*.42,2.8*z,h*.42);
+      ct.beginPath(); ct.ellipse(px+v,py-h*.62,w,h*.44,0,0,TAU);
+      ct.fillStyle='#17463a'; ct.fill();
+      ct.beginPath(); ct.ellipse(px-w*.25+v*1.4,py-h*.74,w*.55,h*.26,0,0,TAU);
+      ct.fillStyle='#1f5a49'; ct.fill();
+    } else if(o.t==='vena'){
+      const w=(10+5*f)*z;
+      ct.beginPath(); ct.moveTo(px-w,py); ct.lineTo(px-w*.4,py-w*1.15);
+      ct.lineTo(px+w*.5,py-w*.95); ct.lineTo(px+w,py); ct.closePath();
+      ct.fillStyle='#4a5663'; ct.fill();
+      ct.fillStyle='#8c98a4';
+      ct.fillRect(px-w*.22,py-w*.72,w*.3,w*.26);
+    } else if(o.t==='salina'){
+      ct.beginPath(); ct.ellipse(px,py,(10+4*f)*z,(5+2*f)*z,0,0,TAU);
+      ct.fillStyle='#e8f0ee'; ct.fill();
+      ct.strokeStyle='#9fb8bb'; ct.lineWidth=1*z; ct.stroke();
+    } else if(o.t==='sasso'){
+      ct.beginPath(); ct.ellipse(px,py-3*z,8*z,6*z,0,0,TAU);
+      ct.fillStyle='#55616c'; ct.fill();
+    }
+  }
+  visti.length=0;
+}
+
+/* ── Il suolo del borgo ─────────────────────────────────────
+   Il borgo non si muove mai, quindi la sua terra battuta si dipinge una
+   volta sola: bordo frastagliato invece del cerchio perfetto, sassi e
+   legnetti sparsi, e i sentieri consumati verso le aste che hai piantato.
+   Si rifà SOLO quando cambiano aste o edifici — altrimenti restano
+   sentieri che portano a un'asta che non c'è più. ──────────────── */
+const BS=720;                    // lato in unità di mondo: ±360 attorno al fuoco
+let borgoTela=null, borgoSporco=true;
+function suoloBorgo(){
+  if(borgoTela&&!borgoSporco)return borgoTela;
+  borgoSporco=false;
+  const b=ME.borgo, H=BS/2;
+  if(!borgoTela){ borgoTela=document.createElement('canvas'); borgoTela.width=borgoTela.height=BS }
+  const g=borgoTela.getContext('2d');
+  g.clearRect(0,0,BS,BS);
+
+  // i sentieri per primi: la chiazza di terra li copre alla radice
+  g.lineCap='round'; g.strokeStyle='rgba(96,76,50,.32)';
+  const mete=ME.aste.map(a=>({x:a.x,y:a.y})).concat(ME.edifici.map(e=>({x:e.x,y:e.y})));
+  for(const m of mete){
+    const dx=m.x-b.x, dy=m.y-b.y, d=Math.hypot(dx,dy);
+    if(d<50||d>H-20)continue;
+    const nx=-dy/d, ny=dx/d;
+    g.lineWidth=14;
+    g.beginPath(); g.moveTo(H,H);
+    for(let k=1;k<=3;k++){
+      const t=k/3, j=(h2(m.x|0,m.y|0,551+k)-.5)*26*(1-t);
+      g.lineTo(H+dx*t+nx*j, H+dy*t+ny*j);
+    }
+    g.stroke();
+  }
+
+  // la chiazza di terra battuta: ventiquattro vertici, mai un cerchio
+  g.beginPath();
+  for(let i=0;i<24;i++){
+    const an=i/24*TAU, r=132+h2(i,0,563)*34;
+    const x=H+Math.cos(an)*r, y=H+Math.sin(an)*r;
+    if(i)g.lineTo(x,y); else g.moveTo(x,y);
+  }
+  g.closePath();
+  g.fillStyle='rgba(92,73,48,.34)'; g.fill();
+
+  // sassi, legnetti, e l'alone bruciato attorno al fuoco
+  for(let i=0;i<44;i++){
+    const an=h2(i,1,571)*TAU, r=26+h2(i,2,577)*130;
+    const x=H+Math.cos(an)*r, y=H+Math.sin(an)*r;
+    if(h2(i,3,583)>.5){ g.fillStyle='rgba(70,62,52,.5)'; g.fillRect(x|0,y|0,3,2) }
+    else{ g.fillStyle='rgba(112,86,52,.45)'; g.fillRect(x|0,y|0,5+(h2(i,4,587)*5|0),1) }
+  }
+  const al=g.createRadialGradient(H,H,4,H,H,44);
+  al.addColorStop(0,'rgba(28,20,12,.42)'); al.addColorStop(1,'rgba(28,20,12,0)');
+  g.fillStyle=al; g.fillRect(H-44,H-44,88,88);
+  return borgoTela;
+}
+function disegnaSuoloBorgo(){
+  const b=ME.borgo, z=CAM.z, H=BS/2;
+  const p=w2s(b.x-H,b.y-H), sz=BS*z;
+  if(p.x>cw||p.y>ch||p.x+sz<0||p.y+sz<0)return;
+  ct.drawImage(suoloBorgo(),p.x,p.y,sz,sz);
+}
+
+/* ── Il villaggio ───────────────────────────────────────────── */
+function disegnaBorgo(){
+  const b=ME.borgo, z=CAM.z, p=w2s(b.x,b.y);
+
+  // il fuoco
+  const f=w2s(b.x,b.y);
+  const gua=(Math.sin(performance.now()/170)+1)/2;
+  ct.beginPath(); ct.arc(f.x,f.y,(9+gua*2.5)*z,0,TAU);
+  ct.fillStyle='#ff8c3a'; ct.fill();
+  ct.beginPath(); ct.arc(f.x,f.y-3*z,(5+gua*2)*z,0,TAU);
+  ct.fillStyle='#ffe29a'; ct.fill();
+  ct.fillStyle='#2e2620';
+  ct.fillRect(f.x-11*z,f.y+3*z,22*z,3*z);
+
+  /* il fumo: quattro sbuffi che salgono e si allargano. Non superano mai
+     nove unità di larghezza né il 14% di opacità — non devono coprire
+     nessuno, devono solo dire che lì sotto c'è qualcuno che vive. */
+  ct.beginPath();
+  for(let i=0;i<4;i++){
+    const t=(performance.now()/1400+i/4)%1;
+    const w=(2.6+t*6)*z;
+    ct.moveTo(f.x+Math.sin(TV*.7+i*1.9)*5*z+w, f.y-6*z-t*34*z);
+    ct.ellipse(f.x+Math.sin(TV*.7+i*1.9)*5*z, f.y-6*z-t*34*z, w, w*.72, 0, 0, TAU);
+  }
+  ct.fillStyle='rgba(186,178,168,.11)'; ct.fill();
+
+  // il tavolo dei progetti
+  const tv=w2s(b.x+62,b.y-16);
+  ct.fillStyle='#7a6650'; ct.fillRect(tv.x-13*z,tv.y-4*z,26*z,8*z);
+  ct.fillStyle='#3d2f1d'; ct.fillRect(tv.x-13*z,tv.y+4*z,26*z,3*z);
+  const E=EDIFICI[ORD_EDIF[progIdx]];
+  ct.font=(11*z|0)+'px serif'; ct.textAlign='center'; ct.textBaseline='middle';
+  ct.fillText(E.ic,tv.x,tv.y-9*z);
+
+  // la rastrelliera: le armi si contano a occhio, una per una
+  const ra=w2s(b.x-64,b.y-12);
+  ct.fillStyle='#6b5a45'; ct.fillRect(ra.x-22*z,ra.y-2*z,44*z,3.4*z);
+  ct.fillRect(ra.x-22*z,ra.y-2*z,3*z,16*z);
+  ct.fillRect(ra.x+19*z,ra.y-2*z,3*z,16*z);
+  for(let i=0;i<Math.min(ME.rastrelliera.length,armiTot());i++){
+    const ax=ra.x-18*z+i*(36*z/Math.max(6,armiTot()));
+    disegnaArma(ax,ra.y-4*z,z*.85,ME.rastrelliera[i],-Math.PI/2);
+  }
+
+  // gli edifici costruiti (e quelli a metà), appoggiati per terra dall'ombra
+  if(ME.edifici.length){
+    ct.beginPath();
+    for(const e of ME.edifici){ const q=w2s(e.x,e.y); ombra(q.x,q.y,13,z) }
+    ct.fillStyle='rgba(24,20,14,'+SOLE.op+')'; ct.fill();
+  }
+  for(const e of ME.edifici){
+    const q=w2s(e.x,e.y), pr=clamp(e.prog,0,1);
+    disegnaEdificio(q.x,q.y,z,e.tipo,pr);
+  }
+
+  // le pietre di chi non c'è più
+  for(let i=0;i<ME.pietre.length;i++){
+    const an=i/24*TAU, q=w2s(b.x+Math.cos(an)*128,b.y+Math.sin(an)*128);
+    ct.fillStyle='#6d6862';
+    ct.beginPath(); ct.moveTo(q.x-3*z,q.y); ct.lineTo(q.x-3*z,q.y-7*z);
+    ct.quadraticCurveTo(q.x,q.y-11*z,q.x+3*z,q.y-7*z); ct.lineTo(q.x+3*z,q.y); ct.closePath();
+    ct.fill();
+  }
+}
+function disegnaEdificio(x,y,z,tipo,pr){
+  const h=26*z*(.35+pr*.65), w=30*z;
+  if(tipo==='capanna'){
+    ct.fillStyle='#8a7358'; ct.fillRect(x-w/2,y-h,w,h);
+    ct.beginPath(); ct.moveTo(x-w*.62,y-h); ct.lineTo(x,y-h-14*z*pr); ct.lineTo(x+w*.62,y-h);
+    ct.closePath(); ct.fillStyle='#4a5a62'; ct.fill();
+    if(pr>=1){ ct.fillStyle='#2b1f13'; ct.fillRect(x-4*z,y-11*z,8*z,11*z) }
+  } else if(tipo==='granaio'){
+    ct.fillStyle='#9a8262'; ct.fillRect(x-w*.42,y-h*1.25,w*.84,h*1.25);
+    ct.beginPath(); ct.arc(x,y-h*1.25,w*.42,Math.PI,0); ct.fillStyle='#4a5a62'; ct.fill();
+    if(pr>=1)for(let i=0;i<3;i++){ ct.fillStyle='#d3b055';
+      ct.fillRect(x-9*z+i*7*z,y-4*z,5*z,4*z) }
+  } else if(tipo==='rastrell'){
+    ct.fillStyle='#6b5a45'; ct.fillRect(x-16*z,y-12*z,32*z,3*z);
+    ct.fillRect(x-16*z,y-12*z,3*z,12*z); ct.fillRect(x+13*z,y-12*z,3*z,12*z);
+  } else if(tipo==='forgia'){
+    ct.fillStyle='#4a4038'; ct.fillRect(x-w*.4,y-h*.8,w*.8,h*.8);
+    ct.fillStyle='#2e2721'; ct.fillRect(x-5*z,y-h*1.35,10*z,h*.55);
+    if(pr>=1){ const g=(Math.sin(performance.now()/140)+1)/2;
+      ct.fillStyle='rgba(255,140,40,'+(.5+g*.5)+')';
+      ct.beginPath(); ct.arc(x,y-h*.45,5*z,0,TAU); ct.fill() }
+  } else if(tipo==='torre'){
+    ct.fillStyle='#6a5940'; ct.fillRect(x-8*z,y-h*1.9,16*z,h*1.9);
+    ct.fillStyle='#4b3f2d'; ct.fillRect(x-12*z,y-h*2.05,24*z,h*.2);
+    if(pr>=1)disegnaOmino(x,y-h*1.95,z*.8,{mest:'arciere',dir:0,fase:0,and:false,mio:true});
+  }
+  if(pr<1){
+    ct.strokeStyle='rgba(243,236,224,.4)'; ct.setLineDash([4,4]); ct.lineWidth=1.4;
+    ct.strokeRect(x-w/2,y-30*z,w,30*z); ct.setLineDash([]);
+  }
+}
+
+/* ── Le aste piantate ───────────────────────────────────────── */
+function disegnaAste(){
+  const z=CAM.z;
+  for(const a of ME.aste){
+    const p=w2s(a.x,a.y);
+    ct.beginPath(); ct.arc(p.x,p.y,R_ASTA*z,0,TAU);
+    ct.fillStyle=a.fuoco?'rgba(255,130,40,.09)':'rgba(224,164,74,.06)';
+    ct.fill();
+    ct.strokeStyle=a.fuoco?'rgba(255,150,60,.55)':'rgba(224,164,74,.35)';
+    ct.lineWidth=1.6; ct.stroke();
+    // l'asta
+    ct.strokeStyle='#7a6650'; ct.lineWidth=2.4*z;
+    ct.beginPath(); ct.moveTo(p.x,p.y); ct.lineTo(p.x,p.y-30*z); ct.stroke();
+    const on=Math.sin(performance.now()/260)*3*z;
+    ct.beginPath(); ct.moveTo(p.x,p.y-30*z);
+    ct.lineTo(p.x+16*z+on,p.y-25*z); ct.lineTo(p.x,p.y-19*z); ct.closePath();
+    ct.fillStyle=a.fuoco?'#ff7a2a':'#c8342c'; ct.fill();
+    if(a.fuoco){
+      for(let i=0;i<3;i++){
+        const t=(performance.now()/300+i/3)%1;
+        ct.globalAlpha=1-t;
+        ct.beginPath(); ct.arc(p.x+8*z,p.y-30*z-t*22*z,(3-t*2)*z,0,TAU);
+        ct.fillStyle='#ffb347'; ct.fill();
+      }
+      ct.globalAlpha=1;
+    }
+    if(a.tipo==='cantiere'){
+      ct.font=(13*z|0)+'px serif'; ct.textAlign='center';
+      ct.fillText(EDIFICI[a.edificio].ic,p.x,p.y-36*z);
+    }
+  }
+}
+
+/* ── Le persone ─────────────────────────────────────────────────
+   Qui non si guarda un personaggio: se ne guardano venti in fila. Tutto
+   quello che segue è ordinato su quella priorità — prima si legge la
+   processione, poi il singolo. Per questo la sagoma conta più della tinta,
+   il contorno più del dettaglio, e l'ordine per y più di qualunque effetto.
+   ───────────────────────────────────────────────────────────────── */
+
+/* Un solo orologio per fotogramma. Venti respiri sfasati non devono costare
+   venti letture di performance.now(): la sfasatura la dà l'uid, non il tempo. */
+let TS=0;
+/* Da che parte cade l'ombra, quanto è lunga, quanto pesa. Due trigonometriche
+   per FOTOGRAMMA — sono già in SOLE — e non due per persona: il sole è uno.
+   È la stessa direzione che usano gli alberi, ed è quella coerenza a far
+   sembrare che tutto sia stato disegnato dalla stessa mano. */
+const OMB={dx:0,dy:0,st:1,col:'rgba(24,18,12,.2)'};
+
+/* Chi cammina quasi in verticale sfarfalla: cos(dir) traversa lo zero e la
+   figura si specchia a ogni fotogramma. Qui si ricorda l'ultimo verso deciso
+   e lo si cambia solo quando la direzione è chiaramente laterale.
+   Transitoria di proposito, fuori da ME: salva() serializza ME per intero e
+   il codice del villaggio è base64 di quel JSON — un campo per persona in
+   più lo pagherebbe l'utente in caratteri da copiare. */
+const FLIP=new Map();
+function verso(uid,dir){
+  if(dir===undefined)return 1;
+  const c=Math.cos(dir);
+  let f=FLIP.get(uid);
+  if(f===undefined){ if(FLIP.size>512)FLIP.clear(); f=c<0?-1:1 }
+  else if(c<-.18)f=-1;
+  else if(c>.18)f=1;
+  FLIP.set(uid,f);
+  return f;
+}
+
+/* La camminata, tabellata a otto fasi. Otto numeri per fase: piede (px,py),
+   ginocchio (gx,gy), mano (mx,my), gomito (ex,ey). Le x sono in unità di z;
+   le y del braccio contano verso il basso a partire dalla spalla.
+   Il senso di tutta la tabella sta nelle fasi 0-4: il piede in appoggio
+   scorre LINEARMENTE da +2.6 a -2.6. Con due seni sfasati — quello che il
+   file faceva prima — il piede rallenta agli estremi e accelera in mezzo, ed
+   è esattamente quel profilo a farlo leggere come una forbice che striscia.
+   Le fasi 5-7 sono il volo: il ginocchio si alza e il piede si stacca da
+   terra, che è l'altra metà del motivo per cui adesso si legge un passo.
+   Scritta a mano e non generata: una tabella si guarda e si corregge, una
+   formula no. E per persona costa otto interpolazioni su numeri, dove prima
+   c'erano due Math.sin. */
+const CAMM=new Float32Array([
+//  px     py     gx     gy     mx     my     ex     ey
+    2.60,  0.00,  1.50, -2.05, -2.00,  5.00, -1.00,  2.60,
+    1.30,  0.00,  0.85, -2.05, -1.35,  5.20, -0.65,  2.70,
+    0.00,  0.00,  0.15, -2.00, -0.40,  5.30, -0.20,  2.80,
+   -1.30,  0.00, -0.50, -2.10,  0.70,  5.20,  0.40,  2.70,
+   -2.60,  0.00, -1.00, -2.25,  1.70,  4.90,  0.90,  2.60,
+   -1.75, -1.45,  0.25, -2.65,  2.10,  4.55,  1.10,  2.50,
+    0.45, -2.20,  1.25, -2.90,  1.30,  4.80,  0.70,  2.60,
+    1.95, -1.00,  1.80, -2.40, -1.05,  5.10, -0.40,  2.70
+]);
+/* Da fermi non si sta sull'attenti: piedi appena divaricati, braccia lungo
+   il corpo. Due pose speculari invece di una perché il corpo non è simmetrico
+   nel disegno — la mano dell'arma sta sempre sullo stesso lato. */
+const FERMO_A=new Float32Array([ 0.85,0,  0.45,-2.05, -0.30,5.30, -0.15,2.75]);
+const FERMO_B=new Float32Array([-0.85,0, -0.45,-2.05,  0.30,5.30,  0.15,2.75]);
+const FA=new Float32Array(8), FB=new Float32Array(8);
+/** Riempie FA e FB con la posa di questa fase. A e B sono le due metà del
+    corpo, sfasate di mezzo giro: la gamba destra e il braccio sinistro sono
+    la stessa colonna della tabella, ed è per questo che le braccia vengono
+    in controfase senza una riga di codice in più. */
+function posa(fase,camm){
+  if(!camm){ FA.set(FERMO_A); FB.set(FERMO_B); return }
+  const f=fase*(8/TAU), i=f|0, u=f-i;
+  const a=(i&7)<<3, b=((i+1)&7)<<3, c=((i+4)&7)<<3, d=((i+5)&7)<<3;
+  for(let k=0;k<8;k++){
+    FA[k]=CAMM[a+k]+(CAMM[b+k]-CAMM[a+k])*u;
+    FB[k]=CAMM[c+k]+(CAMM[d+k]-CAMM[c+k])*u;
+  }
+}
+
+/* Un solo oggetto riusato per descrivere chi si sta disegnando. Venticinque
+   oggetti letterali a fotogramma erano venticinque allocazioni per niente:
+   qui i campi si riscrivono TUTTI a ogni chiamata, nessuno resta appeso. */
+const OM={mest:'contadino',dir:0,fase:0,and:false,carico:null,cap:26,arma:null,
+  colpito:0,mio:true,uid:0,lavora:0,scatto:0,tira:0,inc:undefined,giu:0,bianco:false};
+
+/* ── Le persone: il disegno ─────────────────────────────────── */
+function disegnaArma(x,y,z,arma,ang,tira){
+  ct.save(); ct.translate(x,y); ct.rotate(ang||0);
+  ct.lineCap='round';
+  /* Il filo di luce sulla lama: una riga per arma, e serve a una cosa sola —
+     che il metallo si distingua dal legno anche sotto il velo blu della
+     notte, quando le tinte piatte collassano tutte sullo stesso grigio. */
+  if(arma==='falce'){
+    ct.strokeStyle='#7a5f38'; ct.lineWidth=1.5*z;
+    ct.beginPath(); ct.moveTo(0,0); ct.lineTo(0,5*z); ct.stroke();
+    ct.strokeStyle='#c9c4b8'; ct.lineWidth=1.4*z;
+    ct.beginPath(); ct.arc(2.6*z,5*z,3*z,Math.PI,Math.PI*1.75); ct.stroke();
+    ct.strokeStyle='rgba(255,252,240,.34)'; ct.lineWidth=.7*z;
+    ct.beginPath(); ct.arc(2.6*z,4.4*z,3*z,Math.PI*1.04,Math.PI*1.68); ct.stroke();
+  } else if(arma==='randello'){
+    ct.strokeStyle='#6b4f2e'; ct.lineWidth=2.4*z;
+    ct.beginPath(); ct.moveTo(0,0); ct.lineTo(0,7*z); ct.stroke();
+    ct.fillStyle='#5a4227'; ct.beginPath(); ct.arc(0,7.5*z,2.2*z,0,TAU); ct.fill();
+    ct.strokeStyle='rgba(255,245,225,.22)'; ct.lineWidth=.7*z;
+    ct.beginPath(); ct.moveTo(-.7*z,1*z); ct.lineTo(-.7*z,6*z); ct.stroke();
+  } else if(arma==='lancia'){
+    /* L'asta è spessa e scura: sottile e chiara spariva sull'erba e restava
+       in aria solo la punta, che sembrava una freccia appesa a niente. */
+    ct.strokeStyle='#6f5028'; ct.lineWidth=1.9*z;
+    ct.beginPath(); ct.moveTo(0,6*z); ct.lineTo(0,-12*z); ct.stroke();
+    ct.fillStyle='#cfcabc';
+    ct.beginPath(); ct.moveTo(0,-16.5*z); ct.lineTo(-1.9*z,-11*z); ct.lineTo(1.9*z,-11*z);
+    ct.closePath(); ct.fill();
+    ct.strokeStyle='rgba(255,252,240,.34)'; ct.lineWidth=.7*z;
+    ct.beginPath(); ct.moveTo(-.6*z,-15*z); ct.lineTo(-.6*z,-11.4*z); ct.stroke();
+  } else if(arma==='arco'){
+    ct.strokeStyle='#8d6b3d'; ct.lineWidth=1.5*z;
+    ct.beginPath(); ct.arc(0,0,6.5*z,-1.25,1.25); ct.stroke();
+    /* La corda si tira davvero: è l'unico modo di far vedere che l'arciere
+       ha tirato, visto che la freccia parte e sparisce in tre fotogrammi. */
+    const tr=(tira||0)*3.4*z;
+    ct.strokeStyle='rgba(240,236,226,.75)'; ct.lineWidth=.8*z;
+    ct.beginPath(); ct.moveTo(2*z,-6.2*z); ct.lineTo(2*z-tr,0); ct.lineTo(2*z,6.2*z); ct.stroke();
+  } else if(arma==='spada'){
+    ct.strokeStyle='#d5d0c2'; ct.lineWidth=2.6*z;
+    ct.beginPath(); ct.moveTo(0,0); ct.lineTo(0,8*z); ct.stroke();
+    ct.strokeStyle='rgba(255,252,240,.34)'; ct.lineWidth=.7*z;
+    ct.beginPath(); ct.moveTo(-.6*z,1*z); ct.lineTo(-.6*z,7.4*z); ct.stroke();
+    ct.strokeStyle='#7a5f38'; ct.lineWidth=3.4*z;
+    ct.beginPath(); ct.moveTo(-2*z,-.6*z); ct.lineTo(2*z,-.6*z); ct.stroke();
+  }
+  ct.restore();
+}
+
+function disegnaOmino(x,y,z,o){
+  const mio=o.mio!==false;
+  const bianco=o.bianco;
+  const uid=o.uid||0;
+  const M=MESTIERI[o.mest]||MESTIERI.contadino;
+  /* Nessuno è identico a nessuno. Un solo hash intero per persona, stabile
+     per sempre, e da lì scendono altezza, larghezza e ampiezza del passo:
+     sette per cento di variazione, che non si nota su uno e si nota su venti. */
+  const ind=.93+((uid*37)%15)/100;
+  const alt=M.alt*ind;
+  const larg=(mio?1:1.1)*ind;
+  const veste=bianco?'#fff':(mio?(VESTE3[o.mest]?VESTE3[o.mest][uid%3]:VESTE.contadino):NEM_VESTE);
+  const scura=bianco?'#fff':(mio?(VESTE_SCURA[o.mest]||'#7d6334'):NEM_SCURA);
+  const pel=bianco?'#fff':(mio?PEL:NEM_PEL);
+  /* Il contorno è il singolo cambiamento che si vede di più: senza, a zoom
+     largo e di notte la fila diventa una macchia sull'erba. Sul nemico è più
+     freddo, così in mischia le due parti restano separabili anche quando le
+     tinte si sovrappongono. Non è un outline vero — sarebbe geometria doppia:
+     è uno stroke sullo STESSO path che ha appena riempito. */
+  const bordo=bianco?'rgba(255,255,255,.85)':(mio?'rgba(22,15,11,.45)':'rgba(14,10,20,.5)');
+  const lw=Math.max(1,.85*z);
+  const flip=verso(uid,o.dir);
+
+  ct.save(); ct.translate(x,y); ct.scale(flip*larg,1);
+  /* Da che parte, in coordinate locali, sta il buio addosso. Deve coincidere
+     con la direzione dell'ombra a terra: è quella coerenza — non il numero di
+     sfumature — a far sembrare che ci sia una luce sola. */
+  const ls=(OMB.dx>0?1:-1)*flip;
+
+  const camm=o.and?1:0;
+  posa(o.fase||0,camm);
+  const pw=1.15*z;                     // scala orizzontale dell'ampiezza del passo
+  /* Chi è fermo respira invece di essere una statua. Sfasato per uid: venti
+     persone respirano, non un metronomo con venti teste. */
+  const bob=camm?Math.abs(Math.sin(o.fase||0))*.9*z:Math.sin(TS*1.85+uid)*.35*z;
+  const giu=o.giu||0;
+  /* Il colpo di falce: chi lavora si china a tempo, e ogni persona a un tempo
+     suo, o venti contadini mietono all'unisono come un corpo di ballo. */
+  const lav=o.lavora>0?Math.sin(TS*7+uid):0;
+  let inc;
+  if(o.inc!==undefined) inc=o.inc;
+  else{
+    inc=o.mest==='contadino'?(o.carico?.40:.26):0;     // il curvo del contadino
+    if(o.lavora>0) inc+=.30+lav*.22;
+  }
+  /* L'inerzia del busto. È lo stesso ct.rotate che il contadino curvo usa già,
+     con un addendo in più: chi parte si butta in avanti, chi frena si tira
+     indietro. Sotto la scala mirrorata l'inclinazione va sempre nel verso in
+     cui si guarda, quindi il segno funziona da solo in tutte e due le mani.
+     Costa una moltiplicazione e un clamp, e si vede a ogni partenza. */
+  if(o.acc){ const t=o.acc*.00055; inc+=t<-.16?-.16:t>.16?.16:t }
+
+  // la polvere di chi porta: due trattini a terra, sotto ai piedi, mai sopra
+  if(camm&&o.carico&&!bianco){
+    ct.fillStyle='rgba(120,100,72,.16)';
+    ct.fillRect(-1.2*z+FA[0]*pw-.7*z,-.4*z,1.5*z,.8*z);
+    ct.fillRect( 1.2*z+FB[0]*pw-.7*z,-.4*z,1.5*z,.8*z);
+  }
+
+  /* Le gambe: due segmenti, il ginocchio si piega, e le due in un path solo
+     con due sottotratti — uno stroke, non due.
+     L'anca sta a 5.4 e non a 4 come prima: con le gambe corte il busto
+     diventava un francobollo appoggiato per terra e il passo non si vedeva
+     comunque, perché non c'era spazio dove farlo succedere. */
+  const ah=-5.4*z, ly=1.35*z;                 // altezza dell'anca, e scala delle gambe
+  /* Le gambe sono più chiare dell'ombra che hanno sotto, altrimenti gambe e
+     ombra si fondono in una macchia sola e la figura sembra senza. */
+  ct.strokeStyle=bianco?'#fff':(mio?'#7a5a31':'#4e3946');
+  ct.lineWidth=1.9*z; ct.lineCap='round'; ct.lineJoin='round';
+  ct.beginPath();
+  ct.moveTo(-1.2*z,ah+giu);
+  ct.lineTo(-1.2*z+FA[2]*pw,FA[3]*ly+giu*.55); ct.lineTo(-1.2*z+FA[0]*pw,FA[1]*ly);
+  ct.moveTo(1.2*z,ah+giu);
+  ct.lineTo(1.2*z+FB[2]*pw,FB[3]*ly+giu*.55); ct.lineTo(1.2*z+FB[0]*pw,FB[1]*ly);
+  ct.stroke();
+
+  ct.save();
+  ct.translate(0,ah-bob+giu);
+  ct.rotate(inc);
+
+  /* Il busto è un tronco, non un francobollo: spalle larghe e fianchi
+     stretti. Da sopra è l'unica cosa che dice che un corpo ha spessore. */
+  const bw=(o.mest==='spadaccino'?3.8:o.mest==='arciere'?2.5:3.1)*z*ind;
+  const th=alt*.35*z;
+  ct.beginPath();
+  ct.moveTo(-bw,-th); ct.lineTo(bw,-th);
+  ct.lineTo(bw*.74,0); ct.lineTo(-bw*.74,0); ct.closePath();
+  ct.fillStyle=veste; ct.fill();
+  ct.strokeStyle=bordo; ct.lineWidth=lw; ct.stroke();
+  if(!bianco){
+    ct.beginPath();
+    ct.moveTo(ls*bw,-th); ct.lineTo(ls*bw*.56,-th);
+    ct.lineTo(ls*bw*.42,0); ct.lineTo(ls*bw*.74,0); ct.closePath();
+    ct.fillStyle=scura; ct.fill();
+  }
+
+  // il sacco: pesa, ciondola, e cresce mentre si riempie
+  if(o.carico){
+    const q=(o.carico.q!==undefined&&o.cap)?clamp(o.carico.q/o.cap,0,1):.6;
+    const r=lerp(2.0,4.3,q)*z;
+    ct.save();
+    ct.translate(-bw*.95,-th*.60);
+    /* Il ciondolio arriva DOPO il corpo: il segno lo dà la tabella del passo,
+       già sfasata di mezzo giro rispetto al busto. Nessun seno nuovo. */
+    ct.rotate(-.13*FB[0]*.45);
+    ct.beginPath();
+    ct.moveTo(0,-r*.95);
+    ct.quadraticCurveTo(-r*1.3,-r*.05,0,r*1.05);
+    ct.quadraticCurveTo(r*1.3,-r*.05,0,-r*.95);
+    ct.closePath();
+    ct.fillStyle=bianco?'#fff':(ROBACOL[o.carico.t]||'#c8a94a'); ct.fill();
+    ct.strokeStyle=bordo; ct.lineWidth=Math.max(1,.8*z); ct.stroke();
+    ct.restore();
+  }
+
+  /* Le braccia, in controfase alle gambe perché usano le colonne opposte
+     della stessa tabella. Il braccio dell'arma sta alzato e scatta in avanti
+     nei primi 180 ms del colpo; quello dell'arciere invece tira indietro. */
+  const sy=-th+1.2*z, sx=bw*.86, br=.82*z;      // br: le braccia non arrivano a terra
+  const sc=o.scatto||0, tb=o.tira||0;
+  const eax=o.arma?(1.0+sc*1.3)*z:FA[6]*br, eay=o.arma?(2.2+lav*.5)*z:FA[7]*br;
+  const mfx=o.arma?(1.1+sc*2.8+lav*.5)*z:FA[4]*br, mfy=o.arma?(2.0-sc*.5+lav*1.5)*z:FA[5]*br;
+  const ebx=tb>0?-.2*z:FB[6]*br, eby=tb>0?2.2*z:FB[7]*br;
+  const mbx=tb>0?(1.0-tb*2.4)*z:FB[4]*br, mby=tb>0?2.0*z:FB[5]*br;
+  ct.strokeStyle=bianco?'#fff':scura; ct.lineWidth=1.45*z;
+  ct.beginPath();
+  ct.moveTo(-sx,sy); ct.lineTo(-sx+ebx,sy+eby); ct.lineTo(-sx+mbx,sy+mby);
+  ct.moveTo(sx,sy);  ct.lineTo(sx+eax,sy+eay);  ct.lineTo(sx+mfx,sy+mfy);
+  ct.stroke();
+
+  // l'arma sta nella mano, non accanto al corpo
+  if(o.arma){
+    const ang=(o.mest==='lanciere'||o.mest==='arciere')?0:(.35-1.45*sc);
+    disegnaArma(sx+mfx,sy+mfy,z,o.arma,ang,tb);
+  }
+
+  /* La testa. I capelli coprono il retro del cranio: da sopra sono l'unica
+     cosa che dice da che parte guarda uno. */
+  const hr=(o.mest==='bambino'?3.0:2.35)*z*ind;
+  const hy=-th-hr*.86;
+  ct.beginPath(); ct.arc(0,hy,hr,0,TAU);
+  ct.fillStyle=pel; ct.fill();
+  ct.strokeStyle=bordo; ct.lineWidth=lw; ct.stroke();
+  if(!bianco){
+    ct.beginPath(); ct.arc(0,hy,hr*.97,Math.PI,TAU); ct.fillStyle=CAPELLI; ct.fill();
+    // gli occhi solo da vicino: più in piccolo sporcano la faccia e basta
+    if(z>1.05){
+      ct.fillStyle='rgba(30,20,14,.7)';
+      ct.fillRect(-1.3*z,hy+hr*.20,.9*z,.9*z);
+      ct.fillRect(.4*z,hy+hr*.20,.9*z,.9*z);
+    }
+  }
+
+  /* Le firme di mestiere. Questa è la parte che decide se il gioco si legge:
+     a sedici pixel la tinta è persa e la sagoma sopra la testa no. Una o due
+     forme a testa, mai di più, e sempre in tinte che esistono già. */
+  if(!bianco) switch(o.mest){
+    case 'contadino':                                   // la tesa larga
+      ct.beginPath(); ct.ellipse(0,hy-hr*.30,4.7*z*ind,1.25*z,0,0,TAU);
+      ct.fillStyle=scura; ct.fill();
+      ct.strokeStyle=bordo; ct.lineWidth=lw; ct.stroke();
+      break;
+    case 'arciere':                                     // cappuccio a punta e faretra
+      ct.save(); ct.translate(-bw*.75,-th*.70); ct.rotate(.5);
+      ct.fillStyle='#5c4426'; ct.fillRect(-.9*z,-3.2*z,1.8*z,6.4*z);
+      ct.fillStyle='#cfcabc'; ct.fillRect(-.5*z,-4.4*z,1*z,1.6*z); ct.restore();
+      ct.beginPath();
+      ct.moveTo(-hr*1.06,hy-hr*.20); ct.lineTo(.2*z,hy-hr*2.6); ct.lineTo(hr*1.06,hy-hr*.20);
+      ct.closePath(); ct.fillStyle=scura; ct.fill();
+      ct.strokeStyle=bordo; ct.lineWidth=lw; ct.stroke();
+      break;
+    case 'lanciere':                                    // lo scudo tondo sul braccio libero
+      ct.beginPath(); ct.arc(-bw*1.0,-th*.50,2.8*z,0,TAU);
+      ct.fillStyle=scura; ct.fill();
+      ct.strokeStyle=bordo; ct.lineWidth=lw; ct.stroke();
+      ct.beginPath(); ct.arc(-bw*1.0,-th*.50,.85*z,0,TAU);
+      ct.fillStyle='rgba(244,236,216,.8)'; ct.fill();
+      break;
+    case 'spadaccino':                                  // l'elmo con la cresta
+      ct.beginPath(); ct.arc(0,hy+hr*.15,hr*1.14,Math.PI,TAU);
+      ct.fillStyle='#8b8377'; ct.fill();
+      ct.strokeStyle=bordo; ct.lineWidth=lw; ct.stroke();
+      ct.fillStyle='#b9b0a0'; ct.fillRect(-.55*z,hy-hr*1.9,1.1*z,hr*1.05);
+      break;
+    case 'guerriero':                                   // la fascia in fronte: il grado zero
+      ct.fillStyle=mio?'#8e4436':'#3a2733';
+      ct.fillRect(-hr*.98,hy-hr*.16,hr*1.96,1*z);
+      break;
+    // il bambino non ha firma: la testa grande È la firma
+  }
+  ct.restore();
+  ct.restore();
+
+  // colpito
+  if(o.colpito>0){
+    ct.globalAlpha=clamp(o.colpito*3,0,.8);
+    ct.fillStyle='#ff5a48';
+    ct.beginPath(); ct.arc(x,y-alt*.5*z,7*z,0,TAU); ct.fill();
+    ct.globalAlpha=1;
+  }
+  // l'anellino: in mischia sai sempre chi è tuo
+  if(mio){
+    ct.beginPath(); ct.ellipse(x,y+1*z,5.4*z*larg,2.2*z,0,0,TAU);
+    ct.strokeStyle='rgba(255,240,210,.4)'; ct.lineWidth=1; ct.stroke();
+  }
+}
+
+/* Una lista sola, ordinata per y. Prima l'ordine era gente → nemici → capo,
+   quindi il capo stava SEMPRE sopra a tutti anche quando era dietro, e i
+   nemici sempre sopra la gente: è il motivo per cui la mischia si leggeva
+   come un collage invece che come uno spazio. Qui si mette tutto in un array
+   solo, si ordina, e si fa una passata. L'array è preallocato e riusato:
+   svuotarlo non alloca niente, e trenta elementi già quasi ordinati costano
+   pochi microsecondi veri. */
+const DISEGNA=[];
+const sxDi=wx=>wx*CAM.z+OFX;
+const syDi=wy=>wy*CAM.z+OFY;
+const perY=(a,b)=>a.sy-b.sy;   // per y INTERPOLATA: chi sta davanti sta davvero davanti
+
+function disegnaFigure(){
+  const z=CAM.z;
+  /* Ogni figura si disegna dove sta ADESSO, cioè fra il passo di prima e
+     quello di dopo: due moltiplicazioni in croce, e nessun fotogramma mostra
+     più una posizione vecchia. La sx interpolata si calcola una volta sola e
+     si scrive addosso, perché serve tre volte — taglio, ombra, corpo. */
+  DISEGNA.length=0;
+  for(const p of ME.gente){
+    const sx=sxDi(ix(p)), sy=syDi(iy(p));
+    if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
+    p.sx=sx; p.sy=sy; DISEGNA.push(p);
+  }
+  for(const n of nemici){
+    const sx=sxDi(ix(n)), sy=syDi(iy(n));
+    if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
+    n.sx=sx; n.sy=sy; DISEGNA.push(n);
+  }
+  /* Le bestie, tue e selvatiche, stanno nella stessa passata delle persone:
+     si ordinano per profondità insieme a tutti gli altri. */
+  for(const a of ME.animali){
+    const sx=sxDi(ix(a)), sy=syDi(iy(a));
+    if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
+    a.sx=sx; a.sy=sy; a.bestia=true; DISEGNA.push(a);
+  }
+  for(const chk of chunks.values()){
+    if(!chk.bestie)continue;
+    for(const a of chk.bestie){
+      const sx=sxDi(a.px?ix(a):a.x), sy=syDi(a.py?iy(a):a.y);
+      if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
+      a.sx=sx; a.sy=sy; a.bestia=true; DISEGNA.push(a);
+    }
+  }
+  const c=ME.capo;
+  c.sx=sxDi(ix(c)); c.sy=syDi(iy(c));
+  DISEGNA.push(c);
+
+  /* Le ombre in una passata sola, sotto a tutti — stanno per terra, e una
+     sotto l'altra non si vedrebbe comunque. Un beginPath, N ellissi, un fill:
+     venticinque riempimenti diventano uno. Direzione e lunghezza le decide
+     SOLE, la stessa che allunga le ombre degli alberi. */
+  ct.beginPath();
+  for(let i=0;i<DISEGNA.length;i++){
+    const o=DISEGNA[i];
+    const sx=o.sx+OMB.dx*z, sy=o.sy+OMB.dy*z;
+    const r=(o===ME.capo?6.4:o.bestia?(o.t==='gallina'?3.2:o.t==='cavallo'?8.5:7.5):o.t==='lupo'?6:4.8)*z*OMB.st;
+    ct.moveTo(sx+r,sy+1.1*z);
+    ct.ellipse(sx,sy+1.1*z,r,1.7*z,0,0,TAU);
+  }
+  ct.fillStyle=OMB.col; ct.fill();
+
+  DISEGNA.sort(perY);
+  for(let i=0;i<DISEGNA.length;i++){
+    const o=DISEGNA[i], sx=o.sx, sy=o.sy;
+    if(o===ME.capo) unCapo(o,sx,sy,z);
+    else if(o.bestia) unaBestia(o,sx,sy,z);
+    else if(o.t) unNemico(o,sx,sy,z);
+    else unaPersona(o,sx,sy,z);
+  }
+}
+
+/* ── Le bestie. Tre sagome che non si confondono con nessuno: la gallina è
+      una goccia con la cresta, la mucca un blocco a macchie, il cavallo è
+      l'unica cosa alta e lunga del mondo. ─────────────────────────────── */
+function unaBestia(a,sx,sy,z){
+  const fl=(a.dir!==undefined&&Math.cos(a.dir)<0)?-1:1;
+  const v=Math.hypot(a.vx||0,a.vy||0), and=v>4;
+  const passo=and?Math.sin(a.fase*2.2)*2.2*z:0;
+  ct.save(); ct.translate(sx,sy); ct.scale(fl,1);
+  ct.lineCap='round';
+  if(a.t==='gallina'){
+    ct.fillStyle='#efe6d3';
+    ct.beginPath(); ct.ellipse(0,-4*z,4.2*z,3.2*z,0,0,TAU); ct.fill();
+    ct.beginPath(); ct.arc(3.2*z,-7.2*z,1.9*z,0,TAU); ct.fill();
+    ct.fillStyle='#d23c2c'; ct.fillRect(2.6*z,-9.6*z,1.4*z,1.6*z);       // la cresta
+    ct.fillStyle='#e8a33a'; ct.fillRect(4.8*z,-7.4*z,1.6*z,.9*z);        // il becco
+    ct.strokeStyle='#e8a33a'; ct.lineWidth=.9*z;
+    ct.beginPath(); ct.moveTo(-1*z,-1.2*z); ct.lineTo(-1*z+passo*.5,0);
+    ct.moveTo(1.2*z,-1.2*z); ct.lineTo(1.2*z-passo*.5,0); ct.stroke();
+    if(a.presa>0){ ct.fillStyle='rgba(255,255,255,.7)'; ct.font='bold '+(8*z|0)+'px sans-serif';
+      ct.textAlign='center'; ct.scale(fl,1); ct.fillText('!',0,-13*z) }
+  } else if(a.t==='mucca'){
+    ct.strokeStyle='#2b2622'; ct.lineWidth=1.7*z;
+    ct.beginPath();
+    ct.moveTo(-5*z,-3*z); ct.lineTo(-5*z+passo,0);
+    ct.moveTo(5*z,-3*z); ct.lineTo(5*z-passo,0);
+    ct.moveTo(-2.5*z,-3*z); ct.lineTo(-2.5*z-passo,0);
+    ct.moveTo(2.5*z,-3*z); ct.lineTo(2.5*z+passo,0); ct.stroke();
+    ct.fillStyle='#f1ece2';
+    ct.beginPath(); ct.roundRect?ct.roundRect(-7.5*z,-10*z,15*z,7.5*z,2.5*z):ct.rect(-7.5*z,-10*z,15*z,7.5*z); ct.fill();
+    ct.fillStyle='#2b2622';                                               // le macchie
+    ct.beginPath(); ct.ellipse(-3*z,-7*z,2.4*z,1.8*z,.4,0,TAU); ct.fill();
+    ct.beginPath(); ct.ellipse(4*z,-5*z,1.8*z,1.4*z,-.3,0,TAU); ct.fill();
+    ct.fillStyle='#e9e2d6';                                               // la testa
+    ct.beginPath(); ct.roundRect?ct.roundRect(6*z,-9.5*z,4.5*z,4.5*z,1.2*z):ct.rect(6*z,-9.5*z,4.5*z,4.5*z); ct.fill();
+    ct.strokeStyle='#d9cfbf'; ct.lineWidth=1.1*z;                         // le corna
+    ct.beginPath(); ct.moveTo(7*z,-9.5*z); ct.lineTo(6*z,-12*z); ct.moveTo(9.5*z,-9.5*z); ct.lineTo(10.5*z,-12*z); ct.stroke();
+  } else { /* cavallo */
+    const sella=a.uid!==undefined;
+    ct.strokeStyle='#4a3326'; ct.lineWidth=1.8*z;
+    ct.beginPath();
+    ct.moveTo(-6*z,-5*z); ct.lineTo(-6*z+passo*1.4,0);
+    ct.moveTo(6*z,-5*z); ct.lineTo(6*z-passo*1.4,0);
+    ct.moveTo(-3*z,-5*z); ct.lineTo(-3*z-passo*1.4,0);
+    ct.moveTo(3*z,-5*z); ct.lineTo(3*z+passo*1.4,0); ct.stroke();
+    ct.fillStyle='#6e4a33';
+    ct.beginPath(); ct.roundRect?ct.roundRect(-8*z,-13*z,16*z,8*z,3*z):ct.rect(-8*z,-13*z,16*z,8*z); ct.fill();
+    ct.beginPath(); ct.moveTo(6*z,-13*z); ct.lineTo(10*z,-19*z); ct.lineTo(13*z,-18*z);   // collo e testa
+    ct.lineTo(13*z,-15*z); ct.lineTo(9*z,-11*z); ct.closePath(); ct.fill();
+    ct.fillStyle='#2e2018';                                               // la criniera e la coda
+    ct.fillRect(7*z,-19*z,2.2*z,5*z);
+    ct.beginPath(); ct.moveTo(-8*z,-12*z); ct.quadraticCurveTo(-12*z,-10*z,-11*z,-4*z);
+    ct.lineTo(-9.5*z,-5*z); ct.quadraticCurveTo(-10*z,-9*z,-8*z,-10*z); ct.closePath(); ct.fill();
+    if(sella){ ct.fillStyle='#c8342c'; ct.fillRect(-3*z,-14.5*z,6*z,2.2*z) }   // la sella: è tuo
+  }
+  ct.restore();
+}
+
+function unaPersona(p,sx,sy,z){
+  const t=p.trasf>0?1-p.trasf/T_TRASF:0;
+  /* Lo scatto dell'arma: pieno nell'istante del colpo, rientrato in 180 ms.
+     La ricarica piena è .8 in mischia e 1.5 per chi tira: p.colpo scende da
+     lì, quindi il tempo trascorso è la differenza. */
+  const A=(p.arma&&ARMI[p.arma]&&ARMI[p.arma].gitt>100)?1.5:.8;
+  const sc=p.colpo>0?Math.max(0,1-(A-p.colpo)/.18):0;
+  const arc=p.mest==='arciere';
+
+  /* La vestizione, in quattro atti dentro lo stesso mezzo secondo di sempre.
+     T_TRASF non si tocca: si riempie. Si accovaccia mentre la falce gli cade
+     di mano, lampeggia della PROPRIA forma, si raddrizza di scatto col petto
+     in fuori, e l'anello si allarga per terra. */
+  let inc, giu=0;
+  if(p.trasf>0){
+    if(t<.30){ const u=t/.30; inc=lerp(.26,.48,u); giu=u*3.2*z }
+    else if(t<.45){ inc=.48; giu=3.2*z }
+    else if(t<.75){ const u=(t-.45)/.30, e=1-Math.pow(1-u,3);
+      inc=lerp(.48,-.10,e); giu=(1-e)*3.2*z }
+    else inc=lerp(-.10,0,(t-.75)/.25);
+  }
+
+  OM.mest=p.trasf>0?'contadino':p.mest;
+  /* p.guarda è già scritto dalla simulazione quando uno ingaggia e non lo
+     leggeva nessuno: la fila che si volta tutta insieme verso il lupo è la
+     cosa più leggibile che si potesse aggiungere, e costa zero. */
+  OM.dir=(p.colpo>0&&p.guarda!==undefined)?p.guarda:p.dir;
+  OM.fase=p.fase; OM.and=p.and&&p.trasf<=0;
+  OM.carico=p.carico; OM.cap=capacita(p);
+  OM.arma=p.trasf>0?null:p.arma;
+  OM.colpito=p.colpito; OM.mio=true; OM.uid=p.uid;
+  OM.lavora=p.lavora||0;
+  OM.scatto=arc?0:sc; OM.tira=arc?sc:0;
+  OM.inc=inc; OM.giu=giu; OM.bianco=false; OM.acc=p.trasf>0?0:(p.acc||0);
+  disegnaOmino(sx,sy,z,OM);
+
+  if(p.trasf>0){
+    /* Il lampo prende la FORMA della persona invece di essere un rettangolo
+       bianco: è la stessa sagoma ridisegnata in bianco, cioè un secondo
+       passaggio su una figura sola, una o due volte per partita al minuto. */
+    if(t>.30&&t<.45){
+      ct.globalAlpha=Math.sin((t-.30)/.15*Math.PI)*.92;
+      OM.bianco=true; disegnaOmino(sx,sy,z,OM); OM.bianco=false;
+      ct.globalAlpha=1;
+    }
+    /* L'anello è un'ellisse schiacciata come tutte le ombre del gioco, non un
+       cerchio piatto: in un mondo visto di sbieco un cerchio vero sta in
+       piedi come un hula hoop e rompe la prospettiva di tutto il resto. */
+    if(t>.75){
+      const u=(t-.75)/.25, r=lerp(6,26,u)*z;
+      ct.globalAlpha=(1-u)*.7; ct.strokeStyle='#ffe9bd';
+      ct.lineWidth=Math.max(1,2.2*z*(1-u));
+      ct.beginPath(); ct.ellipse(sx,sy+1*z,r,r*.38,0,0,TAU); ct.stroke();
+      ct.globalAlpha=1;
+    }
+  }
+  if(p.grido>0){
+    // il "!" sale e sfuma invece di stare inchiodato sopra la testa
+    const u=1-clamp(p.grido/.6,0,1);
+    ct.globalAlpha=clamp(p.grido*1.6,0,1);
+    ct.fillStyle='#fff'; ct.font='700 '+(9*z|0)+'px sans-serif'; ct.textAlign='center';
+    ct.fillText('!',sx,sy-24*z-u*8*z);
+    ct.globalAlpha=1;
+  }
+  if(p.nome&&z>.9){
+    ct.fillStyle='rgba(243,236,224,.62)'; ct.font=(7.5*z|0)+'px sans-serif'; ct.textAlign='center';
+    ct.fillText(p.nome,sx,sy-22*z);
+  }
+  if(p.stato==='ferito'){
+    const g=(Math.sin(TS*4.55)+1)/2;
+    ct.fillStyle='rgba(255,70,60,'+(.4+g*.5)+')';
+    ct.beginPath(); ct.arc(sx,sy-6*z,2.4*z,0,TAU); ct.fill();
+  }
+}
+
+function unNemico(n,sx,sy,z){
+  if(n.t==='lupo'){
+    const p2=Math.sin(n.fase*1.9)*2*z;
+    ct.strokeStyle='#4a3f46'; ct.lineWidth=1.8*z; ct.lineCap='round';
+    ct.beginPath();
+    ct.moveTo(sx-4*z,sy-2*z); ct.lineTo(sx-4*z+p2,sy);
+    ct.moveTo(sx+4*z,sy-2*z); ct.lineTo(sx+4*z-p2,sy);
+    ct.stroke();
+    const fl=verso(n.uid,n.dir);
+    ct.beginPath();
+    ct.moveTo(sx-6*z,sy-7*z); ct.lineTo(sx+6*z,sy-7*z);
+    ct.lineTo(sx+5*z,sy-2*z); ct.lineTo(sx-5*z,sy-2*z); ct.closePath();
+    ct.fillStyle='#5b4c54'; ct.fill();
+    ct.strokeStyle='rgba(14,10,20,.5)'; ct.lineWidth=Math.max(1,.85*z); ct.stroke();
+    ct.beginPath(); ct.arc(sx+fl*7*z,sy-7.4*z,2.6*z,0,TAU); ct.fill();
+    ct.stroke();
+    // le orecchie a punta: da sopra sono l'unica cosa che dice "lupo" e non "cane"
+    ct.beginPath();
+    ct.moveTo(sx+fl*5.6*z,sy-9.2*z); ct.lineTo(sx+fl*6.2*z,sy-12*z);
+    ct.lineTo(sx+fl*7.6*z,sy-9.4*z); ct.closePath();
+    ct.fillStyle='#4a3f46'; ct.fill();
+  } else {
+    OM.mest=n.t==='predone'?'spadaccino':'guerriero';
+    OM.dir=n.dir; OM.fase=n.fase; OM.and=true;
+    OM.carico=n.rubato||null; OM.cap=26;
+    OM.arma=n.t==='predone'?'spada':'randello';
+    OM.colpito=n.colpito; OM.mio=false; OM.uid=n.uid;
+    OM.lavora=0; OM.scatto=0; OM.tira=0;
+    OM.inc=undefined; OM.giu=0; OM.bianco=false; OM.acc=n.acc||0;
+    disegnaOmino(sx,sy,z,OM);
+  }
+}
+function disegnaRoba(){
+  const z=CAM.z;
+  for(const o of ME.terra){
+    const s=w2s(o.x,o.y);
+    const g=(Math.sin(performance.now()/600+o.x)+1)/2;
+    if(o.t==='sacco'){
+      ct.fillStyle='#c8a94a'; ct.beginPath(); ct.ellipse(s.x,s.y,4.4*z,3.6*z,0,0,TAU); ct.fill();
+    } else {
+      ct.globalAlpha=.55+g*.45;
+      disegnaArma(s.x,s.y-2*z,z,o.t,-1.9);
+      ct.globalAlpha=1;
+    }
+  }
+}
+/* Quello che vola sta SOPRA a tutti: una freccia che passa dietro a un
+   compagno non si vede, e una freccia che non si vede non spiega niente. */
+function disegnaVolo(){
+  for(const f of frecce){
+    // una freccia attraversa lo schermo in un terzo di secondo: senza
+    // interpolare, a 144 Hz è una fila di trattini invece di una linea
+    const t=f.pt===undefined?f.t:f.pt+(f.t-f.pt)*ALFA;
+    const x=lerp(f.x,f.tx,t), y=lerp(f.y,f.ty,t)-Math.sin(t*Math.PI)*10;
+    const sx=sxDi(x), sy=syDi(y);
+    ct.strokeStyle='#e8dcc0'; ct.lineWidth=1.4;
+    const an=Math.atan2(f.ty-f.y,f.tx-f.x);
+    ct.beginPath(); ct.moveTo(sx,sy);
+    ct.lineTo(sx-Math.cos(an)*7*CAM.z,sy-Math.sin(an)*7*CAM.z); ct.stroke();
+  }
+  for(const s of scintille){
+    const t=s.pt===undefined?s.t:s.pt+(s.t-s.pt)*ALFA;
+    const y=s.py===undefined?s.y:s.py+(s.y-s.py)*ALFA;
+    ct.globalAlpha=1-t; ct.fillStyle=s.c;
+    ct.beginPath(); ct.arc(sxDi(s.x),syDi(y),3*(1-t)*CAM.z,0,TAU); ct.fill();
+    ct.globalAlpha=1;
+  }
+}
+
+/* La polvere sta SOTTO la gente e sopra la terra: nasce ai piedi e non deve
+   mai coprire una sagoma. Tre gruppi di trasparenza e tre riempimenti in
+   tutto — non quaranta — perché il costo di una particella non è la particella,
+   è il cambio di stato del contesto. */
+function disegnaPolvere(){
+  if(!POLV.length)return;
+  const z=CAM.z;
+  const G=[[],[],[]];
+  for(let i=0;i<POLV.length;i++){
+    const s=POLV[i];
+    const t=s.pt===undefined?s.t:s.pt+(s.t-s.pt)*ALFA;
+    const x=sxDi(s.x), y=syDi(s.y);
+    if(x<-20||y<-20||x>cw+20||y>ch+20)continue;
+    G[t<.34?0:t<.67?1:2].push(x,y,(s.r+t*2.8)*z);
+  }
+  const op=['.17','.11','.05'];
+  for(let g=0;g<3;g++){
+    if(!G[g].length)continue;
+    ct.beginPath();
+    for(let k=0;k<G[g].length;k+=3){
+      const x=G[g][k], y=G[g][k+1], r=G[g][k+2];
+      ct.moveTo(x+r,y); ct.ellipse(x,y,r,r*.48,0,0,TAU);
+    }
+    ct.fillStyle='rgba(190,176,150,'+op[g]+')'; ct.fill();
+  }
+}
+function unCapo(c,sx,sy,z0){
+  const z=z0*1.32;
+  // il cerchio d'erba calpestata: il capo lo porta sempre con sé
+  ct.beginPath(); ct.ellipse(sx,sy,11*z0,4.4*z0,0,0,TAU);
+  ct.fillStyle='rgba(255,220,150,.10)'; ct.fill();
+
+  const dir=c.dir||0, fl=verso(0,dir);
+  /* Il mantello, dietro le spalle e disegnato PRIMA del corpo così non gli
+     copre la faccia. Si apre camminando e ondula con c.fase, che passo() già
+     incrementa a 4+cammina*7: l'ondulazione è legata all'andatura senza un
+     grammo di stato nuovo. È l'unica cosa che nessun altro ha addosso, ed è
+     per questo che il capo si trova ancora a colpo d'occhio adesso che tutti
+     gli altri sono diventati più ricchi. */
+  const on=Math.sin((c.fase||0)*.8)*z;
+  const ap=2.4*z+(c.cammina||0)*3.4*z;
+  ct.beginPath();
+  ct.moveTo(sx,sy-13*z);
+  // il mantello finisce sopra i piedi: se arriva a terra diventa una gonna
+  ct.quadraticCurveTo(sx-ap-on,sy-7*z,sx-ap*.58+on*.6,sy-1.6*z);
+  ct.lineTo(sx+ap*.58+on*.6,sy-1.6*z);
+  ct.quadraticCurveTo(sx+ap-on,sy-6*z,sx,sy-13*z);
+  ct.closePath();
+  ct.fillStyle=CONDOTTIERO().mantello; ct.fill();
+  ct.strokeStyle='rgba(22,15,11,.45)'; ct.lineWidth=Math.max(1,.85*z); ct.stroke();
+
+  OM.mest='guerriero'; OM.dir=dir; OM.fase=c.fase; OM.and=c.cammina>0;
+  OM.carico=null; OM.cap=26; OM.arma=null;
+  OM.colpito=c.colpito; OM.mio=true; OM.uid=0;
+  OM.lavora=0; OM.scatto=0; OM.tira=0;
+  OM.inc=undefined; OM.giu=0; OM.bianco=false; OM.acc=c.acc||0;
+  disegnaOmino(sx,sy,z,OM);
+
+  // l'asta in mano, con il pennone
+  const ax=sx+fl*7*z0, ay=sy-14*z0;
+  ct.strokeStyle='#7a6650'; ct.lineWidth=2.2*z0;
+  ct.beginPath(); ct.moveTo(ax,ay+12*z0); ct.lineTo(ax,ay-20*z0); ct.stroke();
+  /* La bandiera arriva DOPO il corpo: mezzo periodo di ritardo sul passo,
+     invece di un orologio suo che batte per conto proprio. Il peso di una
+     stoffa è tutto lì — nel ritardo, non nell'ampiezza. */
+  const pn=Math.sin((c.fase||0)*.8-Math.PI)*2.4*z0;
+  ct.beginPath(); ct.moveTo(ax,ay-20*z0); ct.lineTo(ax+fl*(12*z0+pn),ay-16*z0);
+  ct.lineTo(ax,ay-11*z0); ct.closePath();
+  ct.fillStyle='#c8342c'; ct.fill();
+  // le armi che porta sulla schiena, una per una
+  for(let i=0;i<c.porta.length;i++)
+    disegnaArma(sx-fl*(5+i*2.4)*z0,sy-16*z0,z0*.7,c.porta[i],.8*fl);
+  // il colpo d'asta
+  if(c.colpo>0){
+    const t=1-c.colpo/.45;
+    ct.beginPath();
+    ct.arc(sx,sy-8*z0,58*z0,dir-1.22+t*.6,dir+1.22-(1-t)*.6);
+    ct.strokeStyle='rgba(255,240,200,'+(1-t)*.7+')'; ct.lineWidth=5*z0; ct.stroke();
+  }
+}
+/** Chi è fuori campo resta visibile come sagoma sul bordo: non un numero. */
+function disegnaBordi(){
+  for(const p of ME.gente){
+    const s=w2s(ix(p),iy(p));
+    if(s.x>=0&&s.y>=0&&s.x<=cw&&s.y<=ch)continue;
+    const x=clamp(s.x,12,cw-12), y=clamp(s.y,42,ch-70);
+    ct.globalAlpha=.42;
+    OM.mest=p.mest; OM.dir=p.dir; OM.fase=0; OM.and=false;
+    OM.carico=p.carico; OM.cap=capacita(p); OM.arma=p.arma;
+    OM.colpito=0; OM.mio=true; OM.uid=p.uid;
+    OM.lavora=0; OM.scatto=0; OM.tira=0;
+    OM.inc=undefined; OM.giu=0; OM.bianco=false; OM.acc=0;
+    disegnaOmino(x,y,.72,OM);
+    ct.globalAlpha=1;
+  }
+  // la strada di casa, se sei fuori dal cerchio
+  const c=ME.capo, d=dist(c.x,c.y,ME.borgo.x,ME.borgo.y);
+  if(d>ME.respiro){
+    const an=Math.atan2(ME.borgo.y-iy(c),ME.borgo.x-ix(c));
+    const x=cw/2+Math.cos(an)*Math.min(cw,ch)*.36;
+    const y=ch/2+Math.sin(an)*Math.min(cw,ch)*.36;
+    ct.save(); ct.translate(x,y); ct.rotate(an);
+    ct.globalAlpha=.5; ct.fillStyle='#c8342c';
+    ct.beginPath(); ct.moveTo(9,0); ct.lineTo(-6,-6); ct.lineTo(-6,6); ct.closePath(); ct.fill();
+    ct.globalAlpha=1; ct.restore();
+  }
+}
+/** La notte non è un filtro: è il motivo per cui i lupi sono più veloci. */
+function disegnaNotte(){
+  const l=luceOra();
+  /* Il crepuscolo. Tinge, non copre: dieci per cento e non un punto di più.
+     È questa tinta che rende credibili le ombre lunghe — senza, un'ombra
+     di quattro unità alle sei di sera sembra solo un errore. */
+  if(l<.92&&l>.45){
+    const k=(l-.45)/.47;
+    const alba=Math.cos((ME.orologio.tempo-.22)*TAU)>0;   // la luce sale o scende?
+    ct.fillStyle=(alba?'rgba(255,150,80,':'rgba(255,110,50,')+(.10*(1-k))+')';
+    ct.fillRect(0,0,cw,ch);
+  }
+  if(l>.92)return;
+  const buio=(1-l)*.62;
+  ct.fillStyle='rgba(8,18,38,'+buio+')';
+  ct.fillRect(0,0,cw,ch);
+  if(l<.5){
+    const f=w2s(ME.borgo.x,ME.borgo.y);
+    const g=ct.createRadialGradient(f.x,f.y,0,f.x,f.y,190*CAM.z);
+    g.addColorStop(0,'rgba(255,170,70,'+(.30*(1-l))+')');
+    g.addColorStop(1,'rgba(255,170,70,0)');
+    ct.fillStyle=g; ct.fillRect(0,0,cw,ch);
+    for(const a of ME.aste){
+      if(!a.fuoco)continue;
+      const p=w2s(a.x,a.y);
+      const g2=ct.createRadialGradient(p.x,p.y,0,p.x,p.y,150*CAM.z);
+      g2.addColorStop(0,'rgba(255,140,50,'+(.30*(1-l))+')');
+      g2.addColorStop(1,'rgba(255,140,50,0)');
+      ct.fillStyle=g2; ct.fillRect(0,0,cw,ch);
+    }
+  }
+}
+
+function disegna(){
+  ct.clearRect(0,0,cw,ch);
+  fissaProiezione();
+  TV=performance.now()/1000;
+  TS=TV;
+  sole();
+  /* Da qui in poi la luce è decisa: da che parte cade l'ombra, quanto si
+     allunga, quanto pesa. Tre numeri per fotogramma che valgono per tutte le
+     figure — e sono gli stessi che allungano l'ombra degli alberi, per cui
+     gente e paesaggio non possono mai contraddirsi sull'ora del giorno. */
+  OMB.dx=SOLE.lx*1.5; OMB.dy=SOLE.ly*1.5;
+  OMB.st=1+Math.abs(SOLE.lx)*.09;
+  OMB.col='rgba(24,18,12,'+(.06+SOLE.op*.9).toFixed(3)+')';
+  /* L'ordine è una regola sola: tutto quello che è terra sta sotto, e sopra
+     la terra non ci va niente di alto più di due pixel. Le nuvole passano
+     PRIMA della gente, mai dopo: un'ombra che scorre sopra i personaggi
+     costerebbe leggibilità, e la leggibilità non è in vendita. */
+  disegnaTerra();
+  disegnaSuoloBorgo();
+  disegnaAcqua();
+  disegnaImpronte();
+  nuvole();
+  disegnaRespiro();
+  disegnaCose();
+  disegnaBorgo();
+  disegnaAste();
+  disegnaRoba();
+  disegnaPolvere();
+  disegnaFigure();
+  disegnaVolo();
+  disegnaNotte();
+  disegnaBordi();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   10 · LE MANI
+   Due pollici, tre gesti. Su computer gli stessi tre gesti, con
+   tastiera e mouse: parità piena, non un adattamento.
+   ═══════════════════════════════════════════════════════════════ */
+let progIdx=0;
+const tasti={};
+let lev=null;                    // levetta invisibile: nasce dove appoggi il dito
+let mouseGiu=false, mouseX=0, mouseY=0;
+let astaGiu=0, astaId=null, astaFatta=false;
+
+function leggiMovimento(){
+  let x=0,y=0;
+  if(lev){ x=lev.dx; y=lev.dy; }
+  if(tasti.w||tasti.ArrowUp)y-=1;
+  if(tasti.s||tasti.ArrowDown)y+=1;
+  if(tasti.a||tasti.ArrowLeft)x-=1;
+  if(tasti.d||tasti.ArrowRight)x+=1;
+  if(mouseGiu&&!lev){
+    const w=s2w(mouseX,mouseY);
+    const dx=w.x-ME.capo.x, dy=w.y-ME.capo.y;
+    const d=Math.hypot(dx,dy);
+    /* Anche il mouse ha la sua rampa: col cursore appoggiato addosso al capo,
+       il salto secco da 0 a 1 lo faceva vibrare avanti e indietro sul posto. */
+    if(d>14){ const f=Math.min(1,(d-14)/32); x=dx/d*f; y=dy/d*f }
+  }
+  const f=Math.hypot(x,y);
+  if(f<.02)return {x:0,y:0,f:0};
+  return {x:x/f, y:y/f, f:Math.min(1,f)};
+}
+
+function dire(t){
+  const e=$('#say');
+  e.textContent=t; e.classList.add('on');
+  clearTimeout(dire._t);
+  dire._t=setTimeout(()=>e.classList.remove('on'),1900);
+}
+
+/* ── Cosa fa l'asta, secondo dove sei ───────────────────────── */
+function astaRilascio(durata){
+  const c=ME.capo;
+  const sopra=astaSotto(c.x,c.y,52);
+  if(durata<.18){
+    if(sopra){ strappaAsta(sopra); dire('Asta strappata — tornano in fila') }
+    else colpoAsta();
+    return;
+  }
+  // il piantare è già avvenuto durante la pressione
+}
+function astaPianta(fuoco){
+  const c=ME.capo;
+  if(astaSotto(c.x,c.y,52))return false;
+  const tav=dist(c.x,c.y,ME.borgo.x+62,ME.borgo.y-16)<95;
+  if(tav&&inBorgo(c.x,c.y)){
+    const k=ORD_EDIF[progIdx], E=EDIFICI[k];
+    if(!puoPagare(E.costo)){ dire('Serve '+Object.keys(E.costo).map(r=>E.costo[r]+' '+r).join(', ')); return false }
+    paga(E.costo);
+    const an=Math.random()*TAU, d=95+Math.random()*45;
+    const ex=ME.borgo.x+Math.cos(an)*d, ey=ME.borgo.y+Math.sin(an)*d;
+    const a=piantaAsta(ex,ey,false,k);
+    if(a) ME.edifici.push({tipo:k,x:ex,y:ey,prog:0,asta:a.id,nato:now()});
+    return true;
+  }
+  return !!piantaAsta(c.x,c.y,fuoco,null);
+}
+
+function armaTasto(){
+  const c=ME.capo;
+  if(inBorgo(c.x,c.y)){
+    if(dist(c.x,c.y,ME.borgo.x+62,ME.borgo.y-16)<95){
+      progIdx=(progIdx+1)%ORD_EDIF.length;
+      const E=EDIFICI[ORD_EDIF[progIdx]];
+      dire(E.n+' — '+Object.keys(E.costo).map(r=>E.costo[r]+' '+r).join(', ')+' · '+E.d);
+      return;
+    }
+    if(dist(c.x,c.y,ME.borgo.x-64,ME.borgo.y-12)<95){
+      if(disarmaPiuVicino()){ dire('Ha riappeso l\'arma'); return }
+    }
+  }
+  if(!armaPiuVicino()) dire('Serve un\'arma a terra e un contadino vicino');
+}
+
+function legaMani(){
+  const el=$('#cv');
+  el.addEventListener('pointerdown',e=>{
+    el.setPointerCapture(e.pointerId);
+    if(e.pointerType==='mouse'&&e.button===2)return;
+    if(e.pointerType==='mouse'){ mouseGiu=true; mouseX=e.clientX; mouseY=e.clientY; return }
+    if(e.clientX<cw*.55&&!lev){ lev={id:e.pointerId,ox:e.clientX,oy:e.clientY,dx:0,dy:0} }
+  });
+  el.addEventListener('pointermove',e=>{
+    mouseX=e.clientX; mouseY=e.clientY;
+    if(lev&&e.pointerId===lev.id){
+      let dx=e.clientX-lev.ox, dy=e.clientY-lev.oy;
+      const d=Math.hypot(dx,dy);
+      if(d>70){ lev.ox+=dx*(1-70/d); lev.oy+=dy*(1-70/d); dx*=70/d; dy*=70/d }
+      /* Era d<8?0:min(1,d/42): nell'istante in cui si superavano gli otto
+         pixel di zona morta la spinta saltava da zero a un quinto, e il capo
+         partiva con uno scatto che nessun dito aveva chiesto. Adesso la rampa
+         comincia DA dove finisce la zona morta, quindi è continua nel punto di
+         stacco. Il raggio massimo di 70 e il ricentraggio restano identici. */
+      const f=clamp((d-8)/34,0,1);
+      const an=Math.atan2(dy,dx);
+      lev.dx=Math.cos(an)*f; lev.dy=Math.sin(an)*f;
+    }
+  });
+  const su=e=>{
+    if(lev&&e.pointerId===lev.id)lev=null;
+    if(e.pointerType==='mouse')mouseGiu=false;
+  };
+  el.addEventListener('pointerup',su);
+  el.addEventListener('pointercancel',su);
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  el.addEventListener('wheel',e=>{e.preventDefault();
+    zi=clamp(zi+(e.deltaY>0?-1:1),0,2)},{passive:false});
+
+  // il tasto grande
+  const ta=$('#tAsta');
+  const giu=e=>{ e.preventDefault(); astaGiu=performance.now(); astaFatta=false;
+    ta.classList.add('giu') };
+  const su2=e=>{ e.preventDefault();
+    if(!astaGiu)return;
+    const d=(performance.now()-astaGiu)/1000;
+    ta.classList.remove('giu'); ta.classList.remove('carica');
+    $('#anelloArc').style.strokeDashoffset=289;
+    if(!astaFatta)astaRilascio(d);
+    astaGiu=0;
+  };
+  ta.addEventListener('pointerdown',giu);
+  ta.addEventListener('pointerup',su2);
+  ta.addEventListener('pointercancel',su2);
+  $('#tArma').addEventListener('pointerdown',e=>{e.preventDefault();armaTasto()});
+
+  addEventListener('keydown',e=>{
+    const t=e.target;
+    if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'))return;
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    if(e.key==='Escape'){ $('#velo').classList.remove('on'); return }
+    tasti[e.key]=true;
+    if(e.code==='Space'&&!astaGiu){ astaGiu=performance.now(); astaFatta=false; e.preventDefault() }
+    if(e.key==='e'||e.key==='E'){ armaTasto(); e.preventDefault() }
+    if(e.key==='+'||e.key==='='){ zi=Math.min(2,zi+1); e.preventDefault() }
+    if(e.key==='-'||e.key==='_'){ zi=Math.max(0,zi-1); e.preventDefault() }
+    if(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();
+  });
+  addEventListener('keyup',e=>{
+    tasti[e.key]=false;
+    if(e.code==='Space'&&astaGiu){
+      const d=(performance.now()-astaGiu)/1000;
+      if(!astaFatta)astaRilascio(d);
+      astaGiu=0; $('#tAsta').classList.remove('carica');
+      $('#anelloArc').style.strokeDashoffset=289;
+    }
+  });
+  addEventListener('resize',adattaTelaPiano);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   11 · IL CODICE DEL VILLAGGIO
+   Senza server, è l'unica onestà possibile: senza questo, "il tuo
+   villaggio per sempre" è una bugia che si scopre cambiando telefono.
+   ═══════════════════════════════════════════════════════════════ */
+function codificaStato(){
+  const s=JSON.stringify({m:MONDO,i:ME},NOSALVA);
+  return btoa(unescape(encodeURIComponent(s)));
+}
+function decodificaStato(t){
+  const s=decodeURIComponent(escape(atob(t.trim())));
+  const o=JSON.parse(s);
+  if(!o.m||!o.i||o.i.v!==1)throw new Error('codice non valido');
+  return o;
+}
+function apriCodice(){
+  $('#codice').value=codificaStato();
+  $('#velo').classList.add('on');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   12 · L'INTERFACCIA, QUEL POCO CHE C'È
+   ═══════════════════════════════════════════════════════════════ */
+function aggiornaHud(){
+  const c=ME.capo;
+  $('#aNome').textContent=ME.borgo.nome;
+  $('#aCoord').textContent='N '+nf(ME.borgo.y)+' / E '+nf(ME.borgo.x)+
+    (dist(c.x,c.y,ME.borgo.x,ME.borgo.y)>400?' · '+BIOMI[bioma(c.x,c.y)].n:'');
+
+  const dentro=inBorgo(c.x,c.y);
+  $('#store').classList.toggle('on',dentro);
+  $('#salva').classList.toggle('on',dentro);
+  if(dentro){
+    $('#sGrano').textContent=Math.round(ME.scorte.grano);
+    $('#sLegno').textContent=Math.round(ME.scorte.legno);
+    $('#sFerro').textContent=Math.round(ME.scorte.ferro);
+    $('#sSale').textContent=Math.round(ME.scorte.sale);
+    $('#sCibo').textContent=Math.round(ME.scorte.cibo||0);
+    $('#sCiboR').style.display=ME.animali.length?'flex':'none';
+  }
+  // il tasto ARMA è spento quando non c'è niente da fare: mai una punizione
+  let puo=false;
+  if(dentro)puo=true;
+  else{
+    for(const o of ME.terra) if(ARMI[o.t]&&dist(o.x,o.y,c.x,c.y)<150){puo=true;break}
+    if(!puo&&c.porta.length)puo=true;
+  }
+  $('#tArma').classList.toggle('spento',!puo);
+
+  // l'anello che si carica: il fuoco è una decisione che si vede
+  if(astaGiu){
+    const d=(performance.now()-astaGiu)/1000;
+    if(d>=.18&&!astaFatta){ astaFatta=astaPianta(false); if(!astaFatta)astaGiu=0; }
+    if(astaFatta){
+      const f=clamp((d-.18)/1.82,0,1);
+      $('#anelloArc').style.strokeDashoffset=289*(1-f);
+      if(f>=1){
+        const a=ME.aste[ME.aste.length-1];
+        if(a&&!a.fuoco){ a.fuoco=true; dire('Il vessillo brucia — arriveranno') }
+        $('#tAsta').classList.add('carica');
+      }
+    }
+  }
+  // la manina: l'unico insegnamento del gioco, e solo la prima volta
+  const m=$('#manina');
+  if(!ME.visto.primoPasso){ m.style.left=(cw*.22-27)+'px'; m.style.top=(ch*.68-27)+'px';
+    m.classList.add('on') }
+  else if(!ME.visto.primaAsta&&gentePiedi().length){
+    const r=$('#tAsta').getBoundingClientRect();
+    m.style.left=(r.left+r.width/2-27)+'px'; m.style.top=(r.top+r.height/2-27)+'px';
+    m.classList.add('on');
+  } else m.classList.remove('on');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   13 · IL CICLO
+   ═══════════════════════════════════════════════════════════════ */
+let ultimo=0, accSalva=0, ACC=0;
+function giro(ts){
+  requestAnimationFrame(giro);
+  let dt=(ts-ultimo)/1000;
+  if(!(dt>0))dt=H;
+  if(dt>.25)dt=.25;
+  ultimo=ts;
+  /* Il mondo avanza SEMPRE a passi di un sessantesimo, mai di più e mai di
+     meno: a 60, 90 o 144 Hz la gente cammina alla stessa andatura, e nessuno
+     può più accelerare cambiando monitor.
+     Il tetto di cinque sotto-passi è la cosa che tiene in piedi tutto: senza,
+     tornare da una scheda rimasta nascosta un minuto vorrebbe dire tremila
+     passi in un fotogramma, cioè il gioco che si pianta. Il tempo che avanza
+     si BUTTA — chi non c'era non ha giocato, e per le assenze lunghe c'è già
+     recuperaAssenza() che fa il conto per bene all'avvio. */
+  /* Il fermo-immagine del colpo: il tempo del mondo non avanza, quello del
+     disegno sì. Così lo scatto si vede ma la simulazione non ne sa niente. */
+  if(FERMO>0){ FERMO-=dt; dt=0 }
+  if(SCOSSA>0){ SCOSSA*=Math.pow(.002,Math.max(dt,1/60)); if(SCOSSA<.2)SCOSSA=0 }
+  ACC+=dt;
+  let n=0;
+  while(ACC>=H&&n<5){ passo(H); ACC-=H; n++ }
+  if(ACC>=H)ACC=0;
+  /* Quanto manca al passo dopo, da zero a uno: è tutto quello che il disegno
+     sa del tempo, e l'unica cosa che gli serve sapere. */
+  ALFA=ACC/H;
+  muoviCamera(dt);
+  disegna();
+  aggiornaHud();
+  accSalva+=dt;
+  if(accSalva>4){ accSalva=0; salva(true) }
+  else if(salvaPend&&now()-salvaT>800) salva(true);
+}
+
+function avvio(){
+  adattaTela();
+  const c=carica();
+  if(c){ MONDO=c.m; ME=c.i }
+  else{
+    const spawn=tavolaSpawn();
+    MONDO={v:1, seed:SEED, size:W, chunks:{},
+      villaggi:spawn.slice(0,64).map((p,i)=>({vid:'v-'+i,nome:nomeLuogo(i),x:p.x,y:p.y}))};
+    ME=nuovoIo(spawn);
+    // Sei il capo, e sei già in sei. Il grano è a venti passi: il mondo te lo mette sotto il naso.
+    for(let i=0;i<5;i++){
+      const an=i/5*TAU;
+      const p=nuovaPersona(ME.borgo.x+Math.cos(an)*44,ME.borgo.y+Math.sin(an)*44,'falce');
+      ME.gente.push(p);
+    }
+    ME.capo.vitaMax=8; ME.capo.vita=8;
+  }
+  for(const p of ME.gente){ UID=Math.max(UID,p.uid+1) }
+  for(const a of ME.aste){ ASTA_UID=Math.max(ASTA_UID,a.id+1) }
+  ME.capo.porta=ME.capo.porta||[];
+  ME.terra=ME.terra||[]; ME.pietre=ME.pietre||[]; ME.edifici=ME.edifici||[]; ME.aste=ME.aste||[];
+  ME.animali=ME.animali||[]; if(ME.scorte.cibo===undefined)ME.scorte.cibo=0;
+  for(const a of ME.animali){ a.px=a.x; a.py=a.y; a.vx=a.vx||0; a.vy=a.vy||0 }
+
+  recuperaAssenza();
+  if(ME.rubatoMentreVia){
+    setTimeout(()=>{dire('Ti hanno rubato '+ME.rubatoMentreVia+' di grano mentre non c\'eri');
+      delete ME.rubatoMentreVia},1400);
+  }
+  CAM.x=ME.capo.x; CAM.y=ME.capo.y; CAM.z=ZOOM[zi];
+  CVX=CVY=0; sgPronto=false;
+  fissaProiezione();
+  /* Un villaggio salvato non ha un passato: se ne dà uno uguale al presente,
+     o il primo fotogramma interpola fra una posizione vera e un undefined e
+     tutti nascono in mezzo al nulla. Il passo poi lo riscrive da sé. */
+  { const c0=ME.capo;
+    c0.vx=c0.vx||0; c0.vy=c0.vy||0; c0.acc=0; c0.px=c0.x; c0.py=c0.y;
+    for(const p of ME.gente){ p.px=p.x; p.py=p.y; p.acc=0; p.vx=p.vx||0; p.vy=p.vy||0 } }
+  scia.length=0; sciaD=0; scriviScia(ME.capo.x,ME.capo.y);
+  borgoSporco=true;
+  /* Il tre per tre attorno al capo, prima del primo fotogramma: senza questo
+     si parte con nove riquadri di colore piatto e si vedono riempirsi. */
+  {
+    const li=Math.floor(ME.capo.x/LS), lj=Math.floor(ME.capo.y/LS);
+    for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++) metti(li+i,lj+j);
+  }
+
+  legaMani();
+  $('#salva').onclick=apriCodice;
+  $('#bChiudi').onclick=()=>$('#velo').classList.remove('on');
+  $('#bCopia').onclick=()=>{
+    const t=$('#codice'); t.select();
+    try{ navigator.clipboard.writeText(t.value) }catch(e){ document.execCommand('copy') }
+    dire('Codice copiato');
+  };
+  $('#bCarica').onclick=()=>{
+    try{
+      const o=decodificaStato($('#codice').value);
+      localStorage.setItem(K_MONDO,JSON.stringify(o.m));
+      localStorage.setItem(K_ME,JSON.stringify(o.i));
+      location.reload();
+    }catch(e){ dire('Quel codice non si legge') }
+  };
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden)salva(true) });
+
+  /* Senza condottiero non si entra. La porta si apre una volta sola: scelto,
+     il villaggio è suo e non si chiede più niente. */
+  if(!ME.condottiero){ apriPorta(); return }
+  requestAnimationFrame(t=>{ultimo=t;requestAnimationFrame(giro)});
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   14 · LA PORTA — il condottiero è un NFT
+   Tre segnaposto, disegnati con lo stesso codice del gioco: quello
+   che vedi nella scheda è quello che cammina nel mondo. Il catalogo
+   vero lo fa Aless; il gioco legge id, nome, mantello, tratto.
+   ═══════════════════════════════════════════════════════════════ */
+const CONDOTTIERI=[
+  {id:'cnd-001', nome:'Rosso di Corno', mantello:'#c8342c', tratto:'asta',
+   d:'Il colpo d\'asta spinge più lontano.'},
+  {id:'cnd-002', nome:'Brann del Guado', mantello:'#2f6b9a', tratto:'passo',
+   d:'La sua gente cammina un po\' più svelta.'},
+  {id:'cnd-003', nome:'Vanda Ferrara',   mantello:'#6a4a8a', tratto:'terra',
+   d:'Sente la terra: i campi rendono di più.'}
+];
+function CONDOTTIERO(){ return CONDOTTIERI.find(c=>c.id===(ME.condottiero&&ME.condottiero.id))||CONDOTTIERI[0] }
+
+function apriPorta(){
+  const box=$('#pscelte'); box.innerHTML='';
+  for(const C of CONDOTTIERI){
+    const el=document.createElement('button'); el.className='pc'; el.type='button';
+    el.innerHTML='<canvas width="160" height="160"></canvas><b>'+C.nome+'</b><small>'+C.d+'</small>';
+    const cv2=el.querySelector('canvas'), g=cv2.getContext('2d');
+    // lo sfondo è il mondo, il personaggio è il capo: stessa mano, stessa scala
+    const grd=g.createLinearGradient(0,0,0,160);
+    grd.addColorStop(0,'#8fb8c8'); grd.addColorStop(.55,'#3f8a56'); grd.addColorStop(1,'#2b6b44');
+    g.fillStyle=grd; g.fillRect(0,0,160,160);
+    g.fillStyle='rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(80,126,34,9,0,0,TAU); g.fill();
+    const salva_ct=ct; ct=g;
+    const vecchio=ME.condottiero; ME.condottiero={id:C.id};
+    try{ unCapo({dir:0,fase:1.2,vx:0,vy:0,cammina:0,porta:[],colpo:0,colpito:0},80,124,3.6) }catch(e){}
+    ME.condottiero=vecchio; ct=salva_ct;
+    el.onclick=()=>{
+      ME.condottiero={id:C.id, nome:C.nome, preso:now()};
+      salva(true);
+      $('#porta').classList.remove('on');
+      dire(C.nome+' è alla guida');
+      requestAnimationFrame(t=>{ultimo=t;requestAnimationFrame(giro)});
+    };
+    box.appendChild(el);
+  }
+  $('#porta').classList.add('on');
+}
+
+avvio();
+window.__MIS={ct:()=>ct,ME:()=>ME,nemici:()=>nemici,POLV:()=>POLV,scia:()=>scia,SEG:()=>SEG,
+  CAM,ZOOM,adattaTela,passo,disegna,muoviCamera,fissaProiezione,nuovaPersona,generaNemico,
+  piantaAsta,giro,sciaD:()=>sciaD,ALFA:v=>{ALFA=v},POS:()=>({x:ME.capo.x,y:ME.capo.y}),
+  lev:v=>{lev=v},
+  D:{disegnaTerra,disegnaSuoloBorgo,disegnaAcqua,disegnaImpronte,nuvole,disegnaRespiro,
+     disegnaCose,disegnaBorgo,disegnaAste,disegnaRoba,disegnaPolvere,disegnaFigure,
+     disegnaVolo,disegnaNotte,disegnaBordi}};
+})();
+</script>
+</body>
+</html>
