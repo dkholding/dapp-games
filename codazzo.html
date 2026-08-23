@@ -54,7 +54,7 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
 .tasto{border-radius:50%;display:flex;align-items:center;justify-content:center;
   border:2px solid rgba(243,236,224,.35);background:rgba(30,24,17,.42);
   backdrop-filter:blur(3px);transition:transform .07s,background .12s,opacity .2s;
-  touch-action:none}
+  touch-action:none;-webkit-touch-callout:none}  /* la pressione lunga su iOS non deve aprire il fumetto di sistema */
 .tasto:active,.tasto.giu{transform:scale(.93);background:rgba(224,164,74,.3)}
 .tasto b{font-size:9px;font-weight:800;letter-spacing:.8px;color:var(--txt);
   text-shadow:0 1px 3px #000;opacity:.85}
@@ -344,8 +344,16 @@ function chunkAt(ci,cj){
       }
     }
     chunks.set(k,c);
-    if(chunks.size>64){          // tetto duro: non si accumula mai
-      for(const kk of chunks.keys()){ if(chunks.size<=48)break; if(kk!==k)chunks.delete(kk) }
+    /* Tetto duro: non si accumula mai. Era 64, ma uno schermo largo a zoom
+       0,75 ne guarda 54 e tre aste lontane ne chiedono altri 27: si sfrattava
+       a ogni fotogramma, e con lo sfratto se ne andava la raccolta a metà.
+       Un chunk pesa meno di tre kilobyte: 192 sono mezzo megabyte. E chi
+       esce viene segnato, così quel che era stato mietuto resta mietuto. */
+    if(chunks.size>192){
+      for(const kk of chunks.keys()){ if(chunks.size<=160)break; if(kk===k)continue;
+        const cc=chunks.get(kk);
+        if(cc.cose.some(o=>o.v<o.vmax)) segnaChunk(cc);   // solo chi è stato toccato: il codice del villaggio non si gonfia
+        chunks.delete(kk) }
     }
   }
   return c;
@@ -433,7 +441,10 @@ function carica(){
    il passo le riscrive da zero sessanta volte al secondo. Salvarle vuol dire
    solo far pagare all'utente qualche centinaio di caratteri in più da copiare
    nel codice del villaggio, che di suo è già lungo. */
-const NOSALVA=(k,v)=>(k==='px'||k==='py'||k==='sx'||k==='sy'||k==='acc'||k==='rank'||k==='polv')?undefined:v;
+/* obb e caccia sono RIFERIMENTI a oggetti del chunk: salvati diventavano copie
+   staccate, e al ritorno la persona mieteva una spiga fantasma che nel mondo
+   non calava mai. Si ritrovano da soli al primo passo. */
+const NOSALVA=(k,v)=>(k==='px'||k==='py'||k==='sx'||k==='sy'||k==='acc'||k==='rank'||k==='polv'||k==='obb'||k==='caccia')?undefined:v;
 let salvaT=0, salvaPend=false;
 function salva(subito){
   const t=now();
@@ -550,8 +561,13 @@ function piantaAsta(x,y,fuoco,cantiere){
     tipo:cantiere?'cantiere':'lavoro', edificio:cantiere||null, mat:0};
   ME.aste.push(a);
   let n=0;
+  /* Chi va a lavorare è chi sta attorno al CAPO, non attorno al punto:
+     per il lavoro sono la stessa cosa, ma il cantiere nasce a cento unità
+     dal tavolo e la fila, misurata da lì, restava fuori — edificio pagato
+     e nessuno a costruirlo, senza modo di mandarceli dopo. */
+  const qx=cantiere?ME.capo.x:x, qy=cantiere?ME.capo.y:y;
   for(const p of seguaci()){
-    if(dist(p.x,p.y,x,y)<R_ASTA*1.5){ p.stato='lavora'; p.asta=a.id; p.obb=null; n++ }
+    if(dist(p.x,p.y,qx,qy)<R_ASTA*1.5){ p.stato='lavora'; p.asta=a.id; p.obb=null; p.caccia=null; p.acasa=false; n++ }
   }
   if(cantiere) dire('Cantiere aperto: '+EDIFICI[cantiere].n);
   else if(fuoco) dire('Il vessillo brucia — arriveranno');
@@ -562,8 +578,14 @@ function piantaAsta(x,y,fuoco,cantiere){
   return a;
 }
 function strappaAsta(a){
-  for(const p of ME.gente) if(p.asta===a.id){ p.stato='segue'; p.asta=null; p.obb=null }
+  for(const p of ME.gente) if(p.asta===a.id){ p.stato='segue'; p.asta=null; p.obb=null; p.acasa=false }
   ME.aste=ME.aste.filter(x=>x!==a);
+  /* Un cantiere strappato a metà restava un'impalcatura tratteggiata per
+     sempre: nessuno poteva più tornarci, perché la gente si assegna solo
+     quando l'asta nasce. Si smonta e il materiale torna nel granaio. */
+  const e=ME.edifici.find(e=>e.asta===a.id&&e.prog<1);
+  if(e){ for(const r in EDIFICI[e.tipo].costo) ME.scorte[r]+=EDIFICI[e.tipo].costo[r];
+    ME.edifici=ME.edifici.filter(x=>x!==e); dire('Cantiere smontato: il materiale torna al fuoco') }
   borgoSporco=true;              // e qui un sentiero è morto: idem
   salva();
 }
@@ -600,7 +622,8 @@ function armaPiuVicino(){
   let fonte=null, arma=null, ax=c.x, ay=c.y;
   let md=1e9;
   for(const o of ME.terra){
-    if(!ARMI[o.t])continue;
+    // la falce caduta non conta: raccoglierla rivestiva un contadino da contadino
+    if(!ARMI[o.t]||o.t==='falce')continue;
     const d=dist(o.x,o.y,c.x,c.y);
     if(d<150&&d<md){md=d;fonte='terra';arma=o.t;ax=o.x;ay=o.y}
   }
@@ -809,7 +832,10 @@ function bestieDelChunk(c){
   for(let i=0;i<n;i++){
     if(k&&k.includes(i))continue;               // già presa: non rinasce
     const an=i/n*TAU;
-    c.bestie.push({t,i,x:bx+Math.cos(an)*30,y:by+Math.sin(an)*30,px:0,py:0,vx:0,vy:0,
+    // ck: il chunk di casa. Scappando la bestia cambia chunk, e cercarla
+    // dalla posizione attuale non la trovava più: restava nel mondo e
+    // veniva "presa" di nuovo a ogni passo — settemila mucche in due minuti.
+    c.bestie.push({t,i,ck:c.ci+','+c.cj,x:bx+Math.cos(an)*30,y:by+Math.sin(an)*30,px:0,py:0,vx:0,vy:0,
       fase:i*1.3,paura:0,dir:an});
   }
   return c.bestie;
@@ -826,10 +852,11 @@ function bestieIntorno(x,y,r){
   return out;
 }
 function prendiBestia(b,c){
-  const ch=chunks.get(Math.floor(b.x/CH)+','+Math.floor(b.y/CH));
-  if(ch){ ch.bestie=ch.bestie.filter(x=>x!==b);
-    MONDO.bestiePrese=MONDO.bestiePrese||{};
-    const k=ch.ci+','+ch.cj; (MONDO.bestiePrese[k]=MONDO.bestiePrese[k]||[]).push(b.i) }
+  const ch=chunks.get(b.ck);
+  if(ch&&ch.bestie) ch.bestie=ch.bestie.filter(x=>x!==b);
+  b.presa=-1;                    // comunque vada, questa non si riprende più
+  MONDO.bestiePrese=MONDO.bestiePrese||{};
+  (MONDO.bestiePrese[b.ck]=MONDO.bestiePrese[b.ck]||[]).push(b.i);
   ME.animali.push({uid:BUID++,t:b.t,x:b.x,y:b.y,px:b.x,py:b.y,vx:0,vy:0,fase:b.fase,dir:b.dir,
     resa:0,segue:b.t==='cavallo',portato:null});
   dire(BESTIE[b.t].n+' presa');
@@ -842,8 +869,14 @@ function passoAnimali(dt){
   for(const a of ME.aste){
     if(a.tipo!=='lavoro')continue;
     const sel=bestieIntorno(a.x,a.y,R_ASTA*1.4);
-    if(!sel.length)continue;
     const cacciatori=ME.gente.filter(p=>p.asta===a.id&&p.stato==='lavora');
+    if(!sel.length){
+      /* Presa l'ultima bestia, la caccia va chiusa: prima p.caccia restava
+         puntato sull'erba dove stava il cavallo e la squadra restava lì
+         inchiodata, senza più mietere, finché non si strappava l'asta. */
+      for(const p of cacciatori) p.caccia=null;
+      continue;
+    }
     if(!cacciatori.length)continue;
     for(const b of sel){
       const B=BESTIE[b.t];
@@ -1053,15 +1086,21 @@ function passo(dt){
       }
       else {
         const cap=capacita(p);
-        if(!p.obb||p.obb.v<=0||dist(p.obb.x,p.obb.y,a.x,a.y)>R_ASTA*1.35){
+        if(!p.acasa&&(!p.obb||p.obb.v<=0||dist(p.obb.x,p.obb.y,a.x,a.y)>R_ASTA*1.35)){
           p.obb=trovaCosa(a.x,a.y,R_ASTA*1.3,p);
+          if(p.obb)a.detto=false;        // c'è di nuovo qualcosa: il "non c'è più niente" potrà ridirsi
         }
         // Si torna al fuoco col sacco pieno — ma anche quando qui non c'è
         // più niente da prendere: altrimenti restano lì col sacco a metà
         // e la roba raccolta non arriva mai a casa.
         const pieno=p.carico&&p.carico.q>=cap;
         const secco=!p.obb&&p.carico&&p.carico.q>=1;
-        if(pieno||secco){
+        /* Chi ha deciso di tornare, torna: senza questo impegno la spiga che
+           ricresce di un quinto ogni due secondi lo richiamava indietro a
+           metà strada, e il sacco faceva la spola fra l'asta e casa per sempre
+           senza arrivare mai. Si scioglie solo al fuoco, scaricando. */
+        if(pieno||secco)p.acasa=true;
+        if(p.acasa){
           bx=ME.borgo.x; by=ME.borgo.y; corri=.66;
           if(dBorgo<70) scaricaSacco(p);
         }
@@ -1084,6 +1123,10 @@ function passo(dt){
     else {  /* segue */
       const q=puntoScia(22*(p.rank+1));
       if(q){ bx=q.x; by=q.y }
+      /* Chi segue col sacco e passa dal fuoco lo posa: prima il sacco di chi
+         era stato richiamato strappando l'asta restava sulle spalle per
+         sempre, e quel grano non entrava mai nel granaio. */
+      if(p.carico&&dBorgo<70) scaricaSacco(p);
       corri=p.carico&&!conCavallo(p)?.72:1;      // col cavallo accanto il sacco non pesa
       if(p.vig<25)corri*=.7;
     }
@@ -1204,6 +1247,20 @@ function passo(dt){
     }
   }
 
+  /* ── La forgia batte: il ferro del granaio diventa una spada appesa ──
+     Il tavolo prometteva "il ferro diventa lame" e haForgia() non la leggeva
+     nessuno. Il prezzo è quello già scritto in ARMI.spada; una lama ogni
+     quaranta secondi, e solo se c'è un gancio libero sulla rastrelliera. */
+  if(haForgia()&&ME.scorte.ferro>=ARMI.spada.costo.ferro&&ME.rastrelliera.length<armiTot()){
+    ME.forgia=(ME.forgia||0)+dt;
+    const f=ME.edifici.find(e=>e.tipo==='forgia'&&e.prog>=1);
+    if(Math.random()<dt*2) scintilla(f.x+(Math.random()-.5)*8,f.y-14,'#ffb347');
+    if(ME.forgia>=40){
+      ME.forgia=0; paga(ARMI.spada.costo); ME.rastrelliera.push('spada');
+      dire('La forgia ha battuto una spada'); salva();
+    }
+  } else ME.forgia=0;
+
   /* ── Si mangia: il granaio cala da solo, in continuo ────────── */
   {
     let bocche=0;
@@ -1244,12 +1301,36 @@ function passo(dt){
       for(const o of c.cose)
         if((o.t==='spiga'||o.t==='salina')&&o.v<o.vmax)
           o.v=Math.min(o.vmax,o.v+o.vmax*q/240);
-    for(const a of ME.aste) a.detto=false;
+    /* a.detto NON si azzera qui: azzerarlo ogni due secondi faceva ripetere
+       "Qui non c'è più niente" ogni due secondi a chi aspettava. Si riapre
+       quando qualcuno trova davvero qualcosa da prendere (vedi sopra). */
   }
 
   /* ── Roba per terra che scade ─────────────────────────────── */
   const t=now();
-  if(ME.terra.length) ME.terra=ME.terra.filter(o=>o.fino>t);
+  if(ME.terra.length){
+    /* Quello che sta per terra si raccoglie passandoci sopra col capo: l'arma
+       va sulla schiena (si vedeva già disegnata lì, ma nessuno ce la metteva
+       mai), il sacco strappato dal ladro torna in mano al primo della fila
+       che ha le mani libere. Prima restavano lì sei minuti e sparivano:
+       il bottino era una promessa che il gioco non manteneva. */
+    let preso=false;
+    for(const o of ME.terra){
+      if(o.preso||dist(o.x,o.y,c.x,c.y)>16)continue;
+      if(o.t==='sacco'&&o.q){
+        let chi=null;
+        for(let i=0;i<SEG.length;i++) if(!SEG[i].carico){ chi=SEG[i]; break }
+        if(!chi)continue;
+        chi.carico=o.q; o.preso=true; preso=true;
+        dire((chi.nome||'Uno dei tuoi')+' ha ripreso il sacco');
+      } else if(ARMI[o.t]&&o.t!=='falce'&&c.porta.length<4){
+        c.porta.push(o.t); o.preso=true; preso=true;
+        scintilla(c.x,c.y-14,'#ffe9bd');
+      }
+    }
+    if(preso) salva();
+    ME.terra=ME.terra.filter(o=>!o.preso&&o.fino>t);
+  }
 }
 
 /* ── Pezzi del passo ────────────────────────────────────────── */
@@ -1291,6 +1372,7 @@ function trovaCosa(x,y,r,p){
   let best=null,md=1e9;
   for(const o of l){
     if(!COSA[o.t].res)continue;
+    if(o.v<1)continue;           // un quinto di spiga ricresciuta non vale un viaggio
     const d=dist(o.x,o.y,p.x,p.y)+((o.pres||0)*40);
     if(d<md){md=d;best=o}
   }
@@ -1310,6 +1392,7 @@ function raccogli(p,o,dt){
   }
 }
 function scaricaSacco(p){
+  p.acasa=false;                 // scaricato o no, l'impegno di tornare è sciolto
   if(!p.carico)return;
   const cap=scortaTot();
   const r=p.carico.t;
@@ -1421,10 +1504,16 @@ function recuperaAssenza(){
   // chi era fuori è a casa, col carico un po' alleggerito
   for(const p of ME.gente){
     p.x=ME.borgo.x+(Math.random()-.5)*90; p.y=ME.borgo.y+(Math.random()-.5)*90;
-    p.stato='segue'; p.asta=null; p.obb=null; p.vig=100;
-    if(p.stato==='ferito'){ p.stato='segue'; p.vita=Math.max(1,p.vitaMax*.5) }
+    // prima si guarda com'era, poi lo si rimette in piedi: il controllo
+    // sul ferito veniva DOPO aver già scritto 'segue', e restava a vita zero
+    if(p.stato==='ferito'||p.stato==='inspalla'||p.vita<=0) p.vita=Math.max(1,p.vitaMax*.5);
+    p.stato='segue'; p.asta=null; p.obb=null; p.acasa=false; p.vig=100; p.agonia=0;
     if(p.carico)p.carico.q=Math.round(p.carico.q*.8);
   }
+  ME.capo.spalla=null;           // nessuno è più in spalla: senza questo il capo restava al 75% per sempre
+  // i cantieri a metà si smontano come quando si strappa l'asta: restavano impalcature orfane
+  for(const e of ME.edifici) if(e.prog<1) for(const r in EDIFICI[e.tipo].costo) ME.scorte[r]+=EDIFICI[e.tipo].costo[r];
+  ME.edifici=ME.edifici.filter(e=>e.prog>=1);
   ME.aste=[];
   // nascite maturate, finché il granaio regge
   let nati=Math.floor(via/200);
@@ -2199,7 +2288,8 @@ function disegnaEdificio(x,y,z,tipo,pr){
   } else if(tipo==='torre'){
     ct.fillStyle='#6a5940'; ct.fillRect(x-8*z,y-h*1.9,16*z,h*1.9);
     ct.fillStyle='#4b3f2d'; ct.fillRect(x-12*z,y-h*2.05,24*z,h*.2);
-    if(pr>=1)disegnaOmino(x,y-h*1.95,z*.8,{mest:'arciere',dir:0,fase:0,and:false,mio:true});
+    // uid proprio: senza, la sentinella scriveva il verso del capo (uid 0) in FLIP a ogni fotogramma
+    if(pr>=1)disegnaOmino(x,y-h*1.95,z*.8,{mest:'arciere',dir:0,fase:0,and:false,mio:true,uid:-777});
   }
   if(pr<1){
     ct.strokeStyle='rgba(243,236,224,.4)'; ct.setLineDash([4,4]); ct.lineWidth=1.4;
@@ -3082,6 +3172,9 @@ function astaPianta(fuoco){
   if(tav&&inBorgo(c.x,c.y)){
     const k=ORD_EDIF[progIdx], E=EDIFICI[k];
     if(!puoPagare(E.costo)){ dire('Serve '+Object.keys(E.costo).map(r=>E.costo[r]+' '+r).join(', ')); return false }
+    // prima si guarda se l'asta si può piantare, POI si paga: con tre aste già
+    // piantate il legno se ne andava e il cantiere non nasceva
+    if(ME.aste.length>=MAX_ASTE){ dire('Hai già tre aste piantate'); return false }
     paga(E.costo);
     const an=Math.random()*TAU, d=95+Math.random()*45;
     const ex=ME.borgo.x+Math.cos(an)*d, ey=ME.borgo.y+Math.sin(an)*d;
@@ -3111,7 +3204,8 @@ function armaTasto(){
 function legaMani(){
   const el=$('#cv');
   el.addEventListener('pointerdown',e=>{
-    el.setPointerCapture(e.pointerId);
+    // se la cattura fallisce (puntatore già sparito) non deve portarsi via anche la levetta
+    try{ el.setPointerCapture(e.pointerId) }catch(x){}
     if(e.pointerType==='mouse'&&e.button===2)return;
     if(e.pointerType==='mouse'){ mouseGiu=true; mouseX=e.clientX; mouseY=e.clientY; return }
     if(e.clientX<cw*.55&&!lev){ lev={id:e.pointerId,ox:e.clientX,oy:e.clientY,dx:0,dy:0} }
@@ -3144,13 +3238,21 @@ function legaMani(){
 
   // il tasto grande
   const ta=$('#tAsta');
-  const giu=e=>{ e.preventDefault(); astaGiu=performance.now(); astaFatta=false;
+  const giu=e=>{ e.preventDefault();
+    /* Il dito ha la cattura implicita, il mouse no: se il cursore scivolava
+       fuori dal tasto prima di mollare, il pointerup finiva sulla tela, il
+       tasto restava "premuto" per sempre e l'anello continuava a caricarsi. */
+    try{ ta.setPointerCapture(e.pointerId) }catch(x){}
+    if(astaGiu)return;           // già premuto con la barra: un dito in più non riparte da zero
+    astaGiu=performance.now(); astaFatta=false;
     ta.classList.add('giu') };
   const su2=e=>{ e.preventDefault();
-    if(!astaGiu)return;
-    const d=(performance.now()-astaGiu)/1000;
+    // le classi si tolgono SEMPRE, anche quando il piantare è fallito e
+    // astaGiu è già stato azzerato dall'HUD: altrimenti il tasto restava schiacciato
     ta.classList.remove('giu'); ta.classList.remove('carica');
     $('#anelloArc').style.strokeDashoffset=289;
+    if(!astaGiu)return;
+    const d=(performance.now()-astaGiu)/1000;
     if(!astaFatta)astaRilascio(d);
     astaGiu=0;
   };
@@ -3164,15 +3266,20 @@ function legaMani(){
     if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'))return;
     if(e.ctrlKey||e.metaKey||e.altKey)return;
     if(e.key==='Escape'){ $('#velo').classList.remove('on'); return }
-    tasti[e.key]=true;
+    // minuscolo: con Shift premuto arrivava 'W', e il capo non si muoveva
+    tasti[e.key.length===1?e.key.toLowerCase():e.key]=true;
     if(e.code==='Space'&&!astaGiu){ astaGiu=performance.now(); astaFatta=false; e.preventDefault() }
     if(e.key==='e'||e.key==='E'){ armaTasto(); e.preventDefault() }
     if(e.key==='+'||e.key==='='){ zi=Math.min(2,zi+1); e.preventDefault() }
     if(e.key==='-'||e.key==='_'){ zi=Math.max(0,zi-1); e.preventDefault() }
-    if(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();
+    if(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key.length===1?e.key.toLowerCase():e.key))e.preventDefault();
   });
+  /* La finestra che perde il fuoco (alt-tab, una notifica, la tastiera del
+     telefono che si chiude) non manda mai il keyup: senza questo il capo
+     continuava a camminare da solo finché non si ripremeva il tasto. */
+  addEventListener('blur',()=>{ for(const k in tasti)tasti[k]=false; lev=null; mouseGiu=false });
   addEventListener('keyup',e=>{
-    tasti[e.key]=false;
+    tasti[e.key.length===1?e.key.toLowerCase():e.key]=false;
     if(e.code==='Space'&&astaGiu){
       const d=(performance.now()-astaGiu)/1000;
       if(!astaFatta)astaRilascio(d);
@@ -3227,7 +3334,7 @@ function aggiornaHud(){
   let puo=false;
   if(dentro)puo=true;
   else{
-    for(const o of ME.terra) if(ARMI[o.t]&&dist(o.x,o.y,c.x,c.y)<150){puo=true;break}
+    for(const o of ME.terra) if(ARMI[o.t]&&o.t!=='falce'&&dist(o.x,o.y,c.x,c.y)<150){puo=true;break}
     if(!puo&&c.porta.length)puo=true;
   }
   $('#tArma').classList.toggle('spento',!puo);
@@ -3346,7 +3453,11 @@ function avvio(){
   $('#bChiudi').onclick=()=>$('#velo').classList.remove('on');
   $('#bCopia').onclick=()=>{
     const t=$('#codice'); t.select();
-    try{ navigator.clipboard.writeText(t.value) }catch(e){ document.execCommand('copy') }
+    // writeText è una promessa: il rifiuto (pagina non sicura, permesso
+    // negato) non lo prende il try, lo prende il catch della promessa
+    const giaSel=()=>{ try{ document.execCommand('copy') }catch(x){} };
+    try{ const pr=navigator.clipboard&&navigator.clipboard.writeText(t.value); if(pr&&pr.catch)pr.catch(giaSel); else giaSel() }
+    catch(e){ giaSel() }
     dire('Codice copiato');
   };
   $('#bCarica').onclick=()=>{

@@ -940,6 +940,9 @@ function buyListing(lid){
 
 function placeBid(lid,amt){
   const l=DB.market.listings.find(x=>x.id===lid); if(!l||l.kind!=='auction')return;
+  // Sulla propria asta no: a chiusura partirebbe mint(l.defId) che per le
+  // inserzioni proprie non esiste, e il Mercato non si aprirebbe più.
+  if(l.mine){toast('È la tua asta');return}
   const min=Math.ceil((l.bid||0)*1.05)+1;
   if(amt<min){toast('Rilancio minimo '+nf(min)+' ◈');return}
   if(amt>snk()){toast('◈ insufficienti');return}
@@ -969,8 +972,12 @@ function tickMarket(){
         const burn=Math.round(fee/2);
         post('auction_sold',l.id,[[ACC.opp,-l.bid],[ACC.pSnk,l.bid-fee-roy],
           [ACC.crea,roy],[ACC.burn,burn],[ACC.treas,fee-burn]]);
-        DB.eco.burned+=burn;
+        DB.eco.burned+=burn; DB.eco.sunk+=fee;
+        DB.stats.earned+=l.bid-fee-roy;
+        const sn=nftById(l.nft);
+        DB.market.trades.unshift({at:now(),def:sn?sn.def:null,price:l.bid,side:'sell'});
         DB.nfts=DB.nfts.filter(n=>n.id!==l.nft);
+        toast('Asta chiusa: venduto per '+nf(l.bid)+' ◈');
       } else if(l.mine){
         const n=nftById(l.nft); if(n)n.listed=false;
       }
@@ -983,6 +990,15 @@ function tickMarket(){
       post('bid_refund',l.id,[[ACC.mkt,-l.bid],[ACC.pSnk,l.bid]]);
       l.bid=up; l.bidder='bot';
       if(l.ends-now()<18e4) l.ends=now()+18e4;
+    }
+    // Le aste TUE: il ramo che le liquida esisteva già, ma nessuno rilanciava
+    // mai e "ASTA 24H" tornava sempre invenduta. Gli altri giocatori rilanciano
+    // con la stessa voglia con cui comprano a prezzo fisso, fino al listino.
+    else if(l.kind==='auction'&&l.mine&&now()<l.ends){
+      const nn=nftById(l.nft), d=DEFS[nn?nn.def:''];
+      const fair=d?d.price:l.price;
+      const p=l.bid<fair*.9?.30:l.bid<fair*1.2?.10:.02;
+      if(Math.random()<p){l.bid=Math.ceil(l.bid*(1.06+Math.random()*.12));l.bidder='bot'}
     }
   }
   for(const l of [...DB.market.listings]){
@@ -1009,6 +1025,8 @@ function tickMarket(){
   while(botL.length<12){
     const l=genListing(); DB.market.listings.push(l); botL.push(l);
   }
+  // Lo storico degli scambi cresceva per sempre dentro localStorage
+  if(DB.market.trades.length>60)DB.market.trades.length=60;
   save();
 }
 
@@ -2482,9 +2500,13 @@ function zoneAt(x,y){
   return null;
 }
 
+const gameEl=$('#game'), resEl=$('#res');
 function worldFrame(ts){
   if(!WS){return}
   WS.raf=requestAnimationFrame(worldFrame);
+  // Sotto la partita o il tabellone finale la città non si vede: disegnarla
+  // a 60 fps mentre il motore pensa rubava tempo proprio sul telefono.
+  if(gameEl.classList.contains('on')||resEl.classList.contains('on')){WS.last=ts;return}
   const dt=Math.min(50,ts-(WS.last||ts)); WS.last=ts; WS.t0=ts;
   worldStep(dt/1000);
   worldDraw(ts);
@@ -2743,14 +2765,22 @@ function interact(){
 function updateWorldHud(){
   const h=$('#whud'); if(!h)return;
   const t=DB.tourney&&!DB.tourney.done?DB.tourney:null;
-  const tour=t?(t.round?'Turno '+t.round:'inizia fra '+fmtLeft(t.startsAt-now())):null;
-  h.innerHTML=
+  // Mentre sei chiamato al tavolo il chip del torneo tace: lo dice già il
+  // cartello sotto, e su un telefono stretto la seconda riga finiva coperta.
+  const called=t&&t.round&&t.myMatch>=0&&!t.rounds[t.round-1][t.myMatch].w;
+  const tour=t&&!called?(t.round?'Turno '+t.round:'inizia fra <i id="whudT" style="font-style:normal"></i>'):null;
+  const html=
     '<div class="wc"><small>Liv</small>'+DB.player.level+'</div>'+
     '<div class="wc ac"><small>Elo</small>'+DB.player.mmr+'</div>'+
     '<div class="wc gold"><small>Ticket</small>'+ticketsLeft()+'</div>'+
     (tour?'<div class="wc gold"><small>Torneo</small>'+tour+'</div>':'')+
     '<div class="sp"></div>'+
     '<button class="wc" onclick="__app.profile()">☰ Profilo</button>';
+  // Si riscrive solo se è cambiato qualcosa: rifare il DOM ogni secondo
+  // distruggeva il pulsante Profilo sotto il dito (tocco perso). Il conto
+  // alla rovescia vive in un <i> e si aggiorna da solo.
+  if(h.dataset.last!==html){h.dataset.last=html;h.innerHTML=html}
+  const ct=$('#whudT'); if(ct&&t)ct.textContent=fmtLeft(t.startsAt-now());
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2851,6 +2881,14 @@ function showCall(){
   const T=TOURS[t.id],m=t.rounds[t.round-1][t.myMatch];
   const opp=m.a.me?m.b:m.a;
   const rn=t.rounds.length===1?'Quarti':t.rounds.length===2?'Semifinale':'FINALE';
+  // Stesso turno già a video: si aggiorna solo il conto alla rovescia,
+  // altrimenti il pulsante "VAI AL TAVOLO" rinasce ogni secondo sotto il dito.
+  const key=t.id+':'+t.round;
+  const cd=el.querySelector('i');
+  if(el.classList.contains('on')&&el.dataset.key===key&&cd){
+    cd.textContent=fmtLeft(t.deadline-now());return;
+  }
+  el.dataset.key=key;
   el.innerHTML='<div style="font-size:19px">🏆</div><div class="grow">'+
     '<b>'+rn+' · sei chiamato al tavolo</b>'+
     '<span>'+T.name+' · '+PLACES[t.place].name+' · '+
@@ -2865,6 +2903,12 @@ function tourTick(){
   const t=DB.tourney;
   if(!t||t.done)return;
   if(!t.round&&now()>=t.startsAt){openRound();return}
+  if(t.nextAt&&now()>=t.nextAt){t.nextAt=0;openRound();return}
+  // Salvataggi di prima: turno vinto, nessun orario scritto → si riparte
+  if(t.round&&!t.nextAt&&t.rounds.length<3&&t.myMatch>=0){
+    const m=t.rounds[t.round-1][t.myMatch];
+    if(m.w&&m.w.me){t.nextAt=now()+1200;save();return}
+  }
   if(t.round&&t.myMatch>=0&&!t.rounds[t.round-1][t.myMatch].w){
     if(G&&!G.ended&&G.tour)return;                 // stai giocando: nessuna fretta
     if(now()>t.deadline){
@@ -2897,14 +2941,17 @@ function finishTourFor(win){
     return;
   }
   if(t.rounds.length>=3){payTourney(1);return}
-  setTimeout(()=>{if(DB.tourney&&!DB.tourney.done)openRound()},14e3);
+  // Non un setTimeout: un orario scritto nel DB. Se si ricarica la pagina
+  // nei 14 secondi, il timer muore e il torneo restava fermo per sempre
+  // ("sei già iscritto" a un tabellone che non avanzava più).
+  t.nextAt=now()+14e3;
   toast('Passi il turno! Prossima chiamata fra poco');
   save();
 }
 function advanceTourney(){
   const t=DB.tourney;
   if(t.rounds.length>=3){t.done=true;save();return}
-  setTimeout(()=>{if(DB.tourney&&!DB.tourney.done)openRound()},1200);
+  t.nextAt=now()+1200; save();
 }
 
 function payTourney(place){
@@ -2952,7 +2999,8 @@ function bracketHtml(t){
   t.rounds.forEach((r,i)=>{
     h+='<div class="brkround"><div class="muted" style="margin:0 0 5px">'+rn[i]+'</div><div class="brk">';
     for(const m of r){
-      const cls=p=>(m.w&&m.w===p?'win ':'')+(p.me?'me':'');
+      // per id, non per identità: dopo un ricaricamento m.w è una copia
+      const cls=p=>(m.w&&m.w.id===p.id?'win ':'')+(p.me?'me':'');
       h+='<div class="m"><span class="p '+cls(m.a)+'">'+m.a.name+' <i style="color:var(--dim2);font-style:normal">'+m.a.elo+'</i></span>'+
          '<span class="vs">vs</span>'+
          '<span class="p '+cls(m.b)+'" style="text-align:right">'+m.b.name+' <i style="color:var(--dim2);font-style:normal">'+m.b.elo+'</i></span></div>';
@@ -3224,7 +3272,11 @@ function capturedHtml(color){
   return html+(adv>0?'<em>+'+adv+'</em>':'');
 }
 
-function updateHud(){
+/* Solo gli orologi: è ciò che cambia dieci volte al secondo. Il resto
+   (pezzi presi, nomi, lista mosse) si rifà a ogni mossa, non a ogni tick:
+   rifare la lista ogni 100ms la riportava in fondo e sul computer non si
+   riusciva a scorrerla all'indietro. */
+function updateClocks(){
   if(!G)return;
   const my=G.myColor,me=my>0?'w':'b',op=my>0?'b':'w';
   $('#mClk').textContent=fmtClock(G.clock[me]);
@@ -3233,6 +3285,11 @@ function updateHud(){
   $('#oClk').classList.toggle('act',G.s.turn!==my&&!G.ended);
   $('#mClk').classList.toggle('low',G.clock[me]<20);
   $('#oClk').classList.toggle('low',G.clock[op]<20);
+}
+function updateHud(){
+  if(!G)return;
+  const my=G.myColor;
+  updateClocks();
   $('#mCap').innerHTML=capturedHtml(my);
   $('#oCap').innerHTML=capturedHtml(-my);
   $('#mAv').textContent=my>0?'♙':'♟';
@@ -3290,7 +3347,7 @@ function tickClock(){
     else endMatch(flagged?'loss':'win','tempo scaduto');
     return;
   }
-  updateHud();
+  updateClocks();
 }
 
 /* ═══ Input della scacchiera ═══
@@ -3393,6 +3450,7 @@ function doMove(m){
   const s=G.s;
   // Nessuna mossa entra in partita senza essere fra le legali: è la regola
   // del server autoritativo del §13, applicata anche al client.
+  if(!G||G.ended)return;           // la finestra di promozione può sopravvivere alla bandierina
   if(!m||!G.legal.includes(m)){console.warn('mossa rifiutata',m);return}
   if(mPr(m)){DB.stats.promos++;G.promos++}
   play(s,m);
@@ -3410,6 +3468,7 @@ function doMove(m){
 
 function botTurn(){
   if(!G||G.ended)return;
+  if(G.s.turn===G.myColor||G.thinking)return;   // un timer rimasto in coda non muove al posto tuo
   G.thinking=true;
   const t0=now();
   const m=botMove(G.s,G.bot.skill,G.bot.style);
@@ -3450,7 +3509,11 @@ function openTable(id,kind){
   const kinds=t.free?['buio']:pl.kinds.filter(k=>k!=='buio');
   if(!kind&&kinds.length===1)kind=kinds[0];
   if(kind&&kinds.indexOf(kind)<0)kind=kinds[0];
-  if(betSel>cap)betSel=cap;
+  // Al parco cap è 0: senza la guardia la posta scendeva a 0 e al tavolo
+  // dopo compariva subito "la posta minima è 5" con nessun bottone acceso.
+  // Si scende sempre su uno dei valori della griglia, non su un numero a caso.
+  if(cap>0&&betSel>cap){const st=betSteps(cap);betSel=st.length?st[st.length-1]:cap}
+  if(betSel<5)betSel=5;
 
   const head=t.npc?`
     <div class="row" style="margin:10px 0 12px">
@@ -3538,10 +3601,10 @@ function startMatch(opts){
   const pl=PLACES[placeKey];
   const bet=isWager(kind)?(opts.bet||0):0;
 
-  if(!hasSet()){toast('Senza un set di pezzi non puoi giocare');return}
+  if(!hasSet()){toast('Senza un set di pezzi non puoi giocare');return false}
   if(!opts.tour){
     const chk=canSit(placeKey,kind,bet);
-    if(!chk.ok){toast(chk.why);return}
+    if(!chk.ok){toast(chk.why);return false}
   }
 
   // Avversario: fisso al tavolo, pescato al buio, o sorteggiato dal tabellone
@@ -3586,6 +3649,7 @@ function startMatch(opts){
   if(G.s.turn!==G.myColor)setTimeout(botTurn,420);
   else gmsg(G.blind?'Qualcuno si è seduto di fronte a te':'Muovi il Bianco',1400);
   save();
+  return true;
 }
 
 function endMatch(res,how){
@@ -3593,6 +3657,8 @@ function endMatch(res,how){
   G.ended=true; G.endedAt=now();
   G.res=res; G.how=how;
   clearInterval(clockT);
+  closeModal();                    // promozione ancora aperta quando cade la bandierina
+  DRAG=null; KBD=-1;
   drawBoard(); updateHud();
   settle();
 }
@@ -4209,7 +4275,7 @@ function renderEco(){
           <div class="muted" style="margin-top:5px;line-height:1.6">
             Si guadagnano giocando · rubinetto libero<br>
             <b>Non scambiabili, nessun prezzo</b><br>
-            Servono per: Ticket, riparazioni</div>
+            Servono per: Ticket e iscrizioni</div>
         </div>
         <div class="grow" style="background:#0e141d;border-radius:10px;padding:11px">
           <b style="color:var(--ac);font-size:13px">◈ $ARC</b>
@@ -4568,8 +4634,10 @@ const app={
                  skill:opp.skill!==undefined?opp.skill:2,
                  style:opp.style||'classico',c:opp.c||'#8b9bb0'}}});
   },
-  again(){$('#res').classList.remove('on');
-    startMatch({tableId:G.tableId,kind:G.kind,bet:G.fee,place:G.placeKey})},
+  again(){
+    // Se la ripartita viene rifiutata (◈ finiti, set venduto) si torna in
+    // città: prima restava uno schermo vuoto senza né partita né risultato.
+    if(!startMatch({tableId:G.tableId,kind:G.kind,bet:G.fee,place:G.placeKey}))app.toHub()},
   toHub(){$('#res').classList.remove('on');$('#game').classList.remove('on');
     clearInterval(clockT);go('play')},
   mktTab(t){mktTab=t;renderMkt()},
@@ -4609,6 +4677,10 @@ const app={
       setTimeout(()=>{if(b){delete b.dataset.armed;b.textContent='Azzera tutti i dati'}},3000);
       return;
     }
+    // Il vecchio loop va fermato PRIMA di buttare WS: altrimenti il suo
+    // callback già in coda trova il WS nuovo, si riprenota, e da lì in poi
+    // la città viene disegnata due volte per fotogramma.
+    stopWorld();
     try{localStorage.removeItem(KEY)}catch(e){}
     WS=null; G=null;
     genesis(); refreshQuests(); go('play'); renderAll();
@@ -4628,7 +4700,7 @@ const app={
      drag:()=>DRAG,hover:()=>HOVER,kbd:()=>KBD,boardKey,evSqAt:(x,y)=>{
        const r=cv.getBoundingClientRect();
        return evSq({clientX:r.left+x,clientY:r.top+y});},
-     genesis:()=>{WS=null;genesis();refreshQuests();go('play')}}
+     genesis:()=>{stopWorld();WS=null;genesis();refreshQuests();go('play')}}
 };
 window.__app=app;
 
@@ -4650,9 +4722,12 @@ function boot(){
   const first=!DB;
   if(first)genesis();
   if(!DB.world)DB.world={x:300,y:400,seen:{},rec:{}};
+  if(!DB.world.rec)DB.world.rec={};       // salvataggi v2 precedenti al testa a testa
+  if(!DB.world.seen)DB.world.seen={};
   refreshQuests();
   tickMarket();
   go('play');
+  renderTop();   // senza questo il saldo in testa restava "0 / Wallet" fino al primo acquisto
   setInterval(()=>{tourTick();if(page==='play')updateWorldHud()},1000);
   if(first)setTimeout(()=>{
     openModal(`<h4>Benvenuto a Scacchi Arena</h4>

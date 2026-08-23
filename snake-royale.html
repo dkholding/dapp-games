@@ -84,6 +84,9 @@ h3:first-child{margin-top:0}
 .nft{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px;
   position:relative;overflow:hidden;transition:border-color .15s}
 .nft.sel{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
+/* La pressione lunga apre la scheda: il testo non deve selezionarsi né
+   comparire il fumetto di iOS sotto il dito */
+.nft{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .nft.off{opacity:.42}
 .nft .art{height:52px;border-radius:8px;margin-bottom:7px;position:relative;overflow:hidden;
   background:#0a0f16;display:flex;align-items:center;justify-content:center}
@@ -674,7 +677,12 @@ function bal(a){return DB.accounts[a]||0}
 
 function post(type,ref,moves){
   let s=0;
-  for(const m of moves) s+=m[1];
+  for(const m of moves){
+    // Un NaN passerebbe il controllo di bilancio (NaN>1e-6 è falso) e
+    // avvelenerebbe tutti i conti: si rifiuta prima di toccare qualcosa.
+    if(!Number.isFinite(m[1])) throw new Error('Importo non numerico: '+type);
+    s+=m[1];
+  }
   if(Math.abs(s)>1e-6) throw new Error('Transazione sbilanciata: '+type+' → '+s.toFixed(6));
   const tx={id:'tx_'+(++DB.seq),type,ref:ref||null,at:now()};
   DB.txs.push(tx);
@@ -708,8 +716,17 @@ function connectWallet(){
   openWallet();
 }
 
+/** La coda avanza davvero: scaduta l'attesa, il prelievo risulta pagato.
+    Prima restava "in coda" per sempre, anche quello "istantaneo". */
+function tickWithdrawals(){
+  let ch=false;
+  for(const w of DB.withdrawals)
+    if(w.st==='in coda'&&now()>=w.ready){w.st='pagato';ch=true}
+  if(ch)save();
+}
+
 function requestWithdraw(amt){
-  if(amt<=0||amt>snk()){toast('Importo non valido');return}
+  if(!(amt>0)||amt>snk()){toast('Importo non valido');return}
   // Coda e finestra di clawback — §9.3 dell'architettura
   let delay,label;
   if(amt<100){delay=0;label='istantaneo'}
@@ -720,6 +737,7 @@ function requestWithdraw(amt){
   post('withdrawal_lock','w',[[ACC.pSnk,-amt],[ACC.ext,amt]]);
   DB.withdrawals.push({id:uid('w'),amt,at:now(),ready:now()+delay,label,risk,
     st:risk>70?'revisione':'in coda'});
+  if(DB.withdrawals.length>60)DB.withdrawals.splice(0,DB.withdrawals.length-60); // tetto: niente storico infinito
   save(); toast('Prelievo di '+nf(amt)+' $SNK — '+label);
   openWallet();
 }
@@ -727,6 +745,7 @@ function requestWithdraw(amt){
 function deposit(amt){
   post('deposit','d',[[ACC.ext,-amt],[ACC.pSnk,amt]]);
   DB.deposits.push({id:uid('d'),amt,at:now()});
+  if(DB.deposits.length>60)DB.deposits.splice(0,DB.deposits.length-60);
   save(); renderTop(); toast('Depositati '+nf(amt)+' $SNK');
 }
 
@@ -869,6 +888,7 @@ function buyListing(lid){
   const n=mint(l.defId,'market');
   if(l.dur!==undefined&&l.dur!==null){n.dur=l.dur}
   DB.market.trades.unshift({at:now(),def:l.defId,price:l.price,side:'buy'});
+  if(DB.market.trades.length>100)DB.market.trades.length=100;   // lo storico non cresce senza tetto
   DB.market.listings=DB.market.listings.filter(x=>x.id!==lid);
   save(); closeModal(); toast('Comprato '+DEFS[l.defId].name); renderAll();
 }
@@ -898,8 +918,11 @@ function tickMarket(){
         const burn=Math.round(fee/2);
         post('auction_win',l.id,[[ACC.mkt,-l.bid],[ACC.opp,l.bid-fee-roy],
           [ACC.crea,roy],[ACC.burn,burn],[ACC.treas,fee-burn]]);
-        DB.eco.burned+=burn; DB.eco.sunk+=fee;
-        mint(l.defId,'auction');
+        DB.eco.burned+=burn; DB.eco.sunk+=fee; DB.eco.weekSink+=fee;
+        const won=mint(l.defId,'auction');
+        // L'inserzione dichiarava una durabilità: l'oggetto arriva con quella,
+        // non nuovo di zecca (l'acquisto a prezzo fisso già lo faceva).
+        if(l.dur!==undefined&&l.dur!==null)won.dur=l.dur;
         toast('Asta vinta: '+DEFS[l.defId].name);
       } else if(l.mine&&l.bidder){
         const fee=Math.round(l.bid*marketFee()), roy=Math.round(l.bid*ROY);
@@ -934,9 +957,10 @@ function tickMarket(){
         const burn=Math.round(fee/2);
         post('market_sold',l.id,[[ACC.opp,-l.price],[ACC.pSnk,l.price-fee-roy],
           [ACC.crea,roy],[ACC.burn,burn],[ACC.treas,fee-burn]]);
-        DB.eco.burned+=burn; DB.eco.sunk+=fee;
+        DB.eco.burned+=burn; DB.eco.sunk+=fee; DB.eco.weekSink+=fee;
         DB.stats.earned+=l.price-fee-roy;
-        DB.market.trades.unshift({at:now(),def:l.defId||d&&l.nft,price:l.price,side:'sell'});
+        DB.market.trades.unshift({at:now(),def:d?nftById(l.nft).def:null,price:l.price,side:'sell'});
+        if(DB.market.trades.length>100)DB.market.trades.length=100;
         DB.nfts=DB.nfts.filter(n=>n.id!==l.nft);
         DB.market.listings=DB.market.listings.filter(x=>x.id!==l.id);
         toast('Venduto! +'+nf(l.price-fee-roy)+' $SNK');
@@ -1739,33 +1763,47 @@ const bt=$('#hBoost');
 // Joystick virtuale (solo touch): conta il TRASCINAMENTO dal punto d'appoggio,
 // non la posizione assoluta del dito. Un tocco fermo non sterza: niente scatti
 // al primo tocco, e il pollice può stare comodo ovunque sullo schermo.
-let joy={on:false,sx:0,sy:0,x:0,y:0,ang:null};
+let joy={on:false,id:-1,sx:0,sy:0,x:0,y:0,ang:null};
 const DEAD=16;
 const isTouch=matchMedia('(pointer:coarse)').matches;
 if(!isTouch)document.body.classList.add('desktop');
 
+/* Si guarda il TIPO del puntatore dell'evento, non la media query: su un
+   portatile con schermo touch (pointer:coarse è falso) il dito deve guidare
+   come sul telefono e il mouse come sul computer, nella stessa partita.
+   Il dito che guida è identificato dal suo pointerId: il rilascio di un
+   ALTRO dito (quello sul tasto BOOST) non deve spegnere la guida, e il
+   rilascio del dito che guida non deve spegnere il boost tenuto sul tasto. */
+const touchEv=e=>e.pointerType==='touch';
+let tapBoost=false;   // boost acceso dal doppio tocco (si spegne col dito che guida)
 cv.addEventListener('pointermove',e=>{
-  if(isTouch){if(joy.on){joy.x=e.clientX;joy.y=e.clientY}return}
+  if(touchEv(e)){if(joy.on&&e.pointerId===joy.id){joy.x=e.clientX;joy.y=e.clientY}return}
   ptr.x=e.clientX;ptr.y=e.clientY;ptr.on=true;
+  joy.ang=null;   // torna il mouse: il joystick smette di comandare
 });
 let lastTap=0;
 cv.addEventListener('pointerdown',e=>{
-  if(isTouch){
-    joy.on=true;joy.sx=joy.x=e.clientX;joy.sy=joy.y=e.clientY;
+  if(touchEv(e)){
+    if(joy.on)return;   // un secondo dito sulla tela non ruba la guida al primo
+    joy.on=true;joy.id=e.pointerId;joy.sx=joy.x=e.clientX;joy.sy=joy.y=e.clientY;
     // Doppio tocco = boost, senza staccare il pollice dalla guida
     const t=performance.now();
-    if(t-lastTap<300){boostKey=true;bt.classList.add('on')}
+    if(t-lastTap<300){tapBoost=true;boostKey=true;bt.classList.add('on')}
     lastTap=t;
     return;
   }
   ptr.x=e.clientX;ptr.y=e.clientY;ptr.on=true;
   if(e.button===0)boostKey=true;
 });
-addEventListener('pointerup',()=>{
-  if(isTouch){joy.on=false;boostKey=false;bt.classList.remove('on')}
-  else boostKey=false;
-});
-addEventListener('pointercancel',()=>{joy.on=false;boostKey=false});
+function touchRelease(e){
+  if(touchEv(e)){
+    if(e.pointerId!==joy.id)return;   // era un altro dito (es. il tasto BOOST)
+    joy.on=false;
+    if(tapBoost){tapBoost=false;boostKey=false;bt.classList.remove('on')}
+  } else boostKey=false;
+}
+addEventListener('pointerup',touchRelease);
+addEventListener('pointercancel',touchRelease);
 addEventListener('keydown',e=>{
   // Mentre si scrive in un campo la tastiera è di chi scrive, non del gioco.
   const t=e.target;
@@ -1791,7 +1829,9 @@ bt.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();
 
 function readAng(){
   const me=M.snakes[0];
-  if(isTouch){
+  // Comanda il joystick se un dito sta guidando (o ha guidato e non è
+  // ancora tornato il mouse): così vale anche sul portatile touch.
+  if(joy.on||joy.ang!==null){
     if(joy.on){
       const dx=joy.x-joy.sx,dy=joy.y-joy.sy;
       if(dx*dx+dy*dy>DEAD*DEAD)joy.ang=Math.atan2(dy,dx);
@@ -1920,7 +1960,7 @@ function startMatch(mode){
   M.eco=lm; M.mode=mode; M.ticket=usedTicket; M.mmr0=mmr0;
   cam={x:M.snakes[0].x,y:M.snakes[0].y,z:1};
   ptr.on=false;boostKey=false;accum=0;last=performance.now();
-  joy.on=false;joy.ang=null;   // il tocco del menù non deve sterzare la partita
+  joy.on=false;joy.ang=null;tapBoost=false;   // il tocco del menù non deve sterzare la partita
   {const h=$('#hHint');
    h.textContent=isTouch
      ?'Trascina il dito per guidare · doppio tocco per il boost'
@@ -2072,7 +2112,7 @@ function showResult(o){
         <div class="kv"><span>Premio eliminazioni</span><b class="pos">+${nf(pay.kills)} ●</b></div>
         <div class="kv" style="border-top:1px solid var(--line);margin-top:7px;padding-top:11px">
           <span>Totale</span><b class="pos" style="font-size:18px">+${nf(coinPay)} ● Coins</b></div>
-        <div class="muted" style="margin-top:8px">I Coins non sono scambiabili: servono per i Ticket e le riparazioni.</div>
+        <div class="muted" style="margin-top:8px">I Coins non sono scambiabili: servono per i Ticket dell'Arena.</div>
       `:`
         <div class="kv"><span>Quota d'ingresso</span><b class="neg">−${nf(fee)} ◈</b></div>
         <div class="kv"><span>Premio piazzamento</span><b class="pos">+${nf(pay.place)} ◈</b></div>
@@ -2201,7 +2241,7 @@ function renderPlay(){
         <div class="row">
           <div class="grow"><b style="font-size:13px">${h.place}° · ${h.kills} kill</b>
             <div class="muted">${MODES[h.mode].name} · massa ${h.mass}</div></div>
-          <b class="${h.net>=0?'pos':'neg'}">${h.mode==='free'?'—':(h.net>=0?'+':'')+nf(h.net)+' ◈'}</b>
+          <b class="${h.net>=0?'pos':'neg'}">${MODES[h.mode].cur==='COINS'?'—':(h.net>=0?'+':'')+nf(h.net)+' ◈'}</b>
         </div>
       </div>`).join('')}</div>`:''}
   `;
@@ -2219,7 +2259,7 @@ function renderInv(){
       ${items.length?`<div class="nftgrid">${items.map(n=>{
         const d=defOf(n),sel=L[cat]===n.id;
         const dp=n.dur!==null?n.dur/n.durMax:1;
-        return `<div class="nft ${sel?'sel':''} ${dis||isBroken(n)?'off':''}"
+        return `<div class="nft ${sel?'sel':''} ${dis||isBroken(n)?'off':''}" data-id="${n.id}"
             onclick="__app.tapNft('${n.id}',event)">
           ${sel?'<div class="eq">USATO</div>':''}
           <div class="art" data-def="${n.def}"></div>
@@ -2234,7 +2274,9 @@ function renderInv(){
   const cr=craftables();
   $('#p-inv').innerHTML=`
     <h2>Inventario</h2>
-    <p class="sub">${DB.nfts.length} NFT posseduti · tocca per equipaggiare, tieni premuto per i dettagli</p>
+    <p class="sub">${DB.nfts.length} NFT posseduti · ${isTouch
+      ?'tocca per equipaggiare, tieni premuto per i dettagli'
+      :'clic per equipaggiare, doppio clic o pressione lunga per i dettagli'}</p>
     <div class="seg">
       <button class="${invMode==='ranked'?'on':''}" onclick="__app.invMode('ranked')">Ranked</button>
       <button class="${invMode==='casual'?'on':''}" onclick="__app.invMode('casual')">Casual</button>
@@ -2431,14 +2473,14 @@ function renderEco(){
           <div class="muted" style="margin-top:5px;line-height:1.6">
             Si guadagnano giocando · rubinetto libero<br>
             <b>Non scambiabili, nessun prezzo</b><br>
-            Servono per: Ticket, riparazioni</div>
+            Servono per: Ticket dell'Arena</div>
         </div>
         <div class="grow" style="background:#0e141d;border-radius:10px;padding:11px">
           <b style="color:var(--ac);font-size:13px">◈ $SNK</b>
           <div class="muted" style="margin-top:5px;line-height:1.6">
             Solo dagli altri giocatori · somma zero<br>
             <b>Scambiabili on-chain</b><br>
-            Servono per: NFT, mercato, ranked</div>
+            Servono per: NFT, mercato, ranked, riparazioni</div>
         </div>
       </div>
       <div class="card flat" style="margin:11px 0 0;text-align:center">
@@ -2537,6 +2579,7 @@ $('#modal').addEventListener('click',e=>{
 
 function openWallet(){
   const w=DB.player.addr;
+  tickWithdrawals();
   const pend=DB.withdrawals.filter(x=>x.st!=='pagato');
   openModal(`
     <h4>Wallet</h4>
@@ -2709,14 +2752,40 @@ function renderPage(p){
 function renderAll(){renderTop();renderPage(page)}
 $$('.tab').forEach(t=>t.addEventListener('click',()=>go(t.dataset.p)));
 
-let holdT=null;
+let holdT=null,holdFired=false,holdX=0,holdY=0;
 function tapNft(id,ev){
   clearTimeout(holdT);
+  // Se la pressione lunga ha già aperto la scheda, il click che il browser
+  // genera al rilascio del dito NON deve anche equipaggiare/sequipaggiare.
+  if(holdFired){holdFired=false;return}
   // Col mouse il doppio clic è un evento vero (detail>=2): apre la scheda
   // dell'oggetto. Al tocco non cambia nulla — lì detail resta 1 e il gesto
   // documentato (tocco per equipaggiare) è intatto.
   if(ev&&ev.detail>=2&&!isTouch){nftDetail(id);return}
   equip(invMode,id);
+}
+/* Pressione lunga sulle tessere dell'inventario: è il gesto che il
+   sottotitolo promette al dito, dove il doppio clic non esiste. Delegato
+   sulla pagina perché le tessere vengono ricreate a ogni render: un solo
+   listener, mai registrato due volte. Uno spostamento oltre 12px (sta
+   scorrendo la pagina) o il rilascio annullano il timer. */
+{
+  const inv=$('#p-inv');
+  const stop=()=>{clearTimeout(holdT);holdT=null};
+  inv.addEventListener('pointerdown',e=>{
+    const el=e.target.closest('.nft[data-id]'); if(!el)return;
+    stop(); holdFired=false; holdX=e.clientX; holdY=e.clientY;
+    const id=el.dataset.id;
+    holdT=setTimeout(()=>{holdT=null;holdFired=true;nftDetail(id)},480);
+  });
+  inv.addEventListener('pointermove',e=>{
+    if(holdT===null)return;
+    if(Math.abs(e.clientX-holdX)>12||Math.abs(e.clientY-holdY)>12)stop();
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=>inv.addEventListener(ev,stop));
+  // Il menù contestuale del sistema (Android lo apre sulla pressione lunga)
+  // non deve sovrapporsi alla scheda dell'oggetto.
+  inv.addEventListener('contextmenu',e=>{if(e.target.closest('.nft'))e.preventDefault()});
 }
 
 /* ── API pubblica per gli handler inline + i test ──────────── */
