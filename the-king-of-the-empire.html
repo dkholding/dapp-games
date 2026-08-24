@@ -19,7 +19,15 @@ html,body{margin:0;height:100%;overflow:hidden;background:#12100c;color:var(--tx
   -webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
 button{font:inherit;color:inherit;border:none;background:none;padding:0}
 
+/* Due tele impilate. Una tela non puo' avere insieme un contesto 2D e uno
+   WebGL, quindi il mondo in rilievo si disegna su #gl (sotto, opaca) e il #cv
+   di sempre resta sopra, trasparente, per l'interfaccia e per il ripiego: se
+   WebGL manca o va piano, #gl sparisce e il 2D ridisegna tutto come prima.
+   L'input resta sul #cv, che sta sopra e riceve i tocchi. */
+#gl{position:fixed;inset:0;width:100%;height:100%;display:none;pointer-events:none;background:#0d1a14}
+#gl.on{display:block}
 #cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
+#cv.sopra{background:transparent}
 #cv.grab{cursor:grab}
 
 #hud{position:fixed;inset:0;pointer-events:none;z-index:5}
@@ -129,6 +137,7 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
 </head>
 <body>
 
+<canvas id="gl"></canvas>
 <canvas id="cv"></canvas>
 
 <div id="hud">
@@ -3082,9 +3091,279 @@ function disegnaNotte(){
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   9b · IL RILIEVO — il mondo in tre dimensioni
+   Il terreno ha sempre avuto una quota: campo(x,y,101) e' la stessa
+   funzione che decide se un punto e' montagna o pianura. Finora la
+   si buttava via appiattendo tutto; qui diventa la forma vera della
+   terra, e la fila di gente scollina.
+   Regole: WebGL1 soltanto (la webview di Telegram sugli Android
+   vecchi a volte non ha il 2); il renderer LEGGE lo stato e non lo
+   scrive mai; se qualcosa non va si spegne e il 2D riprende senza
+   che il giocatore debba fare niente.
+   ═══════════════════════════════════════════════════════════════ */
+const QSC=190;                      // quanto si esagera il rilievo: 0..1 -> 0..190 unita'
+const quota=(x,y)=>campo(x,y,101)*QSC;
+
+/* Camera prospettica alta e inclinata poco: con un campo visivo stretto la
+   fila resta una fila di persone uguali invece di deformarsi ai bordi, e
+   nessun pendio del mondo puo' nascondere niente dietro una cresta. */
+const INCL=Math.PI/3, FOV=24*Math.PI/180;
+
+function mMul(a,b,o){
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){
+    let s=0; for(let k=0;k<4;k++) s+=a[k*4+j]*b[i*4+k];
+    o[i*4+j]=s;
+  }
+  return o;
+}
+
+const R3={
+  attivo:false, perche:'non avviato', gl:null, ter:null,
+  vp:new Float32Array(16), occhio:new Float32Array(3), sole:new Float32Array(3),
+  destra:new Float32Array(3), alto:new Float32Array(3), avanti:new Float32Array(3),
+  lenti:0, caldi:0,
+
+  avvia(){
+    try{
+      if(location.search.indexOf('piatto')>=0) return this.spegni('chiesto piatto');
+      const c=$('#gl');
+      const o={alpha:false,antialias:false,depth:true,stencil:false,
+        premultipliedAlpha:true,preserveDrawingBuffer:false,powerPreference:'high-performance'};
+      const gl=c.getContext('webgl',o)||c.getContext('experimental-webgl',o);
+      if(!gl) return this.spegni('niente WebGL');
+      if(gl.getParameter(gl.MAX_TEXTURE_SIZE)<2048) return this.spegni('scheda troppo piccola');
+      this.gl=gl; this.tela=c;
+      this.ter=creaTerreno(gl);
+      c.addEventListener('webglcontextlost',e=>{e.preventDefault();this.spegni('contesto perso')});
+      this.attivo=true; this.perche='acceso';
+      c.classList.add('on'); $('#cv').classList.add('sopra');
+      this.misuraTela();
+      return true;
+    }catch(e){ return this.spegni('errore: '+e.message) }
+  },
+  spegni(perche){
+    this.attivo=false; this.perche=perche;
+    const c=$('#gl'); if(c)c.classList.remove('on');
+    const v=$('#cv'); if(v)v.classList.remove('sopra');
+    return false;
+  },
+  misuraTela(){
+    const c=this.tela; if(!c)return;
+    const w=Math.round(cw*DPR), h=Math.round(ch*DPR);
+    if(c.width!==w||c.height!==h){ c.width=w; c.height=h }
+    this.gl.viewport(0,0,w,h);
+  },
+
+  /* La camera 3D non conosce ne' la scossa ne' la molla: sono gia' dentro
+     CAM.x/CAM.y, e questo e' esattamente il motivo per cui il colpo si sente
+     uguale in rilievo e in piano. */
+  camera(){
+    const D=ch/(2*Math.tan(FOV/2)*CAM.z);
+    const zt=quota(CAM.x,CAM.y);
+    const ex=CAM.x, ey=CAM.y+D*Math.cos(INCL), ez=zt+D*Math.sin(INCL);
+    this.occhio[0]=ex; this.occhio[1]=ey; this.occhio[2]=ez;
+    // avanti = mira - occhio  (z e' la quota, positiva verso l'alto)
+    let fx=CAM.x-ex, fy=CAM.y-ey, fz=zt-ez;
+    const fl=Math.hypot(fx,fy,fz); fx/=fl; fy/=fl; fz/=fl;
+    /* destra = su x avanti, non avanti x su: con la quota verso l'alto e la
+       camera che guarda verso y calanti, l'altro verso specchia il mondo. */
+    let rx=-fy, ry=fx, rz=0;
+    const rl=Math.hypot(rx,ry,rz); rx/=rl; ry/=rl; rz/=rl;
+    // alto dell'immagine = destra x avanti
+    const ux=ry*fz-rz*fy, uy=rz*fx-rx*fz, uz=rx*fy-ry*fx;
+    this.destra[0]=rx; this.destra[1]=ry; this.destra[2]=rz;
+    this.alto[0]=ux;   this.alto[1]=uy;   this.alto[2]=uz;
+    this.avanti[0]=fx; this.avanti[1]=fy; this.avanti[2]=fz;
+    const V=new Float32Array([
+      rx,ux,-fx,0,  ry,uy,-fy,0,  rz,uz,-fz,0,
+      -(rx*ex+ry*ey+rz*ez), -(ux*ex+uy*ey+uz*ez), (fx*ex+fy*ey+fz*ez), 1]);
+    const near=.25*D, far=3.2*D, f=1/Math.tan(FOV/2), asp=cw/ch;
+    const P=new Float32Array([
+      f/asp,0,0,0, 0,f,0,0, 0,0,(far+near)/(near-far),-1, 0,0,2*far*near/(near-far),0]);
+    mMul(P,V,this.vp);
+    // il sole: la stessa ora del 2D, alzata in cielo
+    const an=(ME.orologio.tempo-.25)*TAU, l=luceOra();
+    const alt=.25+l*.75;
+    this.sole[0]=-Math.cos(an); this.sole[1]=-Math.sin(an)*.45; this.sole[2]=alt*1.6;
+    const sl=Math.hypot(this.sole[0],this.sole[1],this.sole[2]);
+    this.sole[0]/=sl; this.sole[1]/=sl; this.sole[2]/=sl;
+  },
+
+  disegna(){
+    const gl=this.gl;
+    this.misuraTela();
+    this.camera();
+    const l=luceOra();
+    gl.clearColor(.04+l*.30, .09+l*.36, .10+l*.30, 1);
+    gl.enable(gl.DEPTH_TEST);
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    this.ter.disegna(this.vp,this.sole,this.occhio,l);
+  },
+
+  /* Meglio un mondo piu' povero che un mondo a scatti in tasca a qualcuno:
+     se il fotogramma sfora per un secondo intero, si torna al piano e si
+     resta li' per tutta la sessione. */
+  misura(ms){
+    if(this.caldi<180){ this.caldi++; return }
+    if(ms>12){ if(++this.lenti>=60) this.spegni('troppo lento') } else this.lenti=0;
+  }
+};
+
+/* ── Il terreno ──────────────────────────────────────────────────
+   Una maglia per pezzo di mondo, generata al primo uso e tenuta in
+   cache con un tetto. Il colore del bioma sta nei vertici: le stesse
+   tinte "Terre alte" del piano, cosi' i due modi non si contraddicono. */
+const TRIS='attribute vec3 p;attribute vec3 n;attribute vec3 c;'+
+  'uniform mat4 vp;uniform vec3 sole;varying vec3 vc;varying float vd;'+
+  'void main(){vec4 q=vp*vec4(p,1.0);gl_Position=q;'+
+  'float d=max(dot(normalize(n),sole),0.0);'+
+  'vc=c*(0.45+0.55*d);vd=q.w;}';
+const FRAS='precision mediump float;varying vec3 vc;varying float vd;'+
+  'uniform vec3 aria;uniform float lontano;'+
+  'void main(){float f=clamp((vd-lontano*0.45)/(lontano*0.55),0.0,1.0);'+
+  'gl_FragColor=vec4(mix(vc,aria,f*0.75),1.0);}';
+
+function compila(gl,tipo,src){
+  const s=gl.createShader(tipo);
+  gl.shaderSource(s,src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))
+    throw new Error('shader: '+gl.getShaderInfoLog(s));
+  return s;
+}
+function creaTerreno(gl){
+  const pr=gl.createProgram();
+  gl.attachShader(pr,compila(gl,gl.VERTEX_SHADER,TRIS));
+  gl.attachShader(pr,compila(gl,gl.FRAGMENT_SHADER,FRAS));
+  gl.linkProgram(pr);
+  if(!gl.getProgramParameter(pr,gl.LINK_STATUS))
+    throw new Error('link: '+gl.getProgramInfoLog(pr));
+  const A={p:gl.getAttribLocation(pr,'p'),n:gl.getAttribLocation(pr,'n'),c:gl.getAttribLocation(pr,'c')};
+  const U={vp:gl.getUniformLocation(pr,'vp'),sole:gl.getUniformLocation(pr,'sole'),
+    aria:gl.getUniformLocation(pr,'aria'),lontano:gl.getUniformLocation(pr,'lontano')};
+
+  const PZ=500;                    // lato del pezzo, come il chunk del gioco
+  const N=16;                      // quadretti per lato: 512 triangoli a pezzo
+  const cache=new Map();
+  const col=new Float32Array(3);
+
+  function tinta(x,y,out){
+    const b=BIOMI[bioma(x,y)];
+    const h=b.suolo;
+    out[0]=parseInt(h.slice(1,3),16)/255;
+    out[1]=parseInt(h.slice(3,5),16)/255;
+    out[2]=parseInt(h.slice(5,7),16)/255;
+  }
+  function maglia(ci,cj){
+    const k=ci+','+cj;
+    let m=cache.get(k);
+    if(m)return m;
+    const ox=ci*PZ, oy=cj*PZ, s=PZ/N;
+    const nv=(N+1)*(N+1);
+    const P=new Float32Array(nv*3), NR=new Float32Array(nv*3), C=new Float32Array(nv*3);
+    for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){
+      const x=ox+i*s, y=oy+j*s, v=(j*(N+1)+i)*3;
+      P[v]=x; P[v+1]=y; P[v+2]=quota(x,y);
+      /* La normale dalle quote intorno: e' quello che fa vedere il pendio
+         quando il sole gira, senza una sola texture. */
+      const hx=quota(x+s,y)-quota(x-s,y), hy=quota(x,y+s)-quota(x,y-s);
+      let nx=-hx, ny=-hy, nz=2*s;
+      const nl=Math.hypot(nx,ny,nz);
+      NR[v]=nx/nl; NR[v+1]=ny/nl; NR[v+2]=nz/nl;
+      tinta(x,y,col);
+      const g=.88+h2(i,j,1301)*.24;              // screziatura, come la grana del piano
+      C[v]=col[0]*g; C[v+1]=col[1]*g; C[v+2]=col[2]*g;
+    }
+    const IX=new Uint16Array(N*N*6);
+    let t=0;
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+      const a=j*(N+1)+i, b=a+1, c2=a+N+1, d=c2+1;
+      IX[t++]=a; IX[t++]=c2; IX[t++]=b; IX[t++]=b; IX[t++]=c2; IX[t++]=d;
+    }
+    const mk=(dati,tipo)=>{const bu=gl.createBuffer();
+      gl.bindBuffer(tipo,bu); gl.bufferData(tipo,dati,gl.STATIC_DRAW); return bu};
+    m={p:mk(P,gl.ARRAY_BUFFER), n:mk(NR,gl.ARRAY_BUFFER), c:mk(C,gl.ARRAY_BUFFER),
+       i:mk(IX,gl.ELEMENT_ARRAY_BUFFER), n_:IX.length, uso:0};
+    cache.set(k,m);
+    return m;
+  }
+  let giro=0;
+  return {
+    disegna(vp,sole,occhio,luce){
+      gl.useProgram(pr);
+      gl.uniformMatrix4fv(U.vp,false,vp);
+      gl.uniform3fv(U.sole,sole);
+      /* L'aria in lontananza: di giorno un azzurro freddo, di notte il blu
+         della notte. E' quello che fa sembrare grande un paesaggio. */
+      gl.uniform3f(U.aria,.10+luce*.45,.16+luce*.52,.20+luce*.48);
+      const D=ch/(2*Math.tan(FOV/2)*CAM.z);
+      gl.uniform1f(U.lontano,D*2.2);
+      giro++;
+      /* Quali pezzi di mondo si vedono davvero: si tirano quattro raggi dagli
+         angoli dello schermo fino a terra e si prende il rettangolo che li
+         contiene. Prima il raggio lo ricavavo dalla DISTANZA della camera —
+         duecentoventicinque pezzi per fotogramma invece di una dozzina, e la
+         cache si mangiava i buffer che stava disegnando. */
+      const tanV=Math.tan(FOV/2), tanH=tanV*(cw/ch);
+      const E=R3.occhio, z0=quota(CAM.x,CAM.y);
+      let x0=CAM.x,x1=CAM.x,y0=CAM.y,y1=CAM.y;
+      for(let a=0;a<4;a++){
+        const sx=(a&1)?1:-1, sy=(a&2)?1:-1;
+        const dx=R3.avanti[0]+R3.destra[0]*sx*tanH+R3.alto[0]*sy*tanV;
+        const dy=R3.avanti[1]+R3.destra[1]*sx*tanH+R3.alto[1]*sy*tanV;
+        const dz=R3.avanti[2]+R3.destra[2]*sx*tanH+R3.alto[2]*sy*tanV;
+        let t=dz<-1e-4?(z0-E[2])/dz:Infinity;
+        if(!(t>0)||t>D*3) t=D*3;          // sopra l'orizzonte si taglia alla nebbia
+        const px=E[0]+dx*t, py=E[1]+dy*t;
+        if(px<x0)x0=px; if(px>x1)x1=px;
+        if(py<y0)y0=py; if(py>y1)y1=py;
+      }
+      const i0=Math.floor(x0/PZ)-1, i1=Math.floor(x1/PZ)+1;
+      const j0=Math.floor(y0/PZ)-1, j1=Math.floor(y1/PZ)+1;
+      for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+        if(i<0||j<0||i>=NCH||j>=NCH)continue;
+        const m=maglia(i,j); m.uso=giro;
+        gl.bindBuffer(gl.ARRAY_BUFFER,m.p); gl.enableVertexAttribArray(A.p);
+        gl.vertexAttribPointer(A.p,3,gl.FLOAT,false,0,0);
+        gl.bindBuffer(gl.ARRAY_BUFFER,m.n); gl.enableVertexAttribArray(A.n);
+        gl.vertexAttribPointer(A.n,3,gl.FLOAT,false,0,0);
+        gl.bindBuffer(gl.ARRAY_BUFFER,m.c); gl.enableVertexAttribArray(A.c);
+        gl.vertexAttribPointer(A.c,3,gl.FLOAT,false,0,0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.i);
+        gl.drawElements(gl.TRIANGLES,m.n_,gl.UNSIGNED_SHORT,0);
+      }
+      /* Lo sfratto si fa a fine fotogramma e mai su un pezzo appena disegnato:
+         cancellare un buffer mentre e' legato e' l'errore che mi ha lasciato lo
+         schermo vuoto. */
+      if(cache.size>96){
+        for(const [kk,vv] of [...cache]){
+          if(cache.size<=72)break;
+          if(vv.uso===giro)continue;
+          gl.deleteBuffer(vv.p); gl.deleteBuffer(vv.n);
+          gl.deleteBuffer(vv.c); gl.deleteBuffer(vv.i);
+          cache.delete(kk);
+        }
+      }
+    },
+    quanti(){ return cache.size }
+  };
+}
+
 function disegna(){
   ct.clearRect(0,0,cw,ch);
   fissaProiezione();
+  if(R3.attivo){
+    /* In rilievo il mondo lo disegna il motore; sul piano restano solo le
+       cose che vivono in spazio schermo. Se R3 si spegne, il fotogramma dopo
+       si torna qui sotto e non manca niente. */
+    try{ R3.disegna() }catch(e){ R3.spegni('errore nel disegno: '+e.message) }
+    if(R3.attivo){
+      TV=performance.now()/1000; TS=TV;
+      sole();
+      disegnaBordi();
+      return;
+    }
+  }
   TV=performance.now()/1000;
   TS=TV;
   sole();
@@ -3394,7 +3673,9 @@ function giro(ts){
      sa del tempo, e l'unica cosa che gli serve sapere. */
   ALFA=ACC/H;
   muoviCamera(dt);
+  const t0=performance.now();
   disegna();
+  if(R3.attivo)R3.misura(performance.now()-t0);
   aggiornaHud();
   accSalva+=dt;
   if(accSalva>4){ accSalva=0; salva(true) }
@@ -3448,6 +3729,7 @@ function avvio(){
     for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++) metti(li+i,lj+j);
   }
 
+  R3.avvia();
   legaMani();
   $('#salva').onclick=apriCodice;
   $('#bChiudi').onclick=()=>$('#velo').classList.remove('on');
