@@ -1582,8 +1582,48 @@ function fissaProiezione(){
   OFX=Math.round((cw/2-CAM.x*CAM.z)/q)*q;
   OFY=Math.round((ch/2-CAM.y*CAM.z)/q)*q;
 }
-const s2w=(sx,sy)=>({x:(sx-OFX)/CAM.z, y:(sy-OFY)/CAM.z});
-const w2s=(wx,wy)=>({x:wx*CAM.z+OFX, y:wy*CAM.z+OFY});
+/* Mondo -> schermo. In rilievo passa per la camera 3D e tiene conto della
+   quota del terreno, cosi' le sagome 2D — che restano quelle curate, con le
+   loro silhouette riconoscibili — si posano sulle colline invece di
+   galleggiare su un piano che non c'e' piu'.
+   La DIMENSIONE resta CAM.z per tutti: con un campo visivo di 24 gradi la
+   figura in cima allo schermo e' l'86% di quella al centro, e far variare la
+   scala costerebbe leggibilita' senza che nessuno se ne accorga. */
+function w2s(wx,wy,wz){
+  if(R3.attivo){
+    const vp=R3.vp, z=(wz===undefined?quota(wx,wy):wz);
+    const cx=vp[0]*wx+vp[4]*wy+vp[8]*z+vp[12];
+    const cy=vp[1]*wx+vp[5]*wy+vp[9]*z+vp[13];
+    const cw_=vp[3]*wx+vp[7]*wy+vp[11]*z+vp[15];
+    if(cw_<=1e-4)return {x:-9999,y:-9999};
+    return {x:(cx/cw_*.5+.5)*cw, y:(.5-cy/cw_*.5)*ch};
+  }
+  return {x:wx*CAM.z+OFX, y:wy*CAM.z+OFY};
+}
+/* Schermo -> mondo: il raggio dall'occhio attraverso il pixel, fino a terra.
+   Serve al tocco: senza, in rilievo si cammina dove non hai toccato. */
+function s2w(sx,sy){
+  if(R3.attivo){
+    const tanV=Math.tan(FOV/2), tanH=tanV*(cw/ch);
+    const nx=(sx/cw*2-1)*tanH, ny=(1-sy/ch*2)*tanV;
+    const E=R3.occhio;
+    const dx=R3.avanti[0]+R3.destra[0]*nx+R3.alto[0]*ny;
+    const dy=R3.avanti[1]+R3.destra[1]*nx+R3.alto[1]*ny;
+    const dz=R3.avanti[2]+R3.destra[2]*nx+R3.alto[2]*ny;
+    /* Il terreno non e' piatto: si parte dalla quota sotto la camera e si
+       raffina due volte. Basta e avanza per un dito su un pendio. */
+    let z0=quota(CAM.x,CAM.y), x=CAM.x, y=CAM.y;
+    for(let k=0;k<3;k++){
+      if(dz>-1e-4)break;
+      const t=(z0-E[2])/dz;
+      if(!(t>0))break;
+      x=E[0]+dx*t; y=E[1]+dy*t;
+      z0=quota(x,y);
+    }
+    return {x,y};
+  }
+  return {x:(sx-OFX)/CAM.z, y:(sy-OFY)/CAM.z};
+}
 
 /* ── La camera ────────────────────────────────────────────────────
    Tre difetti, tutti dello stesso tipo: si muoveva sempre, anche quando non
@@ -2688,6 +2728,15 @@ function disegnaOmino(x,y,z,o){
 const DISEGNA=[];
 const sxDi=wx=>wx*CAM.z+OFX;
 const syDi=wy=>wy*CAM.z+OFY;
+/* In rilievo la proiezione ha bisogno di TUTTE E DUE le coordinate insieme,
+   perché la quota del terreno sotto quel punto entra nel conto. Sul piano
+   resta l'aritmetica di prima, due moltiplicazioni e via. */
+const PJ={x:0,y:0};
+function proj(wx,wy){
+  if(R3.attivo){ const p=w2s(wx,wy); PJ.x=p.x; PJ.y=p.y }
+  else { PJ.x=wx*CAM.z+OFX; PJ.y=wy*CAM.z+OFY }
+  return PJ;
+}
 const perY=(a,b)=>a.sy-b.sy;   // per y INTERPOLATA: chi sta davanti sta davvero davanti
 
 function disegnaFigure(){
@@ -2698,32 +2747,32 @@ function disegnaFigure(){
      si scrive addosso, perché serve tre volte — taglio, ombra, corpo. */
   DISEGNA.length=0;
   for(const p of ME.gente){
-    const sx=sxDi(ix(p)), sy=syDi(iy(p));
+    const qq=proj(ix(p),iy(p)), sx=qq.x, sy=qq.y;
     if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
     p.sx=sx; p.sy=sy; DISEGNA.push(p);
   }
   for(const n of nemici){
-    const sx=sxDi(ix(n)), sy=syDi(iy(n));
+    const qq=proj(ix(n),iy(n)), sx=qq.x, sy=qq.y;
     if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
     n.sx=sx; n.sy=sy; DISEGNA.push(n);
   }
   /* Le bestie, tue e selvatiche, stanno nella stessa passata delle persone:
      si ordinano per profondità insieme a tutti gli altri. */
   for(const a of ME.animali){
-    const sx=sxDi(ix(a)), sy=syDi(iy(a));
+    const qq=proj(ix(a),iy(a)), sx=qq.x, sy=qq.y;
     if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
     a.sx=sx; a.sy=sy; a.bestia=true; DISEGNA.push(a);
   }
   for(const chk of chunks.values()){
     if(!chk.bestie)continue;
     for(const a of chk.bestie){
-      const sx=sxDi(a.px?ix(a):a.x), sy=syDi(a.py?iy(a):a.y);
+      const qq=proj(a.px?ix(a):a.x,a.py?iy(a):a.y), sx=qq.x, sy=qq.y;
       if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
       a.sx=sx; a.sy=sy; a.bestia=true; DISEGNA.push(a);
     }
   }
   const c=ME.capo;
-  c.sx=sxDi(ix(c)); c.sy=syDi(iy(c));
+  { const qq=proj(ix(c),iy(c)); c.sx=qq.x; c.sy=qq.y }
   DISEGNA.push(c);
 
   /* Le ombre in una passata sola, sotto a tutti — stanno per terra, e una
@@ -2936,7 +2985,7 @@ function disegnaVolo(){
     // interpolare, a 144 Hz è una fila di trattini invece di una linea
     const t=f.pt===undefined?f.t:f.pt+(f.t-f.pt)*ALFA;
     const x=lerp(f.x,f.tx,t), y=lerp(f.y,f.ty,t)-Math.sin(t*Math.PI)*10;
-    const sx=sxDi(x), sy=syDi(y);
+    const qq=proj(x,y), sx=qq.x, sy=qq.y;
     ct.strokeStyle='#e8dcc0'; ct.lineWidth=1.4;
     const an=Math.atan2(f.ty-f.y,f.tx-f.x);
     ct.beginPath(); ct.moveTo(sx,sy);
@@ -2946,7 +2995,7 @@ function disegnaVolo(){
     const t=s.pt===undefined?s.t:s.pt+(s.t-s.pt)*ALFA;
     const y=s.py===undefined?s.y:s.py+(s.y-s.py)*ALFA;
     ct.globalAlpha=1-t; ct.fillStyle=s.c;
-    ct.beginPath(); ct.arc(sxDi(s.x),syDi(y),3*(1-t)*CAM.z,0,TAU); ct.fill();
+    { const qq=proj(s.x,y); ct.beginPath(); ct.arc(qq.x,qq.y,3*(1-t)*CAM.z,0,TAU); ct.fill() }
     ct.globalAlpha=1;
   }
 }
@@ -2962,7 +3011,7 @@ function disegnaPolvere(){
   for(let i=0;i<POLV.length;i++){
     const s=POLV[i];
     const t=s.pt===undefined?s.t:s.pt+(s.t-s.pt)*ALFA;
-    const x=sxDi(s.x), y=syDi(s.y);
+    const qq=proj(s.x,s.y), x=qq.x, y=qq.y;
     if(x<-20||y<-20||x>cw+20||y>ch+20)continue;
     G[t<.34?0:t<.67?1:2].push(x,y,(s.r+t*2.8)*z);
   }
@@ -3360,6 +3409,22 @@ function disegna(){
     if(R3.attivo){
       TV=performance.now()/1000; TS=TV;
       sole();
+      OMB.dx=SOLE.lx*1.5; OMB.dy=SOLE.ly*1.5;
+      OMB.st=1+Math.abs(SOLE.lx)*.09;
+      OMB.col='rgba(24,18,12,'+(.06+SOLE.op*.9).toFixed(3)+')';
+      /* Il terreno lo fa il rilievo; tutto quello che ci sta SOPRA resta
+         disegnato dalle stesse funzioni di sempre, che ora ricevono da w2s
+         una posizione proiettata dalla camera 3D. Le sagome non cambiano di
+         una riga: e' il posto dove atterrano che cambia. */
+      disegnaRespiro();
+      disegnaCose();
+      disegnaBorgo();
+      disegnaAste();
+      disegnaRoba();
+      disegnaPolvere();
+      disegnaFigure();
+      disegnaVolo();
+      disegnaNotte();
       disegnaBordi();
       return;
     }
