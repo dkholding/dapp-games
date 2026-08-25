@@ -758,7 +758,12 @@ const AUDIO={
   vol(x,y){
     if(x===undefined)return 1;
     const d=Math.hypot(x-CAM.x,y-CAM.y);
-    const r=Math.max(cw,ch)/CAM.z*.75;
+    /* Il raggio udibile era agganciato allo schermo: con lo zoom nuovo
+       crollava da 633 a 301 unità, e i lupi che nascono a 560-820 unità
+       ululavano muti — cioè la voce che avverte del pericolo spariva
+       proprio quando il pericolo arriva. Ora è una costante: quello che
+       senti non dipende più da quanto vedi. */
+    const r=700;
     return d>r?0:1-d/r;
   },
   voce(){ if(this.voci>=8)return false; this.voci++;
@@ -1736,7 +1741,14 @@ function recuperaAssenza(){
    ═══════════════════════════════════════════════════════════════ */
 let cv,ct,cw,ch,DPR=1;
 const CAM={x:0,y:0,z:1};
-const ZOOM=[.75,1,1.35];
+/* La scala. Un uomo alto 16 unità a z=1 sono 16 pixel su uno schermo da 844:
+   l'uno virgola nove per cento dell'altezza. I giochi di regni con cui il
+   committente ci confronta stanno fra il cinque e l'otto. A z=2,10 lo stesso
+   uomo è 34 pixel, il capo 46: si vede la sagoma, si vede da che parte
+   guarda, si vede il colpo. Si vede tre volte e mezzo meno mondo, ed è
+   esattamente il punto — il mondo grande lo sa già il minimappa della testa,
+   quello che mancava era la faccia di chi ti cammina davanti. */
+const ZOOM=[1.20,2.10,3.20];
 let zi=1;
 
 function adattaTela(){
@@ -1772,9 +1784,13 @@ function fissaProiezione(){
    quota del terreno, cosi' le sagome 2D — che restano quelle curate, con le
    loro silhouette riconoscibili — si posano sulle colline invece di
    galleggiare su un piano che non c'e' piu'.
-   La DIMENSIONE resta CAM.z per tutti: con un campo visivo di 24 gradi la
-   figura in cima allo schermo e' l'86% di quella al centro, e far variare la
-   scala costerebbe leggibilita' senza che nessuno se ne accorga. */
+   La DIMENSIONE resta CAM.z per tutti. Con il campo visivo a 30 gradi la
+   figura in cima allo schermo sarebbe il 76% di quella al centro: la
+   differenza adesso ci sarebbe, ma farla variare qui vorrebbe dire farla
+   variare a mano, sagoma per sagoma, con il rischio che due che camminano
+   affiancati risultino di due misure diverse per un pixel di y. La
+   profondita' vera la portano i corpi in rilievo, quando ci saranno: sono
+   proiettati dalla stessa matrice e la prendono gratis. */
 function w2s(wx,wy,wz){
   if(R3.attivo){
     const vp=R3.vp, z=(wz===undefined?quota(wx,wy):wz);
@@ -1854,10 +1870,13 @@ function muoviCamera(dt){
   CVY+=(-k1*CVY-(CAM.y-ty)*k2)*dt;
   CAM.x+=CVX*dt; CAM.y+=CVY*dt;
   /* Il sussulto del colpo: due seni a frequenze diverse, sommati alla camera
-     e non scritti dentro — così non sporca mai la posizione vera. */
+     e non scritti dentro — così non sporca mai la posizione vera.
+     SCOSSA è in unità di MONDO, e a schermo diventa unità×CAM.z: col nuovo
+     zoom lo stesso colpo sussulterebbe il doppio dei pixel. Si divide per z,
+     e il colpo si sente uguale a ogni zoom. È disegno, non regola. */
   if(SCOSSA>0){
     const t=performance.now()/1000;
-    CAM.x+=Math.sin(t*61)*SCOSSA; CAM.y+=Math.cos(t*47)*SCOSSA*.7;
+    CAM.x+=Math.sin(t*61)*SCOSSA/CAM.z; CAM.y+=Math.cos(t*47)*SCOSSA*.7/CAM.z;
   }
   CAM.z=lerp(CAM.z,ZOOM[zi],1-Math.pow(.02,dt));
 }
@@ -2930,30 +2949,33 @@ function disegnaFigure(){
   /* Ogni figura si disegna dove sta ADESSO, cioè fra il passo di prima e
      quello di dopo: due moltiplicazioni in croce, e nessun fotogramma mostra
      più una posizione vecchia. La sx interpolata si calcola una volta sola e
-     si scrive addosso, perché serve tre volte — taglio, ombra, corpo. */
+     si scrive addosso, perché serve tre volte — taglio, ombra, corpo.
+     Il margine di scarto è cresciuto da 40/60 a 120/160 pixel per una
+     ragione sola: con lo zoom nuovo una figura è alta il triplo, e i
+     vecchi margini le tagliavano i piedi mentre entrava da sopra. */
   DISEGNA.length=0;
   for(const p of ME.gente){
     const qq=proj(ix(p),iy(p)), sx=qq.x, sy=qq.y;
-    if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
+    if(sx<-120||sy<-160||sx>cw+120||sy>ch+160)continue;
     p.sx=sx; p.sy=sy; DISEGNA.push(p);
   }
   for(const n of nemici){
     const qq=proj(ix(n),iy(n)), sx=qq.x, sy=qq.y;
-    if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
+    if(sx<-120||sy<-160||sx>cw+120||sy>ch+160)continue;
     n.sx=sx; n.sy=sy; DISEGNA.push(n);
   }
   /* Le bestie, tue e selvatiche, stanno nella stessa passata delle persone:
      si ordinano per profondità insieme a tutti gli altri. */
   for(const a of ME.animali){
     const qq=proj(ix(a),iy(a)), sx=qq.x, sy=qq.y;
-    if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
+    if(sx<-120||sy<-160||sx>cw+120||sy>ch+160)continue;
     a.sx=sx; a.sy=sy; a.bestia=true; DISEGNA.push(a);
   }
   for(const chk of chunks.values()){
     if(!chk.bestie)continue;
     for(const a of chk.bestie){
       const qq=proj(a.px?ix(a):a.x,a.py?iy(a):a.y), sx=qq.x, sy=qq.y;
-      if(sx<-40||sy<-60||sx>cw+40||sy>ch+60)continue;
+      if(sx<-120||sy<-160||sx>cw+120||sy>ch+160)continue;
       a.sx=sx; a.sy=sy; a.bestia=true; DISEGNA.push(a);
     }
   }
@@ -3340,10 +3362,19 @@ function disegnaNotte(){
 const QSC=190;                      // quanto si esagera il rilievo: 0..1 -> 0..190 unita'
 const quota=(x,y)=>campo(x,y,101)*QSC;
 
-/* Camera prospettica alta e inclinata poco: con un campo visivo stretto la
-   fila resta una fila di persone uguali invece di deformarsi ai bordi, e
-   nessun pendio del mondo puo' nascondere niente dietro una cresta. */
-const INCL=Math.PI/3, FOV=24*Math.PI/180;
+/* Camera prospettica. Il campo visivo stretto teneva la fila una fila di
+   persone uguali invece di deformarle ai bordi, e resta vero anche a trenta
+   gradi; in cambio si compra la PROFONDITA', che e' l'unico indizio di
+   distanza che non costa niente. A 24 gradi chi sta in cima allo schermo era
+   l'86% di chi sta al centro: quasi nessuna differenza, cioe' una mappa. A 30
+   e' il 76%, e il paesaggio smette di essere un tavolo.
+   L'inclinazione scende da 60 a 52 gradi per la stessa ragione: si vede il
+   FIANCO delle colline invece della loro pianta. Con 52 di inclinazione e 30
+   di campo, il raggio piu' alto punta ancora 37 gradi SOTTO l'orizzontale:
+   l'orizzonte non entra mai in inquadratura, e per questo non c'e' nessuna
+   cupola di cielo da disegnare. Il cielo qui vive come luce e come aria — il
+   colore in cui muore la nebbia — non come immagine. */
+const INCL=52*Math.PI/180, FOV=30*Math.PI/180;
 
 function mMul(a,b,o){
   for(let i=0;i<4;i++)for(let j=0;j<4;j++){
@@ -3358,6 +3389,13 @@ const R3={
   vp:new Float32Array(16), occhio:new Float32Array(3), sole:new Float32Array(3),
   destra:new Float32Array(3), alto:new Float32Array(3), avanti:new Float32Array(3),
   lenti:0, caldi:0,
+  /* Quanto è lontano il punto mirato. Lo calcola camera() e lo leggono in
+     tre: la nebbia, i livelli di dettaglio del terreno e il riquadro del
+     sole per la mappa d'ombra. È il numero che dice "quanto mondo c'è". */
+  D:600,
+  /* Il gradino di qualità, e il DPR della sola tela WebGL. La tela 2D sopra
+     resta a DPR pieno: si rimpicciolisce il paesaggio, mai il testo. */
+  qual:2, DPR3:1,
 
   avvia(){
     try{
@@ -3369,7 +3407,13 @@ const R3={
       if(!gl) return this.spegni('niente WebGL');
       if(gl.getParameter(gl.MAX_TEXTURE_SIZE)<2048) return this.spegni('scheda troppo piccola');
       this.gl=gl; this.tela=c;
+      /* La luce si aggancia al mondo PRIMA che nasca il terreno: il modulo
+         non ridefinisce quota() né l'ora, se le fa dare. Se le riscrivesse,
+         il giorno che qualcuno cambia il seme il suolo e le ombre
+         andrebbero in due direzioni diverse. */
+      LUCE.collega({quota:quota, ora:()=>ME.orologio.tempo, luceOra:luceOra});
       this.ter=creaTerreno(gl);
+      this.DPR3=DPR; this.qual=-1; this.qualita(2);
       c.addEventListener('webglcontextlost',e=>{e.preventDefault();this.spegni('contesto perso')});
       this.attivo=true; this.perche='acceso';
       c.classList.add('on'); $('#cv').classList.add('sopra');
@@ -3379,13 +3423,49 @@ const R3={
   },
   spegni(perche){
     this.attivo=false; this.perche=perche;
+    /* Chi possiede una texture la cancella, e nessun altro: il terreno le
+       sue tre bitmap e i suoi buffer, la mappa d'ombra il suo framebuffer.
+       Lasciarli appesi su un contesto ancora vivo sono venti megabyte che
+       non tornano più. */
+    try{ if(this.ter)this.ter.spegni() }catch(e){}
+    try{ const M=LUCE.MAPPA, g=this.gl;
+      if(M.pronta&&g){ g.deleteFramebuffer(M.fbo); g.deleteTexture(M.tex);
+        g.deleteRenderbuffer(M.prof); M.fbo=M.tex=M.prof=null; M.pronta=false }
+    }catch(e){}
+    this.ter=null; L3.ombraOn=false; L3.ombraTex=null;
     const c=$('#gl'); if(c)c.classList.remove('on');
     const v=$('#cv'); if(v)v.classList.remove('sopra');
     return false;
   },
+  /* I tre gradini. Prima si spegneva tutto in un colpo — dodici millisecondi
+     per sessanta fotogrammi e via, torna il piano per il resto della
+     sessione: un burrone. Ora si scende di un gradino per volta, e sotto lo
+     zero c'è ancora il piano che aspetta. La leva vera è il DPR: 780x1688
+     contro 585x1266 sono il 44% di pixel in meno, cioè il 44% di prelievi in
+     meno, ed è esattamente lì che su un telefono si vince o si perde. */
+  qualita(q){
+    q=q<0?0:q>2?2:q|0;
+    if(q===this.qual)return;
+    this.qual=q; L3.qual=q;
+    if(this.ter)this.ter.qualita(q);
+    /* La mappa d'ombra è un lusso: 1 Mpixel di passata in più, che su una
+       macchina veloce sono mezzo millisecondo e su un telefono medio tre.
+       Solo al gradino alto. Qui serve al terreno su se stesso — una cresta
+       che butta la sua ombra dentro la valle di sotto, l'unica cosa che
+       nessun altro trucco sa fare. */
+    let vuole=(q>=2);
+    if(vuole&&!LUCE.MAPPA.pronta) vuole=LUCE.MAPPA.prepara(this.gl,1024);
+    L3.ombraOn=vuole; L3.ombraLato=vuole?LUCE.MAPPA.lato:0;
+    if(!vuole) L3.ombraTex=null;
+    if(this.ter)this.ter.ombra(vuole);
+    this.DPR3=Math.min(DPR,[1,1.5,2][q]);
+    L3.dpr=this.DPR3;
+    this.misuraTela();
+  },
   misuraTela(){
     const c=this.tela; if(!c)return;
-    const w=Math.round(cw*DPR), h=Math.round(ch*DPR);
+    const d=this.DPR3||DPR;
+    const w=Math.round(cw*d), h=Math.round(ch*d);
     if(c.width!==w||c.height!==h){ c.width=w; c.height=h }
     this.gl.viewport(0,0,w,h);
   },
@@ -3395,6 +3475,7 @@ const R3={
      uguale in rilievo e in piano. */
   camera(){
     const D=ch/(2*Math.tan(FOV/2)*CAM.z);
+    this.D=D;
     const zt=quota(CAM.x,CAM.y);
     const ex=CAM.x, ey=CAM.y+D*Math.cos(INCL), ez=zt+D*Math.sin(INCL);
     this.occhio[0]=ex; this.occhio[1]=ey; this.occhio[2]=ez;
@@ -3417,12 +3498,14 @@ const R3={
     const P=new Float32Array([
       f/asp,0,0,0, 0,f,0,0, 0,0,(far+near)/(near-far),-1, 0,0,2*far*near/(near-far),0]);
     mMul(P,V,this.vp);
-    // il sole: la stessa ora del 2D, alzata in cielo
-    const an=(ME.orologio.tempo-.25)*TAU, l=luceOra();
-    const alt=.25+l*.75;
-    this.sole[0]=-Math.cos(an); this.sole[1]=-Math.sin(an)*.45; this.sole[2]=alt*1.6;
-    const sl=Math.hypot(this.sole[0],this.sole[1],this.sole[2]);
-    this.sole[0]/=sl; this.sole[1]/=sl; this.sole[2]/=sl;
+    /* Il sole. Non è più inventato qui: lo dà LUCE, e la sua legge è la
+       STESSA con cui il 2D allunga le ombre dipinte — l'ombra è lunga
+       L=1.1+3.6*(1-l) volte l'oggetto, quindi il sole sta a un'elevazione
+       di atan(1/L). Prima l'altezza era .25+l*.75, che a mezz'alba metteva
+       il sole a quarantacinque gradi mentre il 2D disegnava un'ombra lunga
+       tre: passando da rilievo a piano l'ombra saltava. Ora no. */
+    const d=LUCE.direzioneSole(ME.orologio.tempo, luceOra());
+    this.sole[0]=d[0]; this.sole[1]=d[1]; this.sole[2]=d[2];
   },
 
   disegna(){
@@ -3445,143 +3528,2418 @@ const R3={
   }
 };
 
-/* ── Il terreno ──────────────────────────────────────────────────
-   Una maglia per pezzo di mondo, generata al primo uso e tenuta in
-   cache con un tetto. Il colore del bioma sta nei vertici: le stesse
-   tinte "Terre alte" del piano, cosi' i due modi non si contraddicono. */
-const TRIS='attribute vec3 p;attribute vec3 n;attribute vec3 c;'+
-  'uniform mat4 vp;uniform vec3 sole;varying vec3 vc;varying float vd;'+
-  'void main(){vec4 q=vp*vec4(p,1.0);gl_Position=q;'+
-  'float d=max(dot(normalize(n),sole),0.0);'+
-  'vc=c*(0.45+0.55*d);vd=q.w;}';
-const FRAS='precision mediump float;varying vec3 vc;varying float vd;'+
-  'uniform vec3 aria;uniform float lontano;'+
-  'void main(){float f=clamp((vd-lontano*0.45)/(lontano*0.55),0.0,1.0);'+
-  'gl_FragColor=vec4(mix(vc,aria,f*0.75),1.0);}';
+/* ════════════════════════════════════════════════════════════
+   9c · LA LUCE — il cielo, l'aria, le ombre
+   Il modulo espone window.LUCE. Da' tre cose che il rilievo non
+   aveva: le sei terne del giorno (sole, cielo, terra, orizzonte,
+   zenit, nebbia) interpolate su otto momenti; la direzione del sole
+   ricavata dalla STESSA legge con cui il 2D allunga le sue ombre
+   (L=1.1+3.6*(1-l), elevazione=atan(1/L)), cosi' passando da rilievo
+   a piano l'ombra non salta; e la mappa d'ombra, che qui serve al
+   terreno per buttare l'ombra di una cresta dentro la valle di sotto.
+   Non scrive mai nello stato del gioco: legge l'ora e restituisce
+   colori e matrici.
+   ════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   LUCE — il cielo, l'aria, le ombre.
+   Modulo autonomo, WebGL1, nessun asset. Da incollare nel gioco dentro la
+   sezione 9b, subito PRIMA di creaTerreno().
 
-function compila(gl,tipo,src){
-  const s=gl.createShader(tipo);
-  gl.shaderSource(s,src); gl.compileShader(s);
-  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))
-    throw new Error('shader: '+gl.getShaderInfoLog(s));
+   Cosa fa, in una riga: prende una scena geometricamente corretta e la
+   illumina. Non tocca nessuna regola, non scrive mai nello stato: legge
+   l'ora dall'orologio del gioco e restituisce colori e matrici.
+
+   LE TRE COSE CHE FANNO IL 90% DEL RISULTATO, e sono sempre accese:
+     1. luce a due sorgenti (diretta + ambiente a emisfero cielo/terra)
+     2. occlusione cotta nei vertici del terreno (le conche si scuriscono)
+     3. ombre piatte proiettate: la maglia vera schiacciata sul piano locale
+        del terreno. L'ombra ha le GAMBE, e costa 0 passate e 0 texture.
+
+   IL LUSSO, solo a qualita' 2: mappa d'ombra 1024 impacchettata in RGBA8
+   (WEBGL_depth_texture non e' garantita), e ombre di nuvole.
+
+   PASSATE A SCHERMO PIENO: zero aggiunte. Tutto vive dentro il fragment
+   shader del suolo e dentro geometria vera. Il velo blu della notte in 2D
+   resta l'unica passata piena del gioco.
+   ═════════════════════════════════════════════════════════════════════════ */
+(function (glob) {
+'use strict';
+
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* ───────────────────────────────────────────────────────────────────────────
+   0 · IL COLLEGAMENTO AL MONDO
+   Il modulo non ridefinisce campo/quota/luceOra: se le riscrivesse, il
+   giorno che qualcuno cambia il seme il terreno e le ombre andrebbero in due
+   direzioni diverse. Se le fa dare.
+   ─────────────────────────────────────────────────────────────────────── */
+const MONDO = {
+  quota: (x, y) => 0,     // (x,y) -> altezza in unita' di mondo
+  ora: () => 0.47,        // ME.orologio.tempo, 0..1
+  luceOra: () => 1        // 0 notte fonda, 1 mezzogiorno
+};
+function collega(o) { for (const k in o) if (o[k]) MONDO[k] = o[k]; }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   1 · LE SEI TERNE, LUNGO LA GIORNATA
+   Il contratto chiede SEI grandezze interpolate lungo il giorno:
+     colSole  — la diretta (colore gia' moltiplicato per l'intensita')
+     colCielo — l'ambiente che scende dall'alto (la cupola)
+     colTerra — l'ambiente che rimbalza dal basso (il suolo)
+     colOriz  — il cielo all'orizzonte: e' il colore in cui muore la nebbia
+     colZenit — il cielo sopra la testa
+     nebbia   — quanto e' spessa l'aria, moltiplicatore
+   I momenti chiave sono OTTO e non sei per una ragione sola: l'alba e il
+   tramonto durano il 6% della giornata ciascuno, e con sei punti equispaziati
+   il rosso del tramonto resterebbe acceso per un'ora di gioco. Le grandezze
+   restano sei; i punti sono dati in una tabella, cambiarli e' una riga.
+
+   Gli istanti sono agganciati a luceOra(): l=.5+sin((t-.22)*TAU)*.62, quindi
+   t=.22 alba (l=.5 che sale), t=.47 mezzogiorno (l=1), t=.72 tramonto,
+   t=.97 notte fonda (l=0).
+   ─────────────────────────────────────────────────────────────────────── */
+const CHIAVI = [
+  { t: 0.97, n: 'notte fonda',
+    sole: [0.11, 0.14, 0.24], cielo: [0.09, 0.12, 0.23], terra: [0.030, 0.034, 0.050],
+    oriz: [0.070, 0.090, 0.170], zenit: [0.012, 0.022, 0.065], nebbia: 1.25 },
+  { t: 0.14, n: 'prima luce',
+    sole: [0.30, 0.27, 0.36], cielo: [0.19, 0.23, 0.36], terra: [0.065, 0.068, 0.080],
+    oriz: [0.44, 0.33, 0.36], zenit: [0.060, 0.105, 0.230], nebbia: 1.45 },
+  { t: 0.22, n: 'alba',
+    sole: [1.10, 0.63, 0.31], cielo: [0.33, 0.41, 0.57], terra: [0.140, 0.118, 0.098],
+    oriz: [1.02, 0.56, 0.32], zenit: [0.140, 0.245, 0.450], nebbia: 1.35 },
+  { t: 0.34, n: 'mattino',
+    sole: [1.14, 1.02, 0.83], cielo: [0.40, 0.53, 0.73], terra: [0.200, 0.192, 0.150],
+    oriz: [0.72, 0.78, 0.87], zenit: [0.200, 0.385, 0.690], nebbia: 1.00 },
+  { t: 0.47, n: 'mezzogiorno',
+    sole: [1.24, 1.20, 1.08], cielo: [0.44, 0.57, 0.77], terra: [0.245, 0.235, 0.192],
+    oriz: [0.80, 0.86, 0.93], zenit: [0.255, 0.455, 0.800], nebbia: 0.82 },
+  { t: 0.60, n: 'pomeriggio',
+    sole: [1.20, 1.06, 0.84], cielo: [0.42, 0.53, 0.71], terra: [0.215, 0.200, 0.155],
+    oriz: [0.83, 0.78, 0.78], zenit: [0.215, 0.400, 0.700], nebbia: 0.95 },
+  { t: 0.72, n: 'tramonto',
+    sole: [1.18, 0.47, 0.21], cielo: [0.34, 0.36, 0.51], terra: [0.160, 0.122, 0.100],
+    oriz: [1.06, 0.42, 0.23], zenit: [0.120, 0.180, 0.410], nebbia: 1.30 },
+  { t: 0.84, n: 'crepuscolo',
+    sole: [0.34, 0.24, 0.31], cielo: [0.21, 0.23, 0.37], terra: [0.070, 0.070, 0.092],
+    oriz: [0.35, 0.22, 0.31], zenit: [0.058, 0.100, 0.250], nebbia: 1.40 }
+];
+
+/* Interpolazione ciclica: fra l'ultima chiave (.84) e la prima (.97) e poi
+   oltre lo zero. Nessun salto a mezzanotte. */
+function fraChiavi(t) {
+  t = t - Math.floor(t);
+  let a = CHIAVI.length - 1, b = 0;
+  for (let i = 0; i < CHIAVI.length; i++) {
+    const c = CHIAVI[i], p = CHIAVI[(i + 1) % CHIAVI.length];
+    let t0 = c.t, t1 = p.t; if (t1 <= t0) t1 += 1;
+    let tt = t; if (tt < t0) tt += 1;
+    if (tt >= t0 && tt <= t1) { a = i; b = (i + 1) % CHIAVI.length;
+      return { a: CHIAVI[a], b: CHIAVI[b], u: (tt - t0) / (t1 - t0) }; }
+  }
+  return { a: CHIAVI[a], b: CHIAVI[b], u: 0 };
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   2 · LO STATO CORRENTE DELLA LUCE
+   Un solo oggetto, riempito una volta per fotogramma. Sono i valori che
+   finiscono negli uniform: chi disegna non fa un conto in piu'.
+   ─────────────────────────────────────────────────────────────────────── */
+const S = {
+  ora: 0, l: 1, nome: '',
+  sole: new Float32Array(3),      // direzione VERSO il sole, normalizzata
+  colSole: new Float32Array(3),
+  colCielo: new Float32Array(3),
+  colTerra: new Float32Array(3),
+  colOriz: new Float32Array(3),
+  colZenit: new Float32Array(3),
+  nebbia: new Float32Array(2),    // inizio, 1/(fine-inizio)
+  ombraMul: new Float32Array(3),  // quanto resta del suolo dentro un'ombra
+  fondo: new Float32Array(3),     // il colore con cui pulire la tela WebGL
+  lunghOmbra: 1,                  // quanto e' lunga l'ombra: 1/tan(elevazione)
+  nuvPar: new Float32Array(3)     // scala, scorrimento x, scorrimento y
+};
+
+/* La direzione del sole NON e' inventata: e' la stessa legge del 2D.
+   Il 2D dice che l'ombra e' lunga L=1.1+3.6*(1-l) volte l'oggetto; quindi
+   l'elevazione del sole e' atan(1/L), e la sua ombra piatta in 3D cade
+   ESATTAMENTE dove cadeva l'ombra dipinta del ripiego. E' il motivo per cui
+   passando da rilievo a piano non si vede lo stacco.
+   (La vecchia R3.camera() usava alt=.25+l*.75: a mezz'alba metteva il sole a
+   45 gradi, cioe' un'ombra corta mentre il 2D ne disegnava una lunga tre.) */
+function direzioneSole(ora, l) {
+  const an = (ora - 0.25) * TAU;
+  const L = 1.1 + 3.6 * (1 - l);
+  let x = -Math.cos(an), y = -Math.sin(an) * 0.45, z = 1 / L;
+  const n = Math.hypot(x, y, z);
+  return [x / n, y / n, z / n, L];
+}
+
+/** Da chiamare una volta per fotogramma, prima di qualunque disegno.
+    D = la distanza camera-mira gia' calcolata da R3.camera(). */
+function aggiorna(ora, l, D, tempoReale) {
+  if (ora === undefined) ora = MONDO.ora();
+  if (l === undefined) l = MONDO.luceOra();
+  S.ora = ora; S.l = l;
+
+  const k = fraChiavi(ora), a = k.a, b = k.b;
+  /* Smorzata agli estremi: senza, il passaggio da una chiave all'altra si
+     vede come una piega nel cielo quando il sole gira lentamente. */
+  const u = k.u * k.u * (3 - 2 * k.u);
+  S.nome = u < 0.5 ? a.n : b.n;
+  const mix3 = (out, ka, kb) => {
+    out[0] = lerp(a[ka][0], b[kb][0], u);
+    out[1] = lerp(a[ka][1], b[kb][1], u);
+    out[2] = lerp(a[ka][2], b[kb][2], u);
+  };
+  mix3(S.colSole, 'sole', 'sole');
+  mix3(S.colCielo, 'cielo', 'cielo');
+  mix3(S.colTerra, 'terra', 'terra');
+  mix3(S.colOriz, 'oriz', 'oriz');
+  mix3(S.colZenit, 'zenit', 'zenit');
+  const spess = lerp(a.nebbia, b.nebbia, u);
+
+  const d = direzioneSole(ora, l);
+  S.sole[0] = d[0]; S.sole[1] = d[1]; S.sole[2] = d[2];
+  S.lunghOmbra = d[3];
+
+  /* La nebbia agganciata a D come dice il contratto: [0.55*D, 1.9*D].
+     A zoom normale su telefono sono 410 e 1425 unita' — proprio dove il
+     terreno finisce. Lo spessore dell'ora la sposta, non la riscrive. */
+  const i0 = 0.55 * D / spess, i1 = 1.9 * D / spess;
+  S.nebbia[0] = i0; S.nebbia[1] = 1 / Math.max(1, i1 - i0);
+
+  /* Quanto resta del suolo dentro un'ombra piatta: e' il rapporto fra il
+     solo ambiente e la luce totale. Cosi' l'ombra non e' mai nera — a
+     mezzogiorno e' un terzo, all'alba e' quasi niente perche' la diretta e'
+     radente e conta poco. E resta AZZURRA, perche' quel che resta e' cielo. */
+  const nz = 0.72;   // la normale media di un terreno quasi piano
+  for (let i = 0; i < 3; i++) {
+    const amb = lerp(S.colTerra[i], S.colCielo[i], nz * 0.5 + 0.5);
+    const dir = S.colSole[i] * Math.max(S.sole[2], 0);
+    S.ombraMul[i] = clamp(amb / Math.max(amb + dir, 1e-4), 0.10, 0.92);
+  }
+
+  /* Il fondo della tela WebGL. Non e' un cielo: e' il colore dell'aria dove
+     il terreno non arriva. Nella pratica non si vede quasi mai (a 52 gradi
+     l'orizzonte non entra in campo), ma se un pezzo tarda a generarsi meglio
+     un buco color nebbia che un buco nero. */
+  S.fondo[0] = S.colOriz[0] * 0.9; S.fondo[1] = S.colOriz[1] * 0.9; S.fondo[2] = S.colOriz[2] * 0.9;
+
+  /* Le nuvole scorrono lente e in diagonale: 1800 unita' di scala come da
+     contratto, e un giro completo ogni ~9 minuti reali. */
+  const t = tempoReale || 0;
+  S.nuvPar[0] = 1 / 1800;
+  S.nuvPar[1] = t * 0.0000105 + 0.31;
+  S.nuvPar[2] = t * 0.0000068;
+  return S;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   3 · LA LIBRERIA GLSL
+   Stringhe da incollare nei vertex/fragment shader di terreno e corpi. Ogni
+   programma dichiara gli stessi uniform e chiama le stesse funzioni: un solo
+   posto dove il colore della luce e' definito.
+   ─────────────────────────────────────────────────────────────────────── */
+
+/** Il preambolo: precisione + il livello di qualita' come #define, cosi' i
+    rami costosi spariscono dal codice invece di essere saltati a runtime. */
+function testa(qual, frammento) {
+  return (frammento ? 'precision mediump float;\n' : '') + '#define QUAL ' + (qual | 0) + '\n';
+}
+
+/** Gli uniform della luce. Identici in ogni programma. */
+const UNIFORM = [
+  'uniform vec3 uSole;',      // direzione VERSO il sole
+  'uniform vec3 uColSole;',   // diretta
+  'uniform vec3 uColCielo;',  // ambiente dall'alto
+  'uniform vec3 uColTerra;',  // rimbalzo dal basso
+  'uniform vec3 uColOriz;',   // cielo all'orizzonte
+  'uniform vec3 uColZenit;',  // cielo allo zenit
+  'uniform vec2 uNebbia;',    // inizio, 1/(fine-inizio)
+  'uniform float uNotte;',    // 0 giorno, 1 notte: accende le stelle
+  '#if QUAL>=2',
+  'uniform sampler2D uNuvole;',
+  'uniform vec3 uNuvPar;',    // scala, scorrimento x, scorrimento y
+  '#endif'
+].join('\n') + '\n';
+
+/* LA LUCE A DUE SORGENTI.
+   Quel che oggi e' nero piatto sul lato in ombra diventa azzurro di cielo.
+   E' letteralmente il motivo per cui una scena sembra illuminata: l'occhio
+   legge "c'e' luce intorno" dal colore dell'ombra, non da quello del sole. */
+const LUCE_DI = [
+  'vec3 luceDi(vec3 n, float ao, float ombra){',
+  /* terminatore morbido: al posto del taglio netto di max(dot,0) si allarga
+     il passaggio. Su un corpo curvo (una spalla, una coscia) e' la differenza
+     fra una figura di cartone e una figura tonda, e costa due operazioni. */
+  '  float d = max((dot(n,uSole)+0.22)/1.22, 0.0);',
+  '  d *= d*(3.0-2.0*d);',
+  '  vec3 amb = mix(uColTerra, uColCielo, n.z*0.5+0.5) * ao;',
+  '  return uColSole*(d*ombra) + amb;',
+  '}',
+  /* variante dura, per il terreno: su una superficie quasi piana il
+     terminatore morbido spalma il rilievo invece di scolpirlo. */
+  'vec3 luceSuolo(vec3 n, float ao, float ombra){',
+  '  float d = max(dot(n,uSole), 0.0);',
+  '  vec3 amb = mix(uColTerra, uColCielo, n.z*0.5+0.5) * ao;',
+  '  return uColSole*(d*ombra) + amb;',
+  '}'
+].join('\n') + '\n';
+
+/* IL CIELO, come funzione.
+   Non e' un fondale e non deve esserlo: a 52 gradi d'inclinazione con 30 di
+   campo il raggio piu' alto e' ancora 37 gradi SOTTO l'orizzontale, quindi
+   l'orizzonte non entra mai in inquadratura e una cupola sarebbe geometria
+   che nessuno vedra' mai. Ma il cielo esiste davvero, ed e' questa funzione:
+   e' lei che da' il colore all'aria in lontananza (dove il cielo SI vede,
+   perche' la nebbia e' cielo diffuso), ed e' lei che genera l'ambiente.
+   Ha dentro tutto: gradiente, disco del sole, alone, stelle, banda di nuvole.
+   La si puo' guardare in faccia — prova.html la disegna a schermo. */
+const CIELO = [
+  'float rnd21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }',
+  'vec3 cielo(vec3 d){',
+  '  float su = clamp(d.z, 0.0, 1.0);',
+  /* il gradiente non e' lineare: l'aria e' densa in basso, quindi l'orizzonte
+     tiene il suo colore per un bel pezzo e poi cede in fretta allo zenit. */
+  '  vec3 c = mix(uColOriz, uColZenit, pow(su, 0.55));',
+  '  float s = max(dot(d,uSole), 0.0);',
+  /* l'alone: largo e debole, piu' un secondo stretto e forte. Due pow. */
+  '  c += uColSole * (pow(s,2.2)*0.09 + pow(s,42.0)*0.55);',
+  '#if QUAL>=1',
+  /* il disco del sole. Mezzo grado vero sarebbe 0.99996: troppo piccolo per
+     esistere su un telefono. Qui e' due gradi, che e' quanto serve perche' si
+     legga come "il sole" e non come "un pixel bruciato". */
+  '  c += uColSole * smoothstep(0.9988, 0.9995, s) * 1.9;',
+  /* le stelle: solo di notte (uNotte e' un uniform, il ramo e' coerente per
+     tutta l'immagine e non costa niente). Griglia a celle, una stella per
+     cella spostata a caso: niente texture, niente lista. */
+  '  if(uNotte > 0.02){',
+  '    vec2 g = vec2(atan(d.y,d.x)*7.0, su*11.0);',
+  '    vec2 ce = floor(g), fr = fract(g);',
+  '    vec2 pos = vec2(rnd21(ce), rnd21(ce+7.3));',
+  '    float br = rnd21(ce+19.1);',
+  '    float dd = length(fr-pos);',
+  '    float st = smoothstep(0.13, 0.0, dd) * step(0.55, br) * br;',
+  '    c += vec3(0.85,0.90,1.0) * st * uNotte * su;',
+  '  }',
+  '#endif',
+  '  return c;',
+  '}'
+].join('\n') + '\n';
+
+/* L'ARIA — la nebbia che da' profondita' vera.
+   La nebbia non va piu' verso un colore costante ma verso il cielo NELLA
+   DIREZIONE IN CUI SI GUARDA: piu' calda e chiara verso il sole, piu' fredda
+   dall'altra parte. E' quello che fa sembrare grande un paesaggio.
+   Attenzione a una cosa sola: la direzione di vista punta in BASSO (la
+   camera guarda il suolo). La luce che arriva all'occhio da quella distanza
+   e' pero' cielo diffuso preso all'ORIZZONTE lungo lo stesso azimut. Per
+   questo si rialza la direzione: e' fisica, non un trucco. */
+const ARIA = [
+  'vec3 aria(vec3 d){',
+  '  vec3 h = normalize(vec3(d.xy, 0.20));',
+  '  float s = max(dot(h,uSole), 0.0);',
+  '  vec3 base = mix(uColOriz, uColZenit, 0.22);',
+  '  return base*(0.86+0.34*s*s) + uColSole*pow(s,7.0)*0.30;',
+  '}',
+  /* La nebbia applicata. La spalmata (smoothstep) toglie l'anello netto che
+     una rampa lineare disegna a meta' schermo. 0.94 e non 1.0: anche
+     nell'ultima riga di pixel resta un'ombra di terra, e la profondita' si
+     legge meglio di un bianco pieno. */
+  'vec3 conAria(vec3 col, float dist, vec3 dirVista){',
+  '  float f = clamp((dist-uNebbia.x)*uNebbia.y, 0.0, 1.0);',
+  '  f = f*f*(3.0-2.0*f);',
+  '  return mix(col, aria(dirVista), f*0.94);',
+  '}'
+].join('\n') + '\n';
+
+/* LE OMBRE DELLE NUVOLE. Un solo prelievo in piu', scala 1800 unita', e
+   moltiplica SOLO la luce diretta: per questo non copre mai le figure e non
+   sporca mai un colore — scurisce una luce, non dipinge sopra. Sostituisce
+   il disegno 2D di nuvole(). Solo qualita' 2. */
+const NUVOLE = [
+  'float soleNuvole(vec2 w){',
+  '#if QUAL>=2',
+  '  vec2 uv = w*uNuvPar.x + uNuvPar.yz;',
+  '  return mix(0.72, 1.0, texture2D(uNuvole, uv).r);',
+  '#else',
+  '  return 1.0;',
+  '#endif',
+  '}'
+].join('\n') + '\n';
+
+/* LA MAPPA D'OMBRA — il lusso, e solo a qualita' 2.
+   WEBGL_depth_texture non e' garantita sugli Android vecchi, quindi la
+   profondita' si impacchetta in RGBA8 su un framebuffer a colori. Il
+   prelievo e' SINGOLO con scarto a dado (un offset che dipende dal pixel):
+   quattro tocchi di PCF costerebbero quattro volte tanto e su un telefono si
+   sentono. Il dado sgrana il bordo invece di ammorbidirlo, ma in movimento
+   l'occhio legge "bordo morbido" lo stesso. */
+const MAPPA_GLSL = [
+  'vec4 impacchetta(float v){',
+  '  vec4 e = vec4(1.0, 255.0, 65025.0, 16581375.0) * v;',
+  '  e = fract(e);',
+  '  e -= e.yzww * vec4(1.0/255.0, 1.0/255.0, 1.0/255.0, 0.0);',
+  '  return e;',
+  '}',
+  'float spacchetta(vec4 e){',
+  '  return dot(e, vec4(1.0, 1.0/255.0, 1.0/65025.0, 1.0/16581375.0));',
+  '}',
+  '#if QUAL>=2',
+  'uniform sampler2D uMappa;',
+  'uniform vec2 uMappaPar;',     // 1/lato, forza del dado
+  'float inOmbra(vec4 pl, float pend){',
+  '  vec3 q = pl.xyz/pl.w*0.5+0.5;',
+  '  if(q.x<0.005||q.x>0.995||q.y<0.005||q.y>0.995||q.z>0.999) return 1.0;',
+  /* il dado: un offset pseudocasuale grande un texel, diverso per pixel.
+     Senza, il bordo dell'ombra e' una scala di gradini larga un texel. */
+  '  vec2 dado = (vec2(rnd21(gl_FragCoord.xy), rnd21(gl_FragCoord.yx+3.7))-0.5)*uMappaPar.x*1.6;',
+  '  float d = spacchetta(texture2D(uMappa, q.xy+dado));',
+  /* scarto proporzionale alla pendenza: su un pendio radente il terreno si
+     auto-ombreggia a strisce se il bias e' fisso. */
+  '  float bias = 0.0016 + 0.0090*pend;',
+  '  return step(q.z-bias, d);',
+  '}',
+  '#else',
+  'float inOmbra(vec4 pl, float pend){ return 1.0; }',
+  '#endif'
+].join('\n') + '\n';
+
+/** Tutto insieme, nell'ordine giusto (rnd21 viene da CIELO e serve a MAPPA). */
+function libreria(qual, frammento) {
+  return testa(qual, frammento) + UNIFORM + LUCE_DI + CIELO + ARIA + NUVOLE + MAPPA_GLSL;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   4 · GLI UNIFORM: chiederli una volta, passarli una volta
+   ─────────────────────────────────────────────────────────────────────── */
+const NOMI = ['uSole', 'uColSole', 'uColCielo', 'uColTerra', 'uColOriz', 'uColZenit',
+  'uNebbia', 'uNotte', 'uNuvole', 'uNuvPar', 'uMappa', 'uMappaPar'];
+
+/** Da chiamare una volta dopo il link del programma. */
+function posizioni(gl, pr) {
+  const U = {};
+  for (const n of NOMI) U[n] = gl.getUniformLocation(pr, n);
+  return U;
+}
+
+/** Da chiamare una volta per programma per fotogramma, dopo useProgram.
+    unitaNuvole/unitaMappa sono i numeri di texture unit gia' legati. */
+function passa(gl, U, unitaNuvole, unitaMappa) {
+  if (U.uSole) gl.uniform3fv(U.uSole, S.sole);
+  if (U.uColSole) gl.uniform3fv(U.uColSole, S.colSole);
+  if (U.uColCielo) gl.uniform3fv(U.uColCielo, S.colCielo);
+  if (U.uColTerra) gl.uniform3fv(U.uColTerra, S.colTerra);
+  if (U.uColOriz) gl.uniform3fv(U.uColOriz, S.colOriz);
+  if (U.uColZenit) gl.uniform3fv(U.uColZenit, S.colZenit);
+  if (U.uNebbia) gl.uniform2fv(U.uNebbia, S.nebbia);
+  /* le stelle si accendono sotto un terzo di luce e a piena forza nel buio */
+  if (U.uNotte) gl.uniform1f(U.uNotte, clamp((0.34 - S.l) / 0.34, 0, 1));
+  if (U.uNuvole && unitaNuvole !== undefined) gl.uniform1i(U.uNuvole, unitaNuvole);
+  if (U.uNuvPar) gl.uniform3fv(U.uNuvPar, S.nuvPar);
+  if (U.uMappa && unitaMappa !== undefined) gl.uniform1i(U.uMappa, unitaMappa);
+  if (U.uMappaPar) gl.uniform2f(U.uMappaPar, 1 / MAPPA.lato, 1);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   5 · L'OCCLUSIONE COTTA NEI VERTICI
+   Costo a fotogramma: ZERO. Si paga una volta sola, quando il pezzo di
+   terreno nasce, e vale per sempre perche' il terreno e' una funzione pura
+   del seme. E' quello che fa "sentire" il rilievo anche col sole alto — la
+   luce diretta a mezzogiorno appiattisce tutto, e senza AO una conca e un
+   dosso hanno lo stesso colore esatto.
+
+   Come si calcola: si guarda l'orizzonte locale. Da ogni vertice si sparano
+   otto direzioni a due distanze e si misura la pendenza massima verso l'alto:
+   e' il seno dell'angolo di cielo tappato. In una conca tutte e otto le
+   direzioni salgono -> cielo chiuso -> scuro. Su un dosso scendono tutte ->
+   cielo aperto -> il valore va sopra 1 e il dosso SI SCHIARISCE.
+   Costo: 16 chiamate a quota() per vertice, cioe' ~4600 per pezzo di terreno.
+   Misurato in prova.html; sta sotto il millisecondo per pezzo.
+   ─────────────────────────────────────────────────────────────────────── */
+const R_AO = [30, 95];      // vicino: la buca. lontano: la valle.
+const DIRA = (function () {
+  const a = [];
+  for (let k = 0; k < 8; k++) { const an = k * TAU / 8; a.push(Math.cos(an), Math.sin(an)); }
+  return a;
+})();
+
+function aoVertice(x, y) {
+  const q = MONDO.quota, h0 = q(x, y);
+  let acc = 0;
+  for (let k = 0; k < 8; k++) {
+    const cx = DIRA[k * 2], cy = DIRA[k * 2 + 1];
+    let t = 0;
+    for (let r = 0; r < 2; r++) {
+      const d = R_AO[r];
+      const s = (q(x + cx * d, y + cy * d) - h0) / d;
+      if (s > t) t = s;
+    }
+    acc += t / Math.sqrt(1 + t * t);      // seno dell'angolo d'orizzonte
+  }
+  const chiuso = acc / 8;
+  return clamp(1 - chiuso * 1.95, 0.26, 1.14);
+}
+/** Lo stesso valore in un byte, per chi lo mette in un attributo UNSIGNED_BYTE
+    normalizzato: 1.0 sta a 224, quindi resta spazio sopra per i dossi. */
+function aoByte(x, y) { return clamp(Math.round(aoVertice(x, y) * 224), 0, 255); }
+
+/* LA VERSIONE CHE VA USATA DAVVERO, per un pezzo intero.
+   aoVertice() chiede 16 quote a vertice: su un pezzo da 17x17 sono 4600
+   chiamate a campo(), cioe' 1,3 ms — misurati. Troppo: un pezzo che nasce
+   mentre si cammina si sente come un singhiozzo.
+   Qui si ribalta il conto. Il generatore del terreno ha GIA' bisogno di una
+   griglia di quote (per le posizioni e per le normali): la si allarga di tre
+   celle per lato e l'occlusione si legge da quella, senza una sola chiamata
+   in piu' a campo() oltre al bordo. Da 4600 chiamate a 240.
+   Restituisce anche la griglia H, cosi' chi genera il terreno la riusa per
+   posizioni e normali invece di richiamare quota() cinque volte a vertice.
+
+     ox,oy = angolo del pezzo, N = quadretti per lato, passo = lato del quadretto
+     -> { ao: Float32Array((N+1)^2), H: Float32Array(L*L), L, B }
+     H[(j+B)*L + (i+B)] e' la quota del vertice (i,j) del pezzo. */
+function aoGriglia(ox, oy, N, passo) {
+  const q = MONDO.quota;
+  const B = Math.max(1, Math.ceil(R_AO[1] / passo));   // celle di bordo
+  const L = N + 1 + 2 * B;
+  const H = new Float32Array(L * L);
+  for (let j = 0; j < L; j++) {
+    const y = oy + (j - B) * passo;
+    for (let i = 0; i < L; i++) H[j * L + i] = q(ox + (i - B) * passo, y);
+  }
+  const r1 = Math.max(1, Math.round(R_AO[0] / passo));
+  const r2 = Math.max(r1 + 1, Math.round(R_AO[1] / passo));
+  /* le otto direzioni in celle, con la loro distanza vera: le diagonali
+     sono lunghe radice di due, e se lo si dimentica i dossi vengono
+     ottagonali. */
+  const D8 = [[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
+  const M = N + 1;
+  const ao = new Float32Array(M * M);
+  for (let j = 0; j < M; j++) for (let i = 0; i < M; i++) {
+    const ci = i + B, cj = j + B, h0 = H[cj * L + ci];
+    let acc = 0;
+    for (let k = 0; k < 8; k++) {
+      const dx = D8[k][0], dy = D8[k][1];
+      const len = Math.hypot(dx, dy) * passo;
+      let t = 0;
+      let s = (H[(cj + dy * r1) * L + (ci + dx * r1)] - h0) / (len * r1);
+      if (s > t) t = s;
+      s = (H[(cj + dy * r2) * L + (ci + dx * r2)] - h0) / (len * r2);
+      if (s > t) t = s;
+      acc += t / Math.sqrt(1 + t * t);
+    }
+    ao[j * M + i] = clamp(1 - (acc / 8) * 1.95, 0.26, 1.14);
+  }
+  return { ao: ao, H: H, L: L, B: B };
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   6 · LE OMBRE PIATTE PROIETTATE  — sempre accese
+   La maglia VERA del corpo, schiacciata sul piano locale del terreno e
+   spostata dal sole. Tre chiamate di disegno per tutta la gente (gli stessi
+   lotti da 24 dei corpi), nessuna texture, nessuna passata in piu'.
+   E l'ombra HA LE GAMBE: si vede il passo aprirsi per terra. E' l'unica cosa
+   che dice "questo corpo tocca quel punto del suolo", e senza di lei le
+   figure galleggiano — e' il difetto numero uno di un gioco dall'alto.
+
+   Il piano non e' orizzontale: e' il piano tangente al terreno sotto i piedi,
+   con la sua normale. Su un pendio l'ombra si stende lungo la china invece di
+   tagliarla, che e' la ragione per cui questa tecnica regge in un mondo con
+   il rilievo.
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* moltiplicazione di matrici in colonna, come mMul del gioco */
+function mMul(a, b, o) {
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+    let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k];
+    o[i * 4 + j] = s;
+  }
+  return o;
+}
+
+const _S = new Float32Array(16);
+
+/** La matrice che schiaccia il mondo sul piano (P, n) lungo la direzione del
+    sole. Moltiplicala a sinistra: vpOmbra = vp * schiaccia(...).
+    scarto = di quanto si solleva il piano, per non litigare col terreno. */
+function schiaccia(px, py, pz, nx, ny, nz, scarto, out) {
+  out = out || _S;
+  const L = S.sole;
+  /* k = quanto il sole e' "in faccia" al piano. Sotto 0.16 il sole e' cosi'
+     radente che l'ombra andrebbe a finire a duecento unita' di distanza: si
+     tappa, ed e' anche l'unica cosa che tiene corte le ombre della notte. */
+  let k = nx * L[0] + ny * L[1] + nz * L[2];
+  if (k < 0.16) k = 0.16;
+  const d = nx * px + ny * py + nz * pz + (scarto === undefined ? 0.9 : scarto);
+  const ax = L[0] / k, ay = L[1] / k, az = L[2] / k;
+  // M = I - a (x) n ; colonna 3 = a*d      (colonna-major: (riga i, col j) -> j*4+i)
+  out[0] = 1 - ax * nx; out[1] = -ay * nx; out[2] = -az * nx; out[3] = 0;
+  out[4] = -ax * ny; out[5] = 1 - ay * ny; out[6] = -az * ny; out[7] = 0;
+  out[8] = -ax * nz; out[9] = -ay * nz; out[10] = 1 - az * nz; out[11] = 0;
+  out[12] = ax * d; out[13] = ay * d; out[14] = az * d; out[15] = 1;
+  return out;
+}
+
+/** La normale del terreno in un punto, per il piano dell'ombra. */
+const _N = new Float32Array(3);
+function normaleSuolo(x, y, passo) {
+  const s = passo || 24, q = MONDO.quota;
+  const hx = q(x + s, y) - q(x - s, y), hy = q(x, y + s) - q(x, y - s);
+  let nx = -hx, ny = -hy, nz = 2 * s;
+  const n = Math.hypot(nx, ny, nz);
+  _N[0] = nx / n; _N[1] = ny / n; _N[2] = nz / n;
+  return _N;
+}
+
+/* Gli shader dell'ombra piatta. Il vertice e' quello vero del corpo: passa
+   per la matrice del modello (che il modulo CORPI gia' possiede) e poi per la
+   matrice che schiaccia. Il fragment non ha ne' normale ne' texture. */
+const OMBRA_VS = [
+  'attribute vec3 p;',
+  'uniform mat4 uVPS;',       // vp * schiaccia
+  'uniform mat4 uMod;',       // la matrice del corpo (o del pezzo del corpo)
+  'uniform vec2 uAlt;',       // quota del piano, altezza del corpo
+  'varying float vSopra;',
+  'void main(){',
+  '  vec4 w = uMod*vec4(p,1.0);',
+  /* quanto era ALTO il punto prima di essere schiacciato: la testa proietta
+     un'ombra piu' sfumata dei piedi, perche' e' piu' lontana dal suolo e la
+     penombra si allarga. Un solo varying, e l'ombra smette di essere un
+     adesivo. */
+  '  vSopra = clamp((w.z-uAlt.x)/max(uAlt.y,1.0), 0.0, 1.0);',
+  '  gl_Position = uVPS*w;',
+  '}'
+].join('\n') + '\n';
+
+const OMBRA_FS = [
+  'precision mediump float;',
+  'varying float vSopra;',
+  'uniform vec3 uMul;',       // quanto resta del suolo: LUCE.stato.ombraMul
+  'void main(){',
+  /* piu' si sale, piu' l'ombra si schiarisce: 1.0 ai piedi, meta' forza in
+     cima. La fusione e' MOLTIPLICATIVA (DST_COLOR, ZERO): l'ombra toglie la
+     diretta e lascia intatta l'ambiente, quindi non e' mai nera e ha il
+     colore del cielo. Con un nero in alpha, invece, ogni ombra grigia sopra
+     un prato verde diventa una macchia morta. */
+  '  vec3 m = mix(uMul, vec3(1.0), vSopra*0.55);',
+  '  gl_FragColor = vec4(m, 1.0);',
+  '}'
+].join('\n') + '\n';
+
+/* La variante A LOTTI: e' questa che va nel gioco.
+   Le ombre piatte devono costare TRE chiamate come i corpi, non una per
+   corpo. Il trucco e' schiacciare dentro il vertex shader invece che dentro
+   una matrice preparata sulla CPU: ogni istanza porta con se' il suo piano
+   locale di terreno, e le 24 istanze del lotto passano insieme.
+   Contratto con il modulo CORPI (24 istanze per lotto):
+     attribute float ist   — l'indice d'istanza, gia' nel vertice
+     uniform vec4 uIst[24] — x, y, cos(angolo), sin(angolo)
+     uniform vec4 uPia[24] — nx, ny, nz, d   (piano locale gia' scostato)
+   48 vec4 di uniform: WebGL1 ne garantisce 128 al vertice, ci sta con
+   larghezza da vendere. */
+const OMBRA_VS_LOTTO = [
+  'attribute vec3 p;',
+  'attribute float ist;',
+  'uniform mat4 uVP;',
+  'uniform vec3 uSole;',
+  'uniform vec4 uIst[24];',
+  'uniform vec4 uPia[24];',
+  'uniform float uAltezza;',
+  'varying float vSopra;',
+  'void main(){',
+  '  int k = int(ist);',
+  '  vec4 I = uIst[0]; vec4 Q = uPia[0];',
+  /* WebGL1 non indicizza un array di uniform con una variabile se non nel
+     ciclo srotolato: 24 confronti sono comunque meno di 24 chiamate. */
+  '  for(int j=1;j<24;j++){ if(j==k){ I=uIst[j]; Q=uPia[j]; } }',
+  '  vec3 w = vec3(I.x + p.x*I.z - p.y*I.w, I.y + p.x*I.w + p.y*I.z, p.z);',
+  '  vSopra = clamp(p.z/max(uAltezza,1.0), 0.0, 1.0);',
+  '  float kk = max(dot(Q.xyz, uSole), 0.16);',
+  '  w = w - uSole*((dot(Q.xyz,w)-Q.w)/kk);',
+  '  gl_Position = uVP*vec4(w,1.0);',
+  '}'
+].join('\n') + '\n';
+
+const OMBRE = {
+  pr: null, A: null, U: null,
+  /** Compila una volta. Il chiamante fornisce le sue maglie. */
+  prepara(gl) {
+    if (this.pr) return this;
+    const pr = programma(gl, OMBRA_VS, OMBRA_FS);
+    this.pr = pr;
+    this.A = { p: gl.getAttribLocation(pr, 'p') };
+    this.U = {
+      uVPS: gl.getUniformLocation(pr, 'uVPS'),
+      uMod: gl.getUniformLocation(pr, 'uMod'),
+      uAlt: gl.getUniformLocation(pr, 'uAlt'),
+      uMul: gl.getUniformLocation(pr, 'uMul')
+    };
+    return this;
+  },
+  /** Lo stato giusto: si disegna DOPO il terreno e PRIMA dei corpi, con la
+      scrittura di profondita' spenta (altrimenti l'ombra taglia le gambe di
+      chi ci sta sopra) e il test acceso con uno scostamento, cosi' una
+      collina davanti nasconde l'ombra che le sta dietro senza che l'ombra
+      litighi col terreno su cui appoggia. */
+  apri(gl) {
+    gl.useProgram(this.pr);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.DST_COLOR, gl.ZERO);     // moltiplicativa: toglie luce
+    gl.depthMask(false);
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(-2, -4);
+    gl.uniform3fv(this.U.uMul, S.ombraMul);
+  },
+  chiudi(gl) {
+    gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(0, 0);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+  }
+};
+
+/* ───────────────────────────────────────────────────────────────────────────
+   7 · LA MAPPA D'OMBRA — solo qualita' 2
+   Il conto onesto: una passata in piu' con terreno visibile (~25.000 tri) e
+   tutti i corpi (~15.000 tri) su 1024x1024 costa 0,4-0,6 ms su macchina
+   veloce e 2,5-3,5 ms su telefono medio, PIU' il prelievo e lo
+   spacchettamento nella passata principale. Sul telefono non ci sta nei 6 ms:
+   per questo e' un lusso da PC e telefoni buoni, e per questo sotto ci sono
+   le ombre piatte che non si spengono mai.
+   Qui la mappa vale soprattutto per il TERRENO su se stesso: e' l'unica cosa
+   che le ombre piatte non sanno fare — una cresta che butta la sua ombra
+   dentro la valle di sotto.
+   ─────────────────────────────────────────────────────────────────────── */
+const MAPPA = {
+  lato: 1024, fbo: null, tex: null, prof: null, pronta: false,
+  vp: new Float32Array(16), _V: new Float32Array(16), _P: new Float32Array(16),
+
+  prepara(gl, lato) {
+    if (this.pronta) return true;
+    this.lato = lato || this.lato;
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.lato, this.lato, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    /* NEAREST e non LINEAR: interpolare quattro profondita' IMPACCHETTATE dà
+       un numero che non e' la profondita' di niente. E' l'errore che fa
+       comparire una griglia di quadretti sul bordo dell'ombra. */
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const rb = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, this.lato, this.lato);
+    const f = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+    const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    if (!ok) { gl.deleteFramebuffer(f); gl.deleteTexture(t); gl.deleteRenderbuffer(rb); return false; }
+    this.fbo = f; this.tex = t; this.prof = rb; this.pronta = true;
+    return true;
+  },
+
+  /** La camera del sole: ortografica, incassata attorno a quello che si vede.
+      Il riquadro segue la mira della camera arrotondata a passi di un texel,
+      cosi' l'ombra non "nuota" quando il giocatore cammina. */
+  inquadra(cx, cy, raggio) {
+    const L = S.sole;
+    // terna della luce: avanti = -sole
+    let fx = -L[0], fy = -L[1], fz = -L[2];
+    let rx = -fy, ry = fx, rz = 0;
+    const rl = Math.hypot(rx, ry, rz) || 1; rx /= rl; ry /= rl; rz /= rl;
+    const ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;
+    const cz = MONDO.quota(cx, cy);
+    const dist = raggio * 2.4 + 400;
+    const ex = cx - fx * dist, ey = cy - fy * dist, ez = cz - fz * dist;
+    const V = this._V;
+    V[0] = rx; V[1] = ux; V[2] = -fx; V[3] = 0;
+    V[4] = ry; V[5] = uy; V[6] = -fy; V[7] = 0;
+    V[8] = rz; V[9] = uz; V[10] = -fz; V[11] = 0;
+    V[12] = -(rx * ex + ry * ey + rz * ez);
+    V[13] = -(ux * ex + uy * ey + uz * ez);
+    V[14] = (fx * ex + fy * ey + fz * ez);
+    V[15] = 1;
+    /* ortografica: niente prospettiva, cosi' un texel copre sempre la stessa
+       area di mondo e il bias funziona uguale vicino e lontano. */
+    const r = raggio, n = 1, f = dist * 2 + 2 * 240;   // 240 = altezza max del rilievo
+    const P = this._P;
+    P[0] = 1 / r; P[1] = 0; P[2] = 0; P[3] = 0;
+    P[4] = 0; P[5] = 1 / r; P[6] = 0; P[7] = 0;
+    P[8] = 0; P[9] = 0; P[10] = -2 / (f - n); P[11] = 0;
+    P[12] = 0; P[13] = 0; P[14] = -(f + n) / (f - n); P[15] = 1;
+    mMul(P, V, this.vp);
+    return this.vp;
+  },
+
+  apri(gl) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+    gl.viewport(0, 0, this.lato, this.lato);
+    gl.clearColor(1, 1, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+    /* si disegnano le facce DAVANTI e non quelle dietro: con il terreno, che
+       e' una superficie aperta senza volume, scartare il davanti lascerebbe
+       buchi. Il bias proporzionale alla pendenza fa il resto. */
+  },
+  chiudi(gl, w, h) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, w, h);
+  },
+  lega(gl, unita) {
+    gl.activeTexture(gl.TEXTURE0 + unita);
+    gl.bindTexture(gl.TEXTURE_2D, this.tex);
+    gl.activeTexture(gl.TEXTURE0);
+  }
+};
+
+/* Gli shader della passata di profondita': il minimo assoluto. */
+const PROF_VS = 'attribute vec3 p;uniform mat4 uVP;uniform mat4 uMod;varying float vz;' +
+  'void main(){vec4 q=uVP*(uMod*vec4(p,1.0));gl_Position=q;vz=q.z*0.5+0.5;}';
+const PROF_FS = 'precision highp float;varying float vz;' +
+  'vec4 impacchetta(float v){vec4 e=vec4(1.0,255.0,65025.0,16581375.0)*v;e=fract(e);' +
+  'e-=e.yzww*vec4(1.0/255.0,1.0/255.0,1.0/255.0,0.0);return e;}' +
+  'void main(){gl_FragColor=impacchetta(clamp(vz,0.0,1.0));}';
+
+/* ───────────────────────────────────────────────────────────────────────────
+   8 · LE NUVOLE — una bitmap 128x128 disegnata al primo avvio
+   Non e' un'immagine scaricata: e' rumore a piu' ottave dipinto su una tela
+   2D, ripiegato su se stesso perche' sia continuo ai bordi. 64 KB, una volta.
+   ─────────────────────────────────────────────────────────────────────── */
+function texNuvole(gl, lato) {
+  const N = lato || 128;
+  const c = document.createElement('canvas'); c.width = c.height = N;
+  const x = c.getContext('2d');
+  const img = x.createImageData(N, N), D = img.data;
+  /* rumore di valore periodico: la griglia si richiude su N, quindi la
+     texture e' piastrellabile senza cucitura */
+  function h(i, j, s) {
+    let n = ((i % s) + s) % s * 374761393 + ((j % s) + s) % s * 668265263 + s * 3266489917;
+    n = (n ^ (n >>> 13)) * 1274126177; n = n ^ (n >>> 16);
+    return ((n >>> 0) % 100000) / 100000;
+  }
+  function ott(u, v, cel) {
+    const fx = u * cel, fy = v * cel;
+    const i = Math.floor(fx), j = Math.floor(fy);
+    const tx = fx - i, ty = fy - j;
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const a = h(i, j, cel), b = h(i + 1, j, cel), cc = h(i, j + 1, cel), d = h(i + 1, j + 1, cel);
+    return lerp(lerp(a, b, sx), lerp(cc, d, sx), sy);
+  }
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const u = i / N, v = j / N;
+    let f = ott(u, v, 3) * 0.55 + ott(u, v, 6) * 0.27 + ott(u, v, 12) * 0.13 + ott(u, v, 24) * 0.05;
+    /* le nuvole non sono rumore: sono rumore con dei BUCHI. La curva a S
+       lascia grandi campi di sole aperto e macchie d'ombra nette in mezzo. */
+    f = clamp((f - 0.34) * 2.3, 0, 1);
+    f = 1 - f * f * (3 - 2 * f);
+    const k = (j * N + i) * 4, b = Math.round(f * 255);
+    D[k] = b; D[k + 1] = b; D[k + 2] = b; D[k + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  return t;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   9 · I TRE GRADINI DI QUALITA'
+   Il ripiego smette di essere un burrone: 2 -> 1 -> 0 -> piano.
+   Il DPR e' la leva vera: 780x1688 contro 585x1266 e' il 44% di pixel in
+   meno, cioe' il 44% di prelievi in meno, e su telefono e' esattamente li'
+   che si vince o si perde. La tela 2D resta a DPR pieno: il testo resta
+   nitido anche quando il mondo scende.
+   ─────────────────────────────────────────────────────────────────────── */
+const GRADINI = [
+  { dpr: 1.0, prelievi: 2, mappa: false, nuvole: false, decalco: false, lodPiu: 1 },
+  { dpr: 1.5, prelievi: 3, mappa: false, nuvole: false, decalco: true, lodPiu: 0 },
+  { dpr: 2.0, prelievi: 5, mappa: true, nuvole: true, decalco: true, lodPiu: 0 }
+];
+const QUAL = {
+  n: 2, lenti: 0, caldi: 0,
+  gradino() { return GRADINI[this.n]; },
+  /** Il fotogramma e' costato ms. Si scende un gradino solo dopo un secondo
+      intero di ritardo, e non si risale mai: risalire e ridiscendere ogni due
+      secondi e' peggio che stare in basso. */
+  misura(ms, giu) {
+    if (this.caldi < 120) { this.caldi++; return this.n; }
+    if (ms > 12) {
+      if (++this.lenti >= 60) {
+        this.lenti = 0;
+        if (this.n > 0) { this.n--; if (giu) giu(this.n); }
+        else return -1;      // sotto lo zero c'e' il piano: lo decide R3
+      }
+    } else this.lenti = 0;
+    return this.n;
+  }
+};
+
+/* ───────────────────────────────────────────────────────────────────────────
+   10 · utilita'
+   ─────────────────────────────────────────────────────────────────────── */
+function compila(gl, tipo, src) {
+  const s = gl.createShader(tipo);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+    throw new Error('shader: ' + gl.getShaderInfoLog(s) + '\n' + numera(src));
   return s;
 }
-function creaTerreno(gl){
-  const pr=gl.createProgram();
-  gl.attachShader(pr,compila(gl,gl.VERTEX_SHADER,TRIS));
-  gl.attachShader(pr,compila(gl,gl.FRAGMENT_SHADER,FRAS));
-  gl.linkProgram(pr);
-  if(!gl.getProgramParameter(pr,gl.LINK_STATUS))
-    throw new Error('link: '+gl.getProgramInfoLog(pr));
-  const A={p:gl.getAttribLocation(pr,'p'),n:gl.getAttribLocation(pr,'n'),c:gl.getAttribLocation(pr,'c')};
-  const U={vp:gl.getUniformLocation(pr,'vp'),sole:gl.getUniformLocation(pr,'sole'),
-    aria:gl.getUniformLocation(pr,'aria'),lontano:gl.getUniformLocation(pr,'lontano')};
+function numera(s) { return s.split('\n').map((r, i) => (i + 1) + ' | ' + r).join('\n'); }
+function programma(gl, vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compila(gl, gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compila(gl, gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('link: ' + gl.getProgramInfoLog(p));
+  return p;
+}
 
-  const PZ=500;                    // lato del pezzo, come il chunk del gioco
-  const N=16;                      // quadretti per lato: 512 triangoli a pezzo
-  const cache=new Map();
-  const col=new Float32Array(3);
+/* ─────────────────────────────────────────────────────────────────────── */
+glob.LUCE = {
+  collega, aggiorna, stato: S, chiavi: CHIAVI, direzioneSole,
+  GLSL: { libreria, testa, UNIFORM, luceDi: LUCE_DI, cielo: CIELO, aria: ARIA,
+          nuvole: NUVOLE, mappa: MAPPA_GLSL, ombraVS: OMBRA_VS, ombraFS: OMBRA_FS,
+          ombraVSlotto: OMBRA_VS_LOTTO,
+          profVS: PROF_VS, profFS: PROF_FS },
+  posizioni, passa,
+  aoVertice, aoByte, aoGriglia,
+  schiaccia, normaleSuolo, OMBRE,
+  MAPPA, texNuvole,
+  QUAL, GRADINI,
+  compila, programma, mMul
+};
+})(typeof window !== 'undefined' ? window : this);
 
-  function tinta(x,y,out){
-    const b=BIOMI[bioma(x,y)];
-    const h=b.suolo;
-    out[0]=parseInt(h.slice(1,3),16)/255;
-    out[1]=parseInt(h.slice(3,5),16)/255;
-    out[2]=parseInt(h.slice(5,7),16)/255;
+/* ════════════════════════════════════════════════════════════
+   9d · IL TERRENO — la materia del suolo
+   Al posto della maglia 16x16 a colore piatto di prima. Il colore per
+   vertice del bioma resta — e' il modo piu' economico di dire "questa
+   e' Brughiera" — ma smette di essere l'unica cosa che si vede: sopra
+   ci va la materia, tre bitmap disegnate su una tela 2D al primo
+   avvio, che portano altezza, albedo e NORMALE. E' la normale che fa
+   la differenza: senza, l'erba e' un colore; con, la luce si impiglia
+   in ogni filo.
+   Tre livelli di dettaglio per pezzo (48/24/16 quadretti) scelti sulla
+   distanza, un pezzo costruito per fotogramma e non uno di piu', cache
+   con tetto in BYTE e sfratto che non tocca mai un pezzo del giro
+   corrente. La quota dei vertici resta quota(x,y) esatta: la stessa
+   funzione con cui il gioco appoggia i piedi della gente.
+   ════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODULO TERRENO — LA MATERIA DEL SUOLO
+   The King of the Empire · sostituisce creaTerreno() e il suo shader.
+
+   PERCHE' ESISTE
+   Il suolo di oggi e' una maglia di triangoli con un colore per vertice preso
+   dal bioma piu' una screziatura casuale. Da lontano regge; da vicino e' un
+   lenzuolo colorato, e con la camera nuova (uomo a 46 px invece di 16) si sta
+   quasi sempre vicino. Qui il colore per vertice resta — perche' e' il modo
+   piu' economico di dire "questa e' Brughiera" — ma smette di essere l'unica
+   cosa che si vede: sopra ci va la MATERIA, cioe' tre bitmap generate a
+   runtime che portano altezza, albedo e NORMALE. E' la normale che fa la
+   differenza: senza, l'erba e' un colore; con, la luce si impiglia in ogni
+   filo e il suolo diventa una cosa che si potrebbe toccare.
+
+   LE TRE REGOLE CHE HANNO DECISO OGNI SCELTA QUI DENTRO
+   1. Un file, nessun asset. Le bitmap nascono da canvas 2D al primo avvio.
+   2. WebGL1. Niente texture array, niente istanze, niente MRT: tre sampler,
+      una passata, e le uniform giuste.
+   3. La geometria e' SACRA. La quota dei vertici e' quota(x,y) esatta, mai
+      spostata di un'unita': e' la stessa funzione con cui il gioco appoggia
+      i piedi della gente. Tutto il dettaglio in piu' vive nella normale e
+      nell'albedo, dove non puo' far levitare nessuno.
+
+   COSA GLI SERVE DAL GIOCO (globali gia' presenti in the-king-of-the-empire):
+      h2(x,y,s) · vnoise(x,y,scala,s) · campo(x,y,s) · quota(x,y) · fert(x,y)
+      BIOMI · QSC · NCH · CAM · cw · ch
+   Non tocca nulla: legge e basta.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 0 · LE SCALE DELLA MATERIA ─────────────────────────────────────────────
+   Tutte dividono PERIODO, ed e' l'unica condizione che conta.
+   Il fragment non puo' usare le coordinate del mondo cosi' come sono: a
+   x=30000 diviso 15 fa 2000, e un float mediump li' ha un passo di due texel.
+   Quindi ogni pezzo passa la sua ORIGINE, arrotondata a un multiplo di
+   PERIODO, e il fragment lavora sulla differenza. Due pezzi vicini possono
+   scegliere origini diverse: se differiscono di un multiplo di PERIODO e
+   PERIODO e' divisibile per ogni scala, il fract() cade nello stesso punto
+   della bitmap e la cucitura non esiste. Sono tutte potenze di due per un
+   motivo solo: cosi' i rapporti sono esatti anche in virgola mobile.       */
+const PERIODO   = 3840;
+const S_ERBA    = 30;    // 1 texel = 1,2 cm di mondo · il filo d'erba
+const S_ERBA_L  = 240;   // 1/8 · la ciocca, il prato che cambia colore
+const S_DURO    = 15;    // il grano di sabbia, il sasso
+const S_DURO_L  = 120;   // la venatura, la lastra di roccia
+const S_MACRO   = 960;   // 1/32 · la grande chiazza che uccide la ripetizione
+const S_NUVOLE  = 1920;  // 1/64 · l'ombra che scorre
+
+const T_ERBA_DIM = 256, T_DURO_DIM = 256, T_MACRO_DIM = 128;
+
+/* ── 1 · LE TINTE ───────────────────────────────────────────────────────────
+   Ogni terra ha due materie: una MORBIDA (quello che cresce) e una DURA
+   (quello che sta sotto). Il peso fra le due lo decide il pendio, la conca,
+   l'umido — mai una soglia netta.
+
+   La morbida la eredita da BIOMI, cosi' il rilievo non puo' contraddire il
+   piano: se un giorno cambia la tavolozza del gioco, cambia anche questa.
+   La dura la definisco qui, perche' nel piano non esiste.
+
+   NOTA SUL BLU MENO ROSSO — serve al fragment, non e' un vezzo.
+   Il fragment deve sapere se la materia dura di questo punto e' PIETRA
+   (venature larghe, si campiona a S_DURO_L) o GRANO (sabbia, sale, terra
+   battuta: si campiona a S_DURO). Non ho un canale libero per dirglielo —
+   i 24 byte per vertice sono tutti occupati — ma ce l'ho gia' scritto nel
+   colore: la pietra e' grigio-azzurra (blu > rosso), tutto il resto e' caldo
+   (rosso > blu). Quindi la scala del campionamento la ricava dalla tinta.
+   Chi tocca queste cinque righe DEVE tenere il segno. */
+const DURA = {
+  piana:     '#6f5a3e',   // terra grassa, arata dal tempo   (caldo → grano)
+  bosco:     '#463a2c',   // lettiera e radici               (caldo → grano)
+  riva:      '#c3c9c0',   // crosta di sale                  (caldo → grano)
+  brughiera: '#8a7f60',   // ghiaia asciutta                 (caldo → grano)
+  costolone: '#6e7c92'    // roccia ferrosa                  (freddo → pietra)
+};
+/* Quanta materia dura c'e' gia' in partenza, prima che il pendio ne scopra. */
+const PESO_DURO = { piana:.16, bosco:.22, riva:.58, brughiera:.40, costolone:.70 };
+/* La roccia nuda: quella che affiora su ogni pendio ripido, in ogni terra. */
+const ROCCIA = [104,114,130];
+const NEVE   = [214,225,240];
+
+/* ── 2 · UTILITA' ──────────────────────────────────────────────────────────*/
+const _cl = (v,a,b)=> v<a?a:v>b?b:v;
+const _ss = (a,b,x)=>{ const t=_cl((x-a)/(b-a||1e-6),0,1); return t*t*(3-2*t) };
+function _rgb(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)] }
+
+/** Rumore di valore PERIODICO: si ripete esatto ogni `per` celle, quindi la
+    bitmap che ne esce si affianca a se' stessa senza cuciture. Usa h2, cioe'
+    lo stesso hash del mondo: niente generatori nuovi da mantenere. */
+function _rumPer(per, seme){
+  const g = new Float32Array(per*per);
+  for(let j=0;j<per;j++) for(let i=0;i<per;i++) g[j*per+i] = h2(i,j,seme);
+  return (x,y)=>{
+    const fx=x*per, fy=y*per;
+    let i0=Math.floor(fx), j0=Math.floor(fy);
+    const tx=fx-i0, ty=fy-j0;
+    i0=((i0%per)+per)%per; j0=((j0%per)+per)%per;
+    const i1=(i0+1)%per, j1=(j0+1)%per;
+    const sx=tx*tx*(3-2*tx), sy=ty*ty*(3-2*ty);
+    const a=g[j0*per+i0], b=g[j0*per+i1], c=g[j1*per+i0], d=g[j1*per+i1];
+    const u=a+(b-a)*sx, v=c+(d-c)*sx;
+    return u+(v-u)*sy;
+  };
+}
+
+/** Dal canale R (altezza) ricava la NORMALE e la scrive in B e A.
+    Le derivate si prendono con il giro completo (l'indice torna a capo), cosi'
+    anche la normale e' senza cuciture. Questa e' la funzione che vale piu' di
+    tutte le altre messe insieme: e' quella che accende i fili d'erba. */
+function _normali(P, dim, forza){
+  const h = new Float32Array(dim*dim);
+  for(let k=0;k<dim*dim;k++) h[k]=P[k*4]/255;
+  const w=(i,j)=>h[(((j%dim)+dim)%dim)*dim + (((i%dim)+dim)%dim)];
+  for(let j=0;j<dim;j++) for(let i=0;i<dim;i++){
+    const gx=(w(i+1,j)-w(i-1,j))*forza;
+    const gy=(w(i,j+1)-w(i,j-1))*forza;
+    const k=(j*dim+i)*4;
+    /* z = h(x,y)  ⇒  normale ∝ (-dh/dx, -dh/dy, 1). Impacchettata 0..1. */
+    P[k+2]=_cl(Math.round(128-gx*127),0,255);
+    P[k+3]=_cl(Math.round(128-gy*127),0,255);
   }
-  function maglia(ci,cj){
-    const k=ci+','+cj;
+}
+
+function _tela(dim){
+  const c=document.createElement('canvas'); c.width=c.height=dim; return c;
+}
+
+/* ── 3 · LA BITMAP DELL'ERBA ────────────────────────────────────────────────
+   R = altezza · G = albedo · B,A = normale.
+   Si disegna coi fili veri, non con un rumore: un rumore da' grana, i fili
+   danno DIREZIONE, ed e' la direzione che il sole radente accende a strisce.
+   Tutti i fili di uno stesso tono finiscono in un Path2D solo: sei chiamate
+   di stroke invece di cinquemila. A 256x256 costa una manciata di ms, una
+   volta sola, all'avvio.                                                    */
+function _bmpErba(dim){
+  const c=_tela(dim), g=c.getContext('2d');
+
+  /* 3a · il suolo sotto l'erba: chiazze morbide, gia' periodiche. */
+  const n1=_rumPer(4,9001), n2=_rumPer(11,9002), n3=_rumPer(29,9003);
+  const im=g.createImageData(dim,dim), P=im.data;
+  for(let j=0;j<dim;j++) for(let i=0;i<dim;i++){
+    const u=i/dim, v=j/dim;
+    const b=n1(u,v)*.50+n2(u,v)*.32+n3(u,v)*.18;
+    const gr=h2(i,j,9100);
+    const k=(j*dim+i)*4;
+    P[k]  = 22+b*46+gr*20;          // altezza della terra nuda
+    P[k+1]= 30+b*66+gr*30;          // albedo della terra nuda
+    P[k+2]=128; P[k+3]=128;
+  }
+  g.putImageData(im,0,0);
+
+  /* 3b · le radici e i rametti: scuri, bassi, prima dell'erba. */
+  g.globalCompositeOperation='source-over';
+  g.lineCap='round';
+  const rad=new Path2D();
+  for(let k=0;k<210;k++){
+    const x=h2(k,3,9300)*dim, y=h2(k,4,9301)*dim;
+    let a=h2(k,5,9302)*6.283, L=4+h2(k,6,9303)*13;
+    let px=x, py=y;
+    for(let s=0;s<3;s++){
+      const nx=px+Math.cos(a)*L, ny=py+Math.sin(a)*L;
+      /* il giro completo: chi tocca un bordo va ridisegnato dall'altra parte,
+         o la bitmap non si affianca a se' stessa. Solo chi tocca un bordo. */
+      for(let wx=-1;wx<=1;wx++) for(let wy=-1;wy<=1;wy++){
+        const ax=px+wx*dim, ay=py+wy*dim, bx=nx+wx*dim, by=ny+wy*dim;
+        if(Math.max(ax,bx)<-4||Math.max(ay,by)<-4||
+           Math.min(ax,bx)>dim+4||Math.min(ay,by)>dim+4) continue;
+        rad.moveTo(ax,ay); rad.lineTo(bx,by);
+      }
+      px=nx; py=ny; a+=(h2(k,s+7,9304)-.5)*1.5; L*=.72;
+    }
+  }
+  g.strokeStyle='rgba(16,14,10,.55)'; g.lineWidth=1.4; g.stroke(rad);
+
+  /* 3c · i fili. Sei toni, sei stroke.
+     Il tono va nel ROSSO (altezza) e nel VERDE (albedo) insieme: un filo alto
+     e' anche un filo piu' chiaro, perche' e' quello piu' vicino alla luce.
+     'lighter' li fa accumulare: dove sono fitti, il prato si alza davvero. */
+  g.globalCompositeOperation='lighter';
+  g.lineCap='butt';
+  const NT=6, toni=[];
+  for(let t=0;t<NT;t++) toni.push(new Path2D());
+  const NFILI=Math.round(dim*dim*0.082);         // ~5400 a 256
+  const ciocca=_rumPer(7,9400);                  // dove il prato e' fitto
+  for(let k=0;k<NFILI;k++){
+    const x=h2(k,11,9401)*dim, y=h2(k,12,9402)*dim;
+    const cz=ciocca(x/dim,y/dim);
+    if(h2(k,13,9403) > .30+cz*.85) continue;     // i vuoti fra le ciocche
+    const t=Math.min(NT-1, (h2(k,14,9404)*NT)|0);
+    /* direzione: quasi tutta a caso, con una pettinata leggera verso l'alto.
+       Il prato visto da 52 gradi non e' un campo di steli in piedi: e' un
+       tappeto sdraiato, e l'unica cosa che deve leggersi e' il verso. */
+    let a=h2(k,15,9405)*6.283;
+    a=a*.72 + (-1.35)*.28;
+    const L=(6+h2(k,16,9406)*16)*(.55+cz*.75);
+    const bx=Math.cos(a)*L, by=Math.sin(a)*L;
+    const cur=(h2(k,17,9407)-.5)*L*.55;
+    const pt=toni[t];
+    for(let wx=-1;wx<=1;wx++) for(let wy=-1;wy<=1;wy++){
+      const ox=x+wx*dim, oy=y+wy*dim;
+      if(ox<-32||oy<-32||ox>dim+32||oy>dim+32) continue;   // solo i bordi si ripetono
+      pt.moveTo(ox,oy);
+      pt.quadraticCurveTo(ox+bx*.5-by*.16*cur/L, oy+by*.5+bx*.16*cur/L, ox+bx, oy+by);
+    }
+  }
+  for(let t=0;t<NT;t++){
+    const f=t/(NT-1);
+    const R=Math.round(26+f*74), G=Math.round(30+f*104);
+    g.strokeStyle='rgb('+R+','+G+',0)';
+    g.lineWidth=t>3?1.6:1;
+    g.stroke(toni[t]);
+  }
+
+  /* 3d · le punte accese: un pixel piu' chiaro in cima ai fili piu' alti.
+     Costa niente e da' al prato il luccichio che ha quando c'e' vento. */
+  const pun=new Path2D();
+  for(let k=0;k<520;k++){
+    const x=h2(k,21,9500)*dim, y=h2(k,22,9501)*dim;
+    pun.rect(x,y,1,1);
+  }
+  g.fillStyle='rgb(48,72,0)'; g.fill(pun);
+
+  const out=g.getImageData(0,0,dim,dim);
+  _normali(out.data, dim, 2.6);
+  return out.data;
+}
+
+/* ── 4 · LA BITMAP DELLA MATERIA DURA ───────────────────────────────────────
+   Deve reggere due lavori diversi: SABBIA/SALE campionata stretta (S_DURO) e
+   ROCCIA campionata larga (S_DURO_L). Quindi ha due frequenze cotte dentro:
+   il grano, che a scala larga sparisce nel mipmap, e le venature, che a scala
+   stretta diventano dossi lenti. Una bitmap sola, due materiali.            */
+function _bmpDuro(dim){
+  const c=_tela(dim), g=c.getContext('2d');
+
+  /* 4a · il grano. Bianco su due scale: il texel singolo (sabbia) e la
+     coppia di texel (ghiaia). Il primo muore al mipmap, ed e' giusto: da
+     lontano la sabbia deve calmarsi, non brillare. */
+  const nA=_rumPer(3,9601), nB=_rumPer(13,9602), nC=_rumPer(37,9603);
+  const im=g.createImageData(dim,dim), P=im.data;
+  for(let j=0;j<dim;j++) for(let i=0;i<dim;i++){
+    const u=i/dim,v=j/dim;
+    const lastra=nA(u,v);                       // la lastra: dossi larghi
+    const media =nB(u,v);
+    const gr=h2(i,j,9700), gr2=h2(i>>1,j>>1,9701);
+    const k=(j*dim+i)*4;
+    P[k]  = 76 + lastra*54 + media*34 + gr*26 + gr2*22;
+    P[k+1]= 88 + lastra*30 + media*46 + gr*34 + gr2*26 + nC(u,v)*24;
+    P[k+2]=128; P[k+3]=128;
+  }
+  g.putImageData(im,0,0);
+
+  /* 4b · le venature e le crepe: scure, larghe, con un labbro chiaro da un
+     lato. Sono quelle che, campionate larghe, fanno "roccia" invece di
+     "cemento sporco". */
+  g.globalCompositeOperation='source-over';
+  g.lineCap='round'; g.lineJoin='round';
+  const ven=new Path2D(), lab=new Path2D();
+  for(let k=0;k<64;k++){
+    let x=h2(k,31,9800)*dim, y=h2(k,32,9801)*dim;
+    let a=h2(k,33,9802)*6.283;
+    const seg=4+((h2(k,34,9803)*5)|0);
+    const pts=[[x,y]];
+    for(let s=0;s<seg;s++){
+      const L=12+h2(k,s+40,9804)*46;
+      x+=Math.cos(a)*L; y+=Math.sin(a)*L;
+      a+=(h2(k,s+50,9805)-.5)*1.9;
+      pts.push([x,y]);
+    }
+    for(let wx=-1;wx<=1;wx++) for(let wy=-1;wy<=1;wy++){
+      ven.moveTo(pts[0][0]+wx*dim,pts[0][1]+wy*dim);
+      lab.moveTo(pts[0][0]+wx*dim+1.5,pts[0][1]+wy*dim+1.5);
+      for(let s=1;s<pts.length;s++){
+        ven.lineTo(pts[s][0]+wx*dim,pts[s][1]+wy*dim);
+        lab.lineTo(pts[s][0]+wx*dim+1.5,pts[s][1]+wy*dim+1.5);
+      }
+    }
+  }
+  g.strokeStyle='rgba(255,255,255,.30)'; g.lineWidth=2.2; g.stroke(lab);
+  g.strokeStyle='rgba(0,0,0,.62)';       g.lineWidth=2.6; g.stroke(ven);
+  g.strokeStyle='rgba(0,0,0,.45)';       g.lineWidth=1.0; g.stroke(ven);
+
+  /* 4c · i sassi. Un sasso e' una cupola: chiaro in cima, buio all'ombra,
+     con una lente di contatto sotto. Tre gradienti a testa sarebbero troppi,
+     quindi uno solo, spostato: basta perche' la normale faccia il resto. */
+  for(let k=0;k<430;k++){
+    const x=h2(k,61,9900)*dim, y=h2(k,62,9901)*dim;
+    const r=2.2+h2(k,63,9902)*6.4;
+    const sq=.62+h2(k,64,9903)*.55;
+    const rot=h2(k,65,9904)*3.14;
+    for(let wx=-1;wx<=1;wx++) for(let wy=-1;wy<=1;wy++){
+      const ox=x+wx*dim, oy=y+wy*dim;
+      if(ox<-14||oy<-14||ox>dim+14||oy>dim+14) continue;
+      const gd=g.createRadialGradient(ox-r*.32,oy-r*.32,r*.12,ox,oy,r);
+      gd.addColorStop(0,'rgba(215,220,0,.92)');
+      gd.addColorStop(.55,'rgba(150,160,0,.72)');
+      gd.addColorStop(1,'rgba(40,48,0,.30)');
+      g.save(); g.translate(ox,oy); g.rotate(rot); g.scale(1,sq);
+      g.beginPath(); g.arc(0,0,r,0,6.283); g.fillStyle=gd; g.fill(); g.restore();
+    }
+  }
+
+  const out=g.getImageData(0,0,dim,dim);
+  _normali(out.data, dim, 3.1);
+  return out.data;
+}
+
+/* ── 5 · LA BITMAP MACRO ────────────────────────────────────────────────────
+   R = chiazza grande (uccide la ripetizione dell'albedo)
+   G = chiazza media  (accende la neve a banchi)
+   B = forma delle nuvole (soffice, con veri buchi di sole)
+   A = tremolio del peso fra morbido e duro (sporca il confine)             */
+function _bmpMacro(dim){
+  const a1=_rumPer(3,9111), a2=_rumPer(7,9112), a3=_rumPer(17,9113);
+  const b1=_rumPer(5,9121), b2=_rumPer(13,9122);
+  const c1=_rumPer(4,9131), c2=_rumPer(9,9132);
+  const d1=_rumPer(11,9141), d2=_rumPer(31,9142);
+  const P=new Uint8Array(dim*dim*4);
+  for(let j=0;j<dim;j++) for(let i=0;i<dim;i++){
+    const u=i/dim,v=j/dim, k=(j*dim+i)*4;
+    P[k]  = 255*_cl(a1(u,v)*.55+a2(u,v)*.30+a3(u,v)*.15,0,1);
+    P[k+1]= 255*_cl(b1(u,v)*.66+b2(u,v)*.34,0,1);
+    /* le nuvole: una soglia morbida, non un rumore. Serve che ci siano
+       squarci di sole netti, non una foschia uniforme. */
+    const n=c1(u,v)*.62+c2(u,v)*.38;
+    P[k+2]= 255*_ss(.34,.72,n);
+    P[k+3]= 255*_cl(d1(u,v)*.58+d2(u,v)*.42,0,1);
+  }
+  return P;
+}
+
+/* ── 6 · GLSL ──────────────────────────────────────────────────────────────*/
+
+/* Il blocco della luce, identico in ogni programma di questo modulo e
+   pensato per essere lo stesso dei corpi: se la gente e il suolo non usano
+   la stessa formula, la gente sembra incollata sopra il paesaggio. */
+const GLSL_LUCE = [
+'uniform vec3 uSole;',
+'uniform vec3 uColSole, uColCielo, uColTerra, uColOriz, uColZenit;',
+/* Due sorgenti, non un prodotto scalare: il sole diretto piu' un ambiente a
+   emisfero (cielo sopra, rimbalzo della terra sotto). Il lato in ombra
+   smette di essere nero e diventa azzurro — che e' il vero motivo per cui
+   una scena sembra illuminata. */
+'vec3 luceDi(vec3 n, float ao){',
+'  return uColSole*max(dot(n,uSole),0.0) + mix(uColTerra,uColCielo,n.z*0.5+0.5)*ao;',
+'}',
+'vec3 luceDi(vec3 n, float ao, float ombra){',
+'  return uColSole*(max(dot(n,uSole),0.0)*ombra) + mix(uColTerra,uColCielo,n.z*0.5+0.5)*ao;',
+'}',
+/* L'aria: la nebbia non muore in un colore costante ma nel colore del cielo
+   NELLA DIREZIONE in cui si guarda — piu' calda verso il sole, piu' fredda
+   dall'altra parte. Una varying e quattro operazioni, e il paesaggio
+   raddoppia di dimensione. */
+'vec3 aria(vec3 d){',
+'  float s = clamp(d.z*0.5+0.5, 0.0, 1.0);',
+'  float v = max(dot(d,uSole),0.0);',
+'  return mix(uColOriz, uColZenit, s) + uColSole*(v*v)*0.30;',
+'}'
+].join('\n');
+
+const PREC = [
+'#ifdef GL_FRAGMENT_PRECISION_HIGH',
+'precision highp float;',
+'#else',
+'precision mediump float;',
+'#endif'
+].join('\n');
+
+const VS_TERRA = [
+'attribute vec3 aP;',
+'attribute vec4 aN;',       // xyz normale (byte norm.), w neve 0..1
+'attribute vec4 aC0;',      // rgb tinta morbida, a occlusione
+'attribute vec4 aC1;',      // rgb tinta dura,    a peso duro
+'uniform mat4 uVP;',
+'uniform vec3 uOcchio;',
+'uniform vec2 uOrig;',      // origine del pezzo, multiplo di PERIODO
+'uniform vec2 uOrigD;',     // origine delle decalcomanie, una per fotogramma
+'varying vec3 vN; varying vec4 vC0; varying vec4 vC1;',
+'varying float vNeve; varying vec3 vVista; varying vec2 vUv; varying vec2 vLoc;',
+'varying vec3 vW;',
+'void main(){',
+'  vN=normalize(aN.xyz); vNeve=aN.w; vC0=aC0; vC1=aC1;',
+'  vVista=aP-uOcchio;',
+'  vW=aP;',
+/* Le UV si calcolano QUI, dove la precisione e' alta per contratto, e
+   arrivano al fragment gia' piccole. E' il trucco che permette al modulo di
+   girare anche su una scheda senza highp nel fragment. */
+'  vUv=(aP.xy-uOrig)*'+(1/S_ERBA).toFixed(8)+';',
+'  vLoc=aP.xy-uOrigD;',
+'  gl_Position=uVP*vec4(aP,1.0);',
+'}'
+].join('\n');
+
+/* Il fragment. QUAL decide quanti prelievi: 2 (qual 0), 3 (qual 1),
+   5 + nuvole + ombra (qual 2). NM decide quante decalcomanie. */
+function FS_TERRA(qual, nm, ombra){
+  const K_EL = (S_ERBA/S_ERBA_L), K_DF = (S_ERBA/S_DURO),
+        K_DL = (S_ERBA/S_DURO_L), K_MA = (S_ERBA/S_MACRO), K_NU = (S_ERBA/S_NUVOLE);
+  const L=[];
+  L.push(PREC);
+  L.push('#define QUAL '+qual);
+  if(nm>0) L.push('#define NM '+nm);
+  if(ombra) L.push('#define OMBRA 1');
+  L.push('varying vec3 vN; varying vec4 vC0; varying vec4 vC1;');
+  L.push('varying float vNeve; varying vec3 vVista; varying vec2 vUv; varying vec2 vLoc;');
+  L.push('varying vec3 vW;');
+  L.push('uniform sampler2D uErba, uDuro, uMacro;');
+  L.push('uniform vec2 uDettaglio;');   // inizio/fine della dissolvenza del vicino
+  L.push('uniform vec2 uNebbia;');
+  L.push('uniform vec4 uAnello;');      // x,y in locale · z raggio · w spessore
+  L.push('uniform vec3 uColAnello;');
+  L.push('uniform vec2 uVento;');
+  L.push(GLSL_LUCE);
+  if(nm>0) L.push('uniform vec4 uMacchie[NM];');
+  if(ombra){
+    L.push('uniform mat4 uOmbraVP; uniform sampler2D uOmbra; uniform vec2 uOmbraPar;');
+    L.push('float apri(vec4 c){return dot(c,vec4(1.0,0.00392157,1.53787e-5,6.03086e-8));}');
+  }
+  /* Fusione per ALTEZZA, non lineare. E' la differenza fra "il sasso e'
+     dipinto sopra l'erba" e "il sasso spunta FRA i fili". Sei operazioni. */
+  L.push('float fusAlt(float ha, float hb, float t, float k){');
+  L.push('  float wa=max(ha+(1.0-t),0.0), wb=max(hb+t,0.0);');
+  L.push('  float mx=max(wa,wb)-k;');
+  L.push('  wa=max(wa-mx,0.0); wb=max(wb-mx,0.0);');
+  L.push('  return wb/(wa+wb+1e-5);');
+  L.push('}');
+  L.push('void main(){');
+  L.push('  float dist=length(vVista);');
+  L.push('  vec3 dirV=vVista/dist;');
+  /* Da lontano il normal map sfarfalla: e' rumore ad alta frequenza dentro
+     un pixel. Si spegne con la distanza — e non si perde niente, perche' a
+     quella distanza nessuno lo vedeva comunque. */
+  L.push('  float det=1.0-smoothstep(uDettaglio.x,uDettaglio.y,dist);');
+  /* La pendenza vera: 1-n.z e' inutile qui, perche' su questo mondo il
+     pendio massimo e' 17 gradi e 1-n.z vale 0,04. La tangente invece si
+     apre bene su tutto l'intervallo. */
+  L.push('  float pend=sqrt(max(1.0-vN.z*vN.z,0.0))/max(vN.z,0.25);');
+  /* GRANA: 0 = sabbia, sale, terra battuta (campionata stretta)
+            1 = pietra (campionata larga). Vedi la nota sul blu meno rosso. */
+  L.push('  float grana=clamp((vC1.b-vC1.r)*5.0+0.5,0.0,1.0);');
+  L.push('  grana=max(grana, smoothstep(0.10,0.26,pend));');
+
+  /* LE SCALE SONO FISSE, MAI INTERPOLATE. Un pezzo puo' scegliere un'origine
+     diversa dal suo vicino: la cucitura sparisce solo se lo scarto fra le due
+     origini, diviso per la scala, e' un numero intero. Con una scala fissa e
+     potenza di due lo e' sempre; con una scala che dipende dal fragment
+     (mix(fine,grosso,grana)) non lo e' quasi mai, e sul confine fra due pezzi
+     si aprirebbe una riga. Quindi si prelevano DUE scale fisse e si mescolano
+     i RISULTATI, non le coordinate. */
+  L.push('  vec4 e0=texture2D(uErba, vUv);');
+  L.push('  vec4 h0=texture2D(uDuro, vUv*'+K_DF.toFixed(8)+');');
+  if(qual>=1) L.push('  vec4 mc=texture2D(uMacro, vUv*'+K_MA.toFixed(8)+');');
+  else        L.push('  vec4 mc=vec4(0.5);');
+  if(qual>=2){
+    /* Il prelievo largo e' lo STESSO atlante ruotato di 90 gradi. Un quarto
+       di giro manda un multiplo di PERIODO in un multiplo di PERIODO: e'
+       l'unica rotazione che non rompe la cucitura. */
+    L.push('  vec4 e1=texture2D(uErba, vec2(-vUv.y,vUv.x)*'+K_EL.toFixed(8)+'+vec2(0.37,0.11));');
+    L.push('  vec4 h1=texture2D(uDuro, vec2(vUv.y,-vUv.x)*'+K_DL.toFixed(8)+'+vec2(0.61,0.29));');
+    /* grana 0 = sabbia e sale: comanda il prelievo stretto.
+       grana 1 = pietra: comanda quello largo, e le venature si aprono. */
+    L.push('  vec4 hh=mix(mix(h0,h1,0.26), mix(h0,h1,0.78), grana);');
+  } else {
+    L.push('  vec4 hh=h0;');
+  }
+
+  L.push('  float hE=e0.r, hD=hh.r;');
+  if(qual>=2) L.push('  hE=hE*0.66+e1.r*0.34;');
+  /* Il peso della materia dura e' cotto nei vertici (pendio, conca, umido,
+     terra) e poi SPORCATO dal macro: cosi' il confine non e' mai una curva
+     di livello, e a nessuna distanza si legge un contorno. */
+  L.push('  float pd=clamp(vC1.a+(mc.a-0.5)*0.50,0.0,1.0);');
+  L.push('  float m=fusAlt(hE,hD,pd,0.30);');
+
+  L.push('  vec3 colE=vC0.rgb*(0.62+0.78*e0.g);');
+  L.push('  vec3 colD=vC1.rgb*(0.66+0.70*hh.g);');
+  if(qual>=2) L.push('  colE*=0.80+0.40*e1.g;');
+  if(qual>=1) L.push('  float mv=0.76+0.48*mc.r; colE*=mv; colD*=mix(1.0,mv,0.55);');
+  L.push('  vec3 alb=mix(colE,colD,m);');
+
+  /* La neve non e' una terra: e' una coperta. Si posa sopra qualunque cosa
+     ci sia sotto, piu' fitta dove la materia e' incavata. */
+  L.push('  float nv=vNeve*clamp(0.30+hD*1.20+mc.g*0.45,0.0,1.0);');
+  L.push('  alb=mix(alb, vec3('+(NEVE[0]/255).toFixed(3)+','+(NEVE[1]/255).toFixed(3)+','+(NEVE[2]/255).toFixed(3)+')*(0.84+0.28*hh.g), nv);');
+
+  /* Le decalcomanie: terra battuta del borgo, sentieri, impronte, erba
+     calpestata. Nessun ramo dentro il ciclo — il tipo e' gia' cotto nel
+     SEGNO della forza, cosi' otto macchie costano otto volte sei operazioni
+     e non otto volte un salto. */
+  L.push('  float bat=0.0, ton=0.0;');
+  if(nm>0){
+    L.push('  for(int i=0;i<NM;i++){');
+    L.push('    vec4 M=uMacchie[i];');
+    L.push('    vec2 dv=vLoc-M.xy;');
+    L.push('    float t=clamp(1.0-dot(dv,dv)/(M.z*M.z+1e-3),0.0,1.0);');
+    L.push('    t=t*t;');
+    L.push('    bat+=t*abs(M.w); ton+=t*M.w;');
+    L.push('  }');
+    L.push('  bat=min(bat,1.0);');
+    L.push('  alb=mix(alb, vC1.rgb*(1.0+ton*0.55), bat*0.78);');
+  }
+
+  /* La normale. Le UV sono mappate sul piano XY del mondo: la tangente E'
+     l'asse x, la bitangente E' l'asse y. Niente frame da costruire, niente
+     da passare, nessun byte in piu' per vertice. */
+  L.push('  vec2 nrm=mix(e0.ba,hh.ba,m)*2.0-1.0;');
+  if(qual>=2) L.push('  nrm+=(e1.ba*2.0-1.0)*(1.0-m)*0.45;');
+  L.push('  nrm*=det*(1.0-bat*0.72);');
+  L.push('  vec3 N=normalize(vec3(vN.xy+nrm*0.62, vN.z));');
+
+  L.push('  float ao=vC0.a;');
+  L.push('  float omb=1.0;');
+  if(qual>=2){
+    /* Le ombre delle nuvole scuriscono la LUCE, non dipingono sopra: per
+       questo non toccheranno mai le figure e non costano leggibilita'. */
+    L.push('  float nb=texture2D(uMacro, vUv*'+K_NU.toFixed(8)+'+uVento).b;');
+    L.push('  omb*=mix(0.70,1.0,nb);');
+  }
+  if(ombra){
+    L.push('  vec4 sp=uOmbraVP*vec4(vW,1.0);');
+    L.push('  vec3 sc=sp.xyz/sp.w*0.5+0.5;');
+    L.push('  if(sc.x>0.002&&sc.x<0.998&&sc.y>0.002&&sc.y<0.998&&sc.z<1.0){');
+    /* Uno scarto a dado invece di quattro tocchi di PCF: il bordo diventa
+       granuloso invece che a scaletta, e il granuloso a queste dimensioni si
+       legge come polvere. Un prelievo, non quattro. */
+    L.push('    float dd=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);');
+    L.push('    vec2 sd=vec2(cos(dd*6.283),sin(dd*6.283))*uOmbraPar.y;');
+    L.push('    float zp=apri(texture2D(uOmbra, sc.xy+sd));');
+    L.push('    omb*=(sc.z-uOmbraPar.x>zp)?0.30:1.0;');
+    L.push('  }');
+  }
+
+  L.push('  vec3 col=alb*luceDi(N,ao,omb);');
+  /* Il luccichio: un lobo stretto pesato dai grani piu' alti. E' quello che
+     fa "sale" e "bagnato" senza una goccia d'acqua. */
+  L.push('  vec3 hv=normalize(uSole-dirV);');
+  L.push('  float sc2=pow(max(dot(N,hv),0.0),42.0)*hD*hD*hD*m*det;');
+  L.push('  col+=uColSole*sc2*0.55;');
+
+  /* L'anello del vessillo: una decalcomania di LUCE. Il cerchio ha 230 unita'
+     di diametro e a zoom normale non ci sta in larghezza su un telefono — e
+     va benissimo cosi': se ne legge l'ARCO dove taglia lo schermo, e si sa
+     dov'e' il confine senza doverlo vedere tutto. */
+  L.push('  float dr=abs(length(vLoc-uAnello.xy)-uAnello.z);');
+  L.push('  col+=uColAnello*(1.0-smoothstep(0.0,uAnello.w,dr));');
+
+  L.push('  float f=smoothstep(uNebbia.x,uNebbia.y,dist);');
+  L.push('  gl_FragColor=vec4(mix(col,aria(dirV),f*0.94),1.0);');
+  L.push('}');
+  return L.join('\n');
+}
+
+/* ── L'acqua ────────────────────────────────────────────────────────────────
+   La Riva Salsa non ha laghi: ha un VELO. Il gioco lo dice gia' in chiaro
+   nel 2D ("una piana salata bagnata, il velo d'acqua sta sempre dentro la
+   riva"). Quindi il piano d'acqua non e' un livello globale: e' il terreno
+   piu' due o tre unita', dove l'umido supera la soglia. Cosi' non si vede
+   mai nessuno camminare sul mare, e il bordo bagnato viene da se'.        */
+const VS_ACQUA = [
+'attribute vec3 aP; attribute vec4 aQ;',
+'uniform mat4 uVP; uniform vec3 uOcchio; uniform vec2 uOrig;',
+'varying vec3 vVista; varying vec2 vLoc; varying vec2 vProf;',
+'void main(){',
+'  vVista=aP-uOcchio;',
+'  vLoc=aP.xy-uOrig;',
+'  vProf=aQ.xy;',
+'  gl_Position=uVP*vec4(aP,1.0);',
+'}'
+].join('\n');
+
+const FS_ACQUA = [
+PREC,
+'varying vec3 vVista; varying vec2 vLoc; varying vec2 vProf;',
+'uniform float uTempo;',
+'uniform vec3 uAcqua;',
+'uniform vec2 uNebbia;',
+GLSL_LUCE,
+'void main(){',
+'  float dist=length(vVista);',
+'  vec3 dirV=vVista/dist;',
+/* Tre onde analitiche invece di due prelievi di texture: costano meno, non
+   sfarfallano mai e scorrono in direzioni diverse.
+   I TRE VETTORI D'ONDA NON SONO A CASO: sono 2*pi*(n,m)/3840 con n,m interi,
+   cioe' ogni onda compie un numero INTERO di cicli su un PERIODO. Due pezzi
+   vicini possono avere origini che differiscono di 3840 unita': solo con
+   questi numeri la fase e' identica sul confine e l'increspatura non si
+   spezza in due. */
+'  const vec2 K1=vec2( 0.17998710, 0.05235988);',
+'  const vec2 K2=vec2(-0.07035858, 0.16362462);',
+'  const vec2 K3=vec2( 0.41233404,-0.28634308);',
+'  vec2 p=vLoc;',
+'  float f1=dot(p,K1)+uTempo*1.90;',
+'  float f2=dot(p,K2)+uTempo*1.35;',
+'  float f3=dot(p,K3)+uTempo*3.10;',
+'  float w1=sin(f1), w2=sin(f2), w3=sin(f3);',
+'  vec2 g=K1*(cos(f1)*0.55)+K2*(cos(f2)*0.42)+K3*(cos(f3)*0.14);',
+'  float amp=(0.35+vProf.x*1.15)*(0.85+0.15*w2);',
+'  vec3 N=normalize(vec3(-g*amp, 1.0));',
+'  vec3 V=-dirV;',
+/* Fresnel di Schlick: da sopra si vede il fondo, di taglio si vede il cielo.
+   E' l'unica cosa che fa capire che una superficie e' acqua e non vetro. */
+'  float c=max(dot(N,V),0.0);',
+'  float fr=0.02+0.98*pow(1.0-c,5.0);',
+'  vec3 rif=reflect(dirV,N);',
+'  vec3 cielo=aria(rif);',
+'  vec3 col=mix(uAcqua*(0.55+0.45*max(dot(N,uSole),0.0)), cielo, fr*0.92);',
+/* Il barbaglio del sole sull'acqua: stretto, forte, e solo quando il sole
+   e' basso. E' il dettaglio che il committente notera' per primo. */
+'  float gl=pow(max(dot(rif,uSole),0.0),120.0);',
+'  col+=uColSole*gl*2.4;',
+/* La schiuma del bordo: dove il velo e' sottile, una riga bianca che segue
+   l'onda. Nessuna texture: e' l'onda stessa che decide dov'e' il bordo. */
+'  float bordo=vProf.y*(0.5+0.5*w1*w3);',
+'  col=mix(col, vec3(0.92,0.95,0.93), clamp(bordo*0.85,0.0,0.75));',
+'  float a=clamp(0.16+vProf.x*0.72+fr*0.30+bordo*0.4,0.0,0.94);',
+'  float f=smoothstep(uNebbia.x,uNebbia.y,dist);',
+'  col=mix(col,aria(dirV),f*0.94);',
+'  gl_FragColor=vec4(col,a*(1.0-f*0.6));',
+'}'
+].join('\n');
+
+/* ── La passata di profondita' per la mappa d'ombra ─────────────────────────
+   WEBGL_depth_texture non e' garantita sulla webview di Telegram, quindi la
+   profondita' si impacchetta a mano in RGBA8. */
+const VS_PROF = [
+'attribute vec3 aP; uniform mat4 uVP; varying float vZ;',
+'void main(){ vec4 q=uVP*vec4(aP,1.0); vZ=q.z/q.w*0.5+0.5; gl_Position=q; }'
+].join('\n');
+const FS_PROF = [
+PREC,
+'varying float vZ;',
+'void main(){',
+'  vec4 e=vec4(1.0,255.0,65025.0,16581375.0)*vZ;',
+'  e=fract(e);',
+'  e-=e.yzww*vec4(0.00392157,0.00392157,0.00392157,0.0);',
+'  gl_FragColor=e;',
+'}'
+].join('\n');
+
+/* ── 7 · LA LUCE DI RISERVA ─────────────────────────────────────────────────
+   Il quinto argomento di disegna() e' opzionale: senza, il modulo si fa una
+   luce da solo partendo da luceOra(). Sei terne su sei momenti della
+   giornata, interpolate. Non e' un ripiego povero: e' la tavolozza vera,
+   messa qui perche' il terreno possa girare da solo il giorno che qualcuno
+   lo prova fuori dal gioco.                                                */
+const _CHIAVI = [
+//  luce  colSole              colCielo            colTerra            colOriz             colZenit
+  [0.00, [.05,.07,.13], [.07,.10,.19], [.020,.024,.038], [.06,.08,.15], [.020,.030,.070]],
+  [0.12, [.11,.13,.21], [.11,.15,.26], [.030,.034,.050], [.11,.14,.22], [.040,.060,.120]],
+  [0.32, [.82,.47,.27], [.26,.32,.47], [.100,.082,.068], [.64,.44,.35], [.150,.215,.380]],
+  [0.58, [.97,.83,.62], [.34,.44,.61], [.150,.138,.108], [.62,.66,.71], [.255,.400,.620]],
+  [0.82, [1.02,.96,.84],[.38,.50,.67], [.178,.168,.128], [.70,.75,.80], [.300,.460,.700]],
+  [1.00, [1.06,1.02,.92],[.40,.53,.70],[.196,.186,.140], [.74,.79,.84], [.320,.500,.760]]
+];
+function luceRiserva(luce, fuori){
+  const L = fuori || {colSole:new Float32Array(3), colCielo:new Float32Array(3),
+    colTerra:new Float32Array(3), colOriz:new Float32Array(3), colZenit:new Float32Array(3)};
+  const l=_cl(luce,0,1);
+  let k=0; while(k<_CHIAVI.length-2 && l>_CHIAVI[k+1][0]) k++;
+  const a=_CHIAVI[k], b=_CHIAVI[k+1];
+  const t=_cl((l-a[0])/(b[0]-a[0]||1),0,1);
+  const nomi=['colSole','colCielo','colTerra','colOriz','colZenit'];
+  for(let n=0;n<5;n++){
+    const A=a[n+1], B=b[n+1], D=L[nomi[n]];
+    D[0]=A[0]+(B[0]-A[0])*t; D[1]=A[1]+(B[1]-A[1])*t; D[2]=A[2]+(B[2]-A[2])*t;
+  }
+  return L;
+}
+
+/* ── 8 · IL MODULO ─────────────────────────────────────────────────────────*/
+function _compila(gl,tipo,src){
+  const s=gl.createShader(tipo);
+  gl.shaderSource(s,src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){
+    const log=gl.getShaderInfoLog(s);
+    gl.deleteShader(s);
+    throw new Error('shader: '+log);
+  }
+  return s;
+}
+function _prog(gl,vs,fs){
+  const p=gl.createProgram();
+  const a=_compila(gl,gl.VERTEX_SHADER,vs), b=_compila(gl,gl.FRAGMENT_SHADER,fs);
+  gl.attachShader(p,a); gl.attachShader(p,b); gl.linkProgram(p);
+  gl.deleteShader(a); gl.deleteShader(b);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS)){
+    const log=gl.getProgramInfoLog(p); gl.deleteProgram(p);
+    throw new Error('link: '+log);
+  }
+  return p;
+}
+/** Inverte una 4x4. Serve per tirare i quattro raggi dagli angoli dello
+    schermo senza dipendere da nessun oggetto camera esterno: la matrice che
+    arriva a disegna() e' l'unica verita' di cui il modulo ha bisogno. */
+function _inv(m,o){
+  const a00=m[0],a01=m[1],a02=m[2],a03=m[3], a10=m[4],a11=m[5],a12=m[6],a13=m[7],
+        a20=m[8],a21=m[9],a22=m[10],a23=m[11], a30=m[12],a31=m[13],a32=m[14],a33=m[15];
+  const b00=a00*a11-a01*a10, b01=a00*a12-a02*a10, b02=a00*a13-a03*a10,
+        b03=a01*a12-a02*a11, b04=a01*a13-a03*a11, b05=a02*a13-a03*a12,
+        b06=a20*a31-a21*a30, b07=a20*a32-a22*a30, b08=a20*a33-a23*a30,
+        b09=a21*a32-a22*a31, b10=a21*a33-a23*a31, b11=a22*a33-a23*a32;
+  let d=b00*b11-b01*b10+b02*b09+b03*b08-b04*b07+b05*b06;
+  if(!d) return null;
+  d=1/d;
+  o[0]=(a11*b11-a12*b10+a13*b09)*d; o[1]=(a02*b10-a01*b11-a03*b09)*d;
+  o[2]=(a31*b05-a32*b04+a33*b03)*d; o[3]=(a22*b04-a21*b05-a23*b03)*d;
+  o[4]=(a12*b08-a10*b11-a13*b07)*d; o[5]=(a00*b11-a02*b08+a03*b07)*d;
+  o[6]=(a32*b02-a30*b05-a33*b01)*d; o[7]=(a20*b05-a22*b02+a23*b01)*d;
+  o[8]=(a10*b10-a11*b08+a13*b06)*d; o[9]=(a01*b08-a00*b10-a03*b06)*d;
+  o[10]=(a30*b04-a31*b02+a33*b00)*d; o[11]=(a21*b02-a20*b04-a23*b00)*d;
+  o[12]=(a11*b07-a10*b09-a12*b06)*d; o[13]=(a00*b09-a01*b07+a02*b06)*d;
+  o[14]=(a31*b01-a30*b03-a32*b00)*d; o[15]=(a20*b03-a21*b01+a22*b00)*d;
+  return o;
+}
+
+/** @param {WebGLRenderingContext} gl
+ *  @returns {object} */
+function creaTerreno(gl){
+  const PZ = (typeof CH!=='undefined'? CH : 500);   // il pezzo E' il chunk del gioco
+  const NB = 48;                                    // quadretti del livello piu' fitto
+  const GR = 55, GOF = 3;                           // griglia madre: -3..51
+  const CGN = 19, CST = 3;                          // griglia dei campi lenti (umido, fert)
+  const S   = PZ/NB;                                // passo della griglia madre
+  const TETTO_BYTE = 12*1024*1024;
+
+  let morto=false;
+  let qual=2, nMacchie=8, ombraOn=false;
+  let prg=null, A=null, U=null;
+  let prgA=null, AA=null, UA=null;
+  let prgP=null, AP=null, UP=null;
+  let texE=null, texD=null, texM=null;
+  let acquaOn=true;
+  let giro=0, byteTot=0;
+  let occhioX=0, occhioY=0, occhioZ=0;
+  const cache=new Map();
+  const conto={pezzi:0, tri:0, chiamate:0, costruiti:0, byte:0};
+
+  const Lris = luceRiserva(1);
+  const macIn=new Float32Array(8*4); let macN=0;
+  const macU=new Float32Array(8*4);
+  const anello=new Float32Array(4);
+  const colAnello=new Float32Array(3);
+  const invVP=new Float32Array(16);
+  const soleN=new Float32Array(3);
+
+  /* le tinte, ricavate una volta sola da BIOMI + DURA */
+  const TIN={};
+  for(const k in DURA){
+    const b=(typeof BIOMI!=='undefined'&&BIOMI[k])?BIOMI[k]:null;
+    const morb=_rgb(b?(b.suolo2||b.suolo):'#5a8a5a');
+    TIN[k]={morb:morb, dura:_rgb(DURA[k]), pd:PESO_DURO[k]};
+  }
+  const ORD=['piana','bosco','riva','brughiera','costolone'];
+
+  /* ── 8a · le texture ─────────────────────────────────────────────────── */
+  const aniso = gl.getExtension('EXT_texture_filter_anisotropic') ||
+                gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic') ||
+                gl.getExtension('MOZ_EXT_texture_filter_anisotropic');
+  const maxAn = aniso ? Math.min(4, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)) : 1;
+
+  function creaTex(dati, dim, an){
+    const t=gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,dim,dim,0,gl.RGBA,gl.UNSIGNED_BYTE,dati);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    /* Il suolo si guarda da 52 gradi: senza anisotropia il mipmap sfoca in
+       profondita' molto piu' di quanto serva, e il terreno lontano diventa
+       una poltiglia. Quattro campioni bastano, e li fa la scheda. */
+    if(aniso&&an>1) gl.texParameterf(gl.TEXTURE_2D,aniso.TEXTURE_MAX_ANISOTROPY_EXT,an);
+    return t;
+  }
+  texE=creaTex(_bmpErba(T_ERBA_DIM), T_ERBA_DIM, maxAn);
+  texD=creaTex(_bmpDuro(T_DURO_DIM), T_DURO_DIM, maxAn);
+  texM=creaTex(_bmpMacro(T_MACRO_DIM), T_MACRO_DIM, 1);
+
+  /* ── 8b · i programmi ────────────────────────────────────────────────── */
+  function compilaTutto(){
+    if(prg) gl.deleteProgram(prg);
+    if(prgA) gl.deleteProgram(prgA);
+    if(prgP) gl.deleteProgram(prgP);
+    nMacchie = qual>=2?8 : qual>=1?4 : 0;
+    prg=_prog(gl,VS_TERRA,FS_TERRA(qual,nMacchie,ombraOn&&qual>=2));
+    A={aP:gl.getAttribLocation(prg,'aP'), aN:gl.getAttribLocation(prg,'aN'),
+       aC0:gl.getAttribLocation(prg,'aC0'), aC1:gl.getAttribLocation(prg,'aC1')};
+    U={}; ['uVP','uOcchio','uOrig','uOrigD','uErba','uDuro','uMacro','uDettaglio',
+        'uNebbia','uAnello','uColAnello','uVento','uSole','uColSole','uColCielo',
+        'uColTerra','uColOriz','uColZenit','uMacchie[0]','uOmbraVP','uOmbra','uOmbraPar']
+      .forEach(n=>U[n]=gl.getUniformLocation(prg,n));
+    prgA=_prog(gl,VS_ACQUA,FS_ACQUA);
+    AA={aP:gl.getAttribLocation(prgA,'aP'), aQ:gl.getAttribLocation(prgA,'aQ')};
+    UA={}; ['uVP','uOcchio','uOrig','uTempo','uAcqua','uNebbia','uSole','uColSole',
+        'uColCielo','uColTerra','uColOriz','uColZenit'].forEach(n=>UA[n]=gl.getUniformLocation(prgA,n));
+    prgP=_prog(gl,VS_PROF,FS_PROF);
+    AP={aP:gl.getAttribLocation(prgP,'aP')};
+    UP={uVP:gl.getUniformLocation(prgP,'uVP')};
+  }
+  compilaTutto();
+
+  /* ── 8c · la costruzione di un pezzo ─────────────────────────────────── */
+  const Gq  = new Float32Array(GR*GR);      // quota, griglia madre
+  const Gu  = new Float32Array(CGN*CGN);    // umido
+  const Gf  = new Float32Array(CGN*CGN);    // fertilita'
+  const Gj  = new Float32Array(CGN*CGN);    // il tremolio delle soglie
+
+  const _w=[0,0,0,0,0];
+
+  /** I pesi delle cinque terre, sfumati.
+      Le soglie sono LE STESSE di bioma(): chi sta al centro di una terra la
+      vede esattamente come la vede il gioco, e solo il confine diventa una
+      mescolanza. Se cambia bioma(), qui vanno cambiate a mano — ed e' giusto
+      cosi': una funzione che indovina il bioma del renderer da sola sarebbe
+      una seconda verita', e la verita' e' una. */
+  function pesi(alt,umi,jit){
+    const j=(jit-.5)*.05;
+    const wc=_ss(.66+j,.75+j,alt);
+    const wr=_ss(.68+j,.77+j,umi)*(1-_ss(.41+j,.51+j,alt))*(1-wc);
+    const wb=_ss(.47+j,.57+j,umi)*(1-_ss(.61+j,.71+j,alt))*(1-wc)*(1-wr);
+    const wh=(1-_ss(.26+j,.36+j,umi))*(1-wc)*(1-wr);
+    let wp=Math.max(0, 1-wc-wr-wb-wh);
+    let tot=wc+wr+wb+wh+wp; if(tot<1e-4){wp=1;tot=1}
+    _w[0]=wp/tot; _w[1]=wb/tot; _w[2]=wr/tot; _w[3]=wh/tot; _w[4]=wc/tot;
+    return _w;
+  }
+
+  function bil(G,fi,fj){
+    const i0=Math.min(CGN-2,Math.max(0,Math.floor(fi))), j0=Math.min(CGN-2,Math.max(0,Math.floor(fj)));
+    const tx=fi-i0, ty=fj-j0;
+    const a=G[j0*CGN+i0], b=G[j0*CGN+i0+1], c=G[(j0+1)*CGN+i0], d=G[(j0+1)*CGN+i0+1];
+    const u=a+(b-a)*tx, v=c+(d-c)*tx;
+    return u+(v-u)*ty;
+  }
+
+  function costruisci(ci,cj,liv){
+    const t0=performance.now();
+    const ox=ci*PZ, oy=cj*PZ;
+
+    /* 1 · la griglia madre. Si campiona UNA volta a 55x55 e i tre livelli si
+       decimano da questa: 1, 2, 3. Le normali e l'occlusione vengono sempre
+       dal passo fitto, cosi' la luce non salta quando cambia il livello. */
+    for(let gj=0;gj<GR;gj++){
+      const y=oy+(gj-GOF)*S;
+      for(let gi=0;gi<GR;gi++) Gq[gj*GR+gi]=quota(ox+(gi-GOF)*S, y);
+    }
+    /* 2 · i campi lenti. Umido e fertilita' hanno ottave da 240 unita' in su:
+       campionarli 2401 volte sarebbe buttare via mezzo millisecondo. */
+    for(let j=0;j<CGN;j++){
+      const y=oy+(j*CST-GOF)*S;
+      for(let i=0;i<CGN;i++){
+        const x=ox+(i*CST-GOF)*S, k=j*CGN+i;
+        Gu[k]=campo(x+9000,y-4000,211);
+        Gf[k]=fert(x,y);
+        Gj[k]=vnoise(x,y,150,617);
+      }
+    }
+
+    const st=[1,2,3][liv], N=NB/st, nl=N+1;
+    const nvI=nl*nl, nvS=nl*4*2;             // interni + gonna
+    const nv=nvI+nvS;
+    const buf=new ArrayBuffer(nv*24);
+    const F=new Float32Array(buf), I8=new Int8Array(buf), U8=new Uint8Array(buf);
+    const morb=[0,0,0], dura=[0,0,0];
+
+    for(let jj=0;jj<nl;jj++) for(let ii=0;ii<nl;ii++){
+      const i=ii*st, j=jj*st, gi=i+GOF, gj=j+GOF;
+      const v=jj*nl+ii;
+      const x=ox+i*S, y=oy+j*S, h=Gq[gj*GR+gi];
+      F[v*6]=x; F[v*6+1]=y; F[v*6+2]=h;
+
+      /* normale dal passo fitto */
+      const hx=Gq[gj*GR+gi+1]-Gq[gj*GR+gi-1];
+      const hy=Gq[(gj+1)*GR+gi]-Gq[(gj-1)*GR+gi];
+      let nx=-hx, ny=-hy, nz=2*S;
+      const nlen=Math.sqrt(nx*nx+ny*ny+nz*nz);
+      nx/=nlen; ny/=nlen; nz/=nlen;
+      const grad=Math.sqrt(1-nz*nz)/Math.max(nz,.2);
+
+      /* occlusione cotta: la curvatura del campo di quote su due scale.
+         Le conche si chiudono, i dossi si aprono. Costo a fotogramma: zero,
+         ed e' quello che fa SENTIRE il rilievo anche col sole allo zenit. */
+      const l1=(Gq[gj*GR+gi-1]+Gq[gj*GR+gi+1]+Gq[(gj-1)*GR+gi]+Gq[(gj+1)*GR+gi])*.25-h;
+      const l3=(Gq[gj*GR+gi-3]+Gq[gj*GR+gi+3]+Gq[(gj-3)*GR+gi]+Gq[(gj+3)*GR+gi])*.25-h;
+      const ao=_cl(1-_cl(l1*.115+l3*.048,-.28,.58), .38, 1);
+
+      const fi=(i+GOF)/CST, fj=(j+GOF)/CST;
+      const umi=bil(Gu,fi,fj), fer=bil(Gf,fi,fj), jit=bil(Gj,fi,fj);
+      const alt=h/(typeof QSC!=='undefined'?QSC:190);
+      const W=pesi(alt,umi,jit);
+
+      morb[0]=morb[1]=morb[2]=0; dura[0]=dura[1]=dura[2]=0;
+      let pd=0;
+      for(let t=0;t<5;t++){
+        const w=W[t]; if(w<=0)continue;
+        const T=TIN[ORD[t]];
+        morb[0]+=T.morb[0]*w; morb[1]+=T.morb[1]*w; morb[2]+=T.morb[2]*w;
+        dura[0]+=T.dura[0]*w; dura[1]+=T.dura[1]*w; dura[2]+=T.dura[2]*w;
+        pd+=T.pd*w;
+      }
+
+      /* La fertilita' e' gia' nel gioco e decide dove cresce la roba: qui
+         decide anche il COLORE dell'erba. Un campo povero e' giallo, e si
+         vede da lontano che li' non c'e' niente da mietere. */
+      const ric=_cl(fer*1.15-.10,0,1);
+      morb[0]=morb[0]*(1.18-ric*.36); morb[1]=morb[1]*(.94+ric*.20); morb[2]=morb[2]*(.80+ric*.34);
+
+      /* Sui pendii ripidi la roccia affiora: e' la regola piu' semplice che
+         esista e da sola risolve meta' del problema "il suolo e' piatto".
+         Il pendio massimo di questo mondo e' 0,30 di tangente — per questo
+         la soglia sta a 0,085 e non a mezzo. */
+      const roc=_ss(.085,.235,grad);
+      pd=Math.max(pd,roc);
+      dura[0]+= (ROCCIA[0]-dura[0])*roc*.85;
+      dura[1]+= (ROCCIA[1]-dura[1])*roc*.85;
+      dura[2]+= (ROCCIA[2]-dura[2])*roc*.85;
+      /* Nelle conche l'erba e' piu' folta: l'acqua e la terra ci finiscono
+         dentro. E' la stessa curvatura che ha gia' scurito l'occlusione. */
+      if(l1>0) pd*=_cl(1-l1*.10,.35,1);
+
+      /* Il bordo bagnato della Riva: appena SOTTO la soglia del velo, la
+         terra e' scura e satura. Non e' una decalcomania: e' bagnata. */
+      const bag=_ss(.735,.800,umi)*(1-_ss(.800,.815,umi));
+      if(bag>.01){
+        const f=bag*.55;
+        morb[0]*=1-f*.52; morb[1]*=1-f*.46; morb[2]*=1-f*.34;
+        dura[0]*=1-f*.55; dura[1]*=1-f*.50; dura[2]*=1-f*.36;
+        pd=pd+(1-pd)*bag*.6;
+      }
+
+      /* La neve: una coperta sulle cime piu' alte, e solo dove il pendio la
+         trattiene. Non e' un bioma nuovo, non cambia una regola: e' il
+         Costolone di Ferro visto per quello che e', una montagna. */
+      const neve=_ss(.760,.880,alt)*(1-_ss(.170,.300,grad));
+
+      /* la screziatura per vertice: due scale, e nessuna delle due e' quella
+         della texture. Tre scale diverse = nessuna ripetizione leggibile. */
+      const gg=.93+h2(i+ci*97,j+cj*89,1301)*.14;
+      const gv=.90+vnoise(x,y,90,517)*.22;
+      const k=gg*gv;
+
+      I8[v*24+12]=_cl(Math.round(nx*127),-127,127);
+      I8[v*24+13]=_cl(Math.round(ny*127),-127,127);
+      I8[v*24+14]=_cl(Math.round(nz*127),-127,127);
+      I8[v*24+15]=_cl(Math.round(neve*127),0,127);
+      U8[v*24+16]=_cl(morb[0]*k,0,255); U8[v*24+17]=_cl(morb[1]*k,0,255);
+      U8[v*24+18]=_cl(morb[2]*k,0,255); U8[v*24+19]=_cl(ao*255,0,255);
+      U8[v*24+20]=_cl(dura[0]*k,0,255); U8[v*24+21]=_cl(dura[1]*k,0,255);
+      U8[v*24+22]=_cl(dura[2]*k,0,255); U8[v*24+23]=_cl(pd*255,0,255);
+    }
+
+    /* la gonna: 14 unita' verticali sui quattro bordi. Fra un livello 48 e
+       un livello 16 la quota del bordo non combacia mai, e la crepa che si
+       apre e' una riga di cielo lunga mezzo schermo. La gonna la tappa senza
+       una sola condizione in piu' nel ciclo di disegno. */
+    const GONNA=14;
+    let vs=nvI;
+    const bordi=[];
+    for(let b=0;b<4;b++){
+      const lista=[];
+      for(let t=0;t<nl;t++){
+        let v;
+        if(b===0) v=t;                       // j=0
+        else if(b===1) v=(nl-1)*nl+t;        // j=N
+        else if(b===2) v=t*nl;               // i=0
+        else v=t*nl+nl-1;                    // i=N
+        lista.push(v);
+      }
+      bordi.push(lista);
+    }
+    for(let b=0;b<4;b++){
+      const lista=bordi[b];
+      for(let t=0;t<nl;t++){
+        const src=lista[t];
+        for(let d=0;d<2;d++){
+          const v=vs++;
+          F[v*6]=F[src*6]; F[v*6+1]=F[src*6+1];
+          F[v*6+2]=F[src*6+2]-(d?GONNA:0);
+          for(let q=12;q<24;q++) I8[v*24+q]=I8[src*24+q];
+          /* la gonna e' quasi sempre di taglio: scurirla evita che una riga
+             chiara tradisca dov'e' la cucitura fra due livelli */
+          U8[v*24+16]=U8[src*24+16]*.55; U8[v*24+17]=U8[src*24+17]*.55;
+          U8[v*24+18]=U8[src*24+18]*.55;
+          U8[v*24+20]=U8[src*24+20]*.55; U8[v*24+21]=U8[src*24+21]*.55;
+          U8[v*24+22]=U8[src*24+22]*.55;
+        }
+      }
+    }
+
+    const nIdx=N*N*6 + 4*N*6;
+    const IX=new Uint16Array(nIdx);
+    let t2=0;
+    for(let j=0;j<N;j++) for(let i=0;i<N;i++){
+      const a=j*nl+i, b=a+1, c=a+nl, d=c+1;
+      IX[t2++]=a; IX[t2++]=c; IX[t2++]=b; IX[t2++]=b; IX[t2++]=c; IX[t2++]=d;
+    }
+    for(let b=0;b<4;b++){
+      const base=nvI+b*nl*2;
+      for(let t=0;t<N;t++){
+        const a=base+t*2, aa=a+1, c=base+(t+1)*2, cc=c+1;
+        IX[t2++]=a; IX[t2++]=aa; IX[t2++]=c;
+        IX[t2++]=c; IX[t2++]=aa; IX[t2++]=cc;
+      }
+    }
+
+    /* 3 · l'acqua: solo dove esiste. Fuori dalla Riva Salsa questo blocco
+       produce zero triangoli e zero buffer. */
+    let acq=null;
+    let bagnato=false;
+    for(let k=0;k<CGN*CGN;k++) if(Gu[k]>.775){ bagnato=true; break }
+    if(bagnato){
+      const NA=24, sa=PZ/NA, nla=NA+1;
+      const AP2=[], AQ2=[], AI=[]; const idx=new Int32Array(nla*nla).fill(-1);
+      let na=0;
+      const umiA=(i,j)=>bil(Gu,(i*(NB/NA)+GOF)/CST,(j*(NB/NA)+GOF)/CST);
+      const quo=(i,j)=>{
+        const gi=i*(NB/NA)+GOF, gj=j*(NB/NA)+GOF;
+        return Gq[Math.round(gj)*GR+Math.round(gi)];
+      };
+      const metti=(i,j)=>{
+        const k2=j*nla+i;
+        if(idx[k2]>=0) return idx[k2];
+        const u=umiA(i,j);
+        /* il velo: due o tre unita', non un lago. Il minimo di 0,9 unita'
+           serve solo a non litigare col terreno nello z-buffer. */
+        const film=.9+_ss(.775,.830,u)*2.6;
+        AP2.push(ox+i*sa, oy+j*sa, quo(i,j)+film);
+        AQ2.push(_cl(_ss(.790,.870,u)*255,0,255),
+                 _cl((1-Math.abs(u-.800)/.030)*255,0,255), 0, 0);
+        idx[k2]=na; return na++;
+      };
+      for(let j=0;j<NA;j++) for(let i=0;i<NA;i++){
+        const u=Math.max(umiA(i,j),umiA(i+1,j),umiA(i,j+1),umiA(i+1,j+1));
+        if(u<=.775) continue;
+        const a=metti(i,j), b=metti(i+1,j), c=metti(i,j+1), d=metti(i+1,j+1);
+        AI.push(a,c,b,b,c,d);
+      }
+      if(AI.length){
+        const ab=new ArrayBuffer(na*16);
+        const AF=new Float32Array(ab), AU=new Uint8Array(ab);
+        for(let v=0;v<na;v++){
+          AF[v*4]=AP2[v*3]; AF[v*4+1]=AP2[v*3+1]; AF[v*4+2]=AP2[v*3+2];
+          AU[v*16+12]=AQ2[v*4]; AU[v*16+13]=AQ2[v*4+1];
+        }
+        const vb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,vb);
+        gl.bufferData(gl.ARRAY_BUFFER,ab,gl.STATIC_DRAW);
+        const ib=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(AI),gl.STATIC_DRAW);
+        acq={v:vb,i:ib,n:AI.length,byte:ab.byteLength+AI.length*2};
+      }
+    }
+
+    const vb=gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER,vb); gl.bufferData(gl.ARRAY_BUFFER,buf,gl.STATIC_DRAW);
+    const ib=gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,IX,gl.STATIC_DRAW);
+
+    const byt=buf.byteLength+IX.byteLength+(acq?acq.byte:0);
+    byteTot+=byt;
+    conto.costruiti++;
+    return {v:vb,i:ib,n:nIdx,liv:liv,acq:acq,uso:giro,byte:byt,ms:performance.now()-t0,
+            ox:Math.round((ox+PZ*.5)/PERIODO)*PERIODO, oy:Math.round((oy+PZ*.5)/PERIODO)*PERIODO};
+  }
+
+  function butta(m){
+    gl.deleteBuffer(m.v); gl.deleteBuffer(m.i);
+    if(m.acq){ gl.deleteBuffer(m.acq.v); gl.deleteBuffer(m.acq.i) }
+    byteTot-=m.byte;
+  }
+
+  /* ── 8d · il fotogramma ──────────────────────────────────────────────── */
+  const visti=[];
+  let pronti=false;
+
+  function scegliLivello(dc){
+    /* 260 e 620 unita', con isteresi del 12%: un pezzo che sta esattamente
+       sulla soglia altrimenti si ricostruisce a ogni fotogramma. */
+    return dc<260 ? 0 : dc<620 ? 1 : 2;
+  }
+
+  function raccogli(vp,occhio,D,z0){
+    visti.length=0;
+    if(!_inv(vp,invVP)) return;
+    /* i quattro raggi dagli angoli dello schermo, tirati fino a terra. E' la
+       stessa tecnica di oggi — che non si tocca perche' e' giusta — solo
+       ricavata dalla matrice invece che da un oggetto camera esterno, cosi'
+       il modulo non ha piu' nessuna dipendenza per sapere cosa si vede. */
+    let x0=occhio[0],x1=occhio[0],y0=occhio[1],y1=occhio[1];
+    for(let a=0;a<4;a++){
+      const sx=(a&1)?1:-1, sy=(a&2)?1:-1;
+      const w=invVP[3]*sx+invVP[7]*sy+invVP[11]+invVP[15];
+      const px=(invVP[0]*sx+invVP[4]*sy+invVP[8]+invVP[12])/w;
+      const py=(invVP[1]*sx+invVP[5]*sy+invVP[9]+invVP[13])/w;
+      const pz=(invVP[2]*sx+invVP[6]*sy+invVP[10]+invVP[14])/w;
+      let dx=px-occhio[0], dy=py-occhio[1], dz=pz-occhio[2];
+      const dl=Math.sqrt(dx*dx+dy*dy+dz*dz)||1; dx/=dl; dy/=dl; dz/=dl;
+      let t = dz<-1e-4 ? (z0-occhio[2])/dz : Infinity;
+      if(!(t>0)||t>D*2.6) t=D*2.6;
+      const qx=occhio[0]+dx*t, qy=occhio[1]+dy*t;
+      if(qx<x0)x0=qx; if(qx>x1)x1=qx;
+      if(qy<y0)y0=qy; if(qy>y1)y1=qy;
+    }
+    const lim=(typeof NCH!=='undefined')?NCH:1e9;
+    const i0=Math.floor(x0/PZ)-1, i1=Math.floor(x1/PZ)+1;
+    const j0=Math.floor(y0/PZ)-1, j1=Math.floor(y1/PZ)+1;
+    for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){
+      if(i<0||j<0||i>=lim||j>=lim) continue;
+      const cx=i*PZ+PZ*.5, cy=j*PZ+PZ*.5;
+      const dc=Math.hypot(cx-occhio[0],cy-occhio[1]);
+      visti.push(i,j,dc);
+    }
+    /* Dal piu' vicino al piu' lontano. Sono una dozzina di terne, quindi un
+       ordinamento a inserzione senza allocare niente: e il vantaggio non e'
+       l'ordine in se', e' che il pezzo davanti riempie lo z-buffer per primo
+       e la scheda butta via i fragment dietro senza calcolarli. Con sette
+       prelievi per fragment e' la cosa piu' redditizia di tutto il modulo. */
+    for(let a=3;a<visti.length;a+=3){
+      const vi=visti[a], vj=visti[a+1], vd=visti[a+2];
+      let b=a-3;
+      while(b>=0 && visti[b+2]>vd){ visti[b+3]=visti[b]; visti[b+4]=visti[b+1];
+        visti[b+5]=visti[b+2]; b-=3 }
+      visti[b+3]=vi; visti[b+4]=vj; visti[b+5]=vd;
+    }
+  }
+
+  function prendi(i,j,dc,budget,t0){
+    const k=i+','+j;
     let m=cache.get(k);
-    if(m)return m;
-    const ox=ci*PZ, oy=cj*PZ, s=PZ/N;
-    const nv=(N+1)*(N+1);
-    const P=new Float32Array(nv*3), NR=new Float32Array(nv*3), C=new Float32Array(nv*3);
-    for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){
-      const x=ox+i*s, y=oy+j*s, v=(j*(N+1)+i)*3;
-      P[v]=x; P[v+1]=y; P[v+2]=quota(x,y);
-      /* La normale dalle quote intorno: e' quello che fa vedere il pendio
-         quando il sole gira, senza una sola texture. */
-      const hx=quota(x+s,y)-quota(x-s,y), hy=quota(x,y+s)-quota(x,y-s);
-      let nx=-hx, ny=-hy, nz=2*s;
-      const nl=Math.hypot(nx,ny,nz);
-      NR[v]=nx/nl; NR[v+1]=ny/nl; NR[v+2]=nz/nl;
-      tinta(x,y,col);
-      const g=.88+h2(i,j,1301)*.24;              // screziatura, come la grana del piano
-      C[v]=col[0]*g; C[v+1]=col[1]*g; C[v+2]=col[2]*g;
+    const liv=scegliLivello(dc);
+    if(m){
+      m.uso=giro;
+      /* il livello cambia solo con l'isteresi, e la ricostruzione riusa la
+         griglia... anzi no: la griglia madre e' una sola, condivisa. Quindi
+         si ricostruisce per intero, ma al massimo una volta per fotogramma
+         e solo se lo scarto e' netto. */
+      if(m.liv!==liv && budget.n<1 && (performance.now()-t0)<budget.ms){
+        const sog = liv>m.liv ? (m.liv===0?260*1.12:620*1.12) : (liv===0?260*.88:620*.88);
+        const oltre = liv>m.liv ? dc>sog : dc<sog;
+        if(oltre){ butta(m); cache.delete(k); m=null }
+      }
+      if(m) return m;
     }
-    const IX=new Uint16Array(N*N*6);
-    let t=0;
-    for(let j=0;j<N;j++)for(let i=0;i<N;i++){
-      const a=j*(N+1)+i, b=a+1, c2=a+N+1, d=c2+1;
-      IX[t++]=a; IX[t++]=c2; IX[t++]=b; IX[t++]=b; IX[t++]=c2; IX[t++]=d;
-    }
-    const mk=(dati,tipo)=>{const bu=gl.createBuffer();
-      gl.bindBuffer(tipo,bu); gl.bufferData(tipo,dati,gl.STATIC_DRAW); return bu};
-    m={p:mk(P,gl.ARRAY_BUFFER), n:mk(NR,gl.ARRAY_BUFFER), c:mk(C,gl.ARRAY_BUFFER),
-       i:mk(IX,gl.ELEMENT_ARRAY_BUFFER), n_:IX.length, uso:0};
+    if(budget.n>=budget.max || (performance.now()-t0)>budget.ms) return null;
+    budget.n++;
+    m=costruisci(i,j,liv);
     cache.set(k,m);
     return m;
   }
-  let giro=0;
+
+  function legaLuce(L,luce,sole){
+    const X = L || luceRiserva(luce,Lris);
+    soleN[0]=sole[0]; soleN[1]=sole[1]; soleN[2]=sole[2];
+    return X;
+  }
+
+  function unif(uu,X){
+    gl.uniform3fv(uu['uSole'],soleN);
+    gl.uniform3fv(uu['uColSole'],X.colSole);
+    gl.uniform3fv(uu['uColCielo'],X.colCielo);
+    gl.uniform3fv(uu['uColTerra'],X.colTerra);
+    gl.uniform3fv(uu['uColOriz'],X.colOriz);
+    gl.uniform3fv(uu['uColZenit'],X.colZenit);
+  }
+
   return {
-    disegna(vp,sole,occhio,luce){
-      gl.useProgram(pr);
-      gl.uniformMatrix4fv(U.vp,false,vp);
-      gl.uniform3fv(U.sole,sole);
-      /* L'aria in lontananza: di giorno un azzurro freddo, di notte il blu
-         della notte. E' quello che fa sembrare grande un paesaggio. */
-      gl.uniform3f(U.aria,.10+luce*.45,.16+luce*.52,.20+luce*.48);
-      const D=ch/(2*Math.tan(FOV/2)*CAM.z);
-      gl.uniform1f(U.lontano,D*2.2);
+
+    /** LA CHIAMATA DI OGNI FOTOGRAMMA. */
+    disegna(vp,sole,occhio,luce,L){
+      if(morto) return;
       giro++;
-      /* Quali pezzi di mondo si vedono davvero: si tirano quattro raggi dagli
-         angoli dello schermo fino a terra e si prende il rettangolo che li
-         contiene. Prima il raggio lo ricavavo dalla DISTANZA della camera —
-         duecentoventicinque pezzi per fotogramma invece di una dozzina, e la
-         cache si mangiava i buffer che stava disegnando. */
-      const tanV=Math.tan(FOV/2), tanH=tanV*(cw/ch);
-      const E=R3.occhio, z0=quota(CAM.x,CAM.y);
-      let x0=CAM.x,x1=CAM.x,y0=CAM.y,y1=CAM.y;
-      for(let a=0;a<4;a++){
-        const sx=(a&1)?1:-1, sy=(a&2)?1:-1;
-        const dx=R3.avanti[0]+R3.destra[0]*sx*tanH+R3.alto[0]*sy*tanV;
-        const dy=R3.avanti[1]+R3.destra[1]*sx*tanH+R3.alto[1]*sy*tanV;
-        const dz=R3.avanti[2]+R3.destra[2]*sx*tanH+R3.alto[2]*sy*tanV;
-        let t=dz<-1e-4?(z0-E[2])/dz:Infinity;
-        if(!(t>0)||t>D*3) t=D*3;          // sopra l'orizzonte si taglia alla nebbia
-        const px=E[0]+dx*t, py=E[1]+dy*t;
-        if(px<x0)x0=px; if(px>x1)x1=px;
-        if(py<y0)y0=py; if(py>y1)y1=py;
+      conto.pezzi=0; conto.tri=0; conto.chiamate=0;
+      occhioX=occhio[0]; occhioY=occhio[1]; occhioZ=occhio[2];
+      const X=legaLuce(L,luce,sole);
+
+      /* D: quanto e' lontano il punto mirato. Si ricava dalla matrice, non
+         da CAM: il modulo deve poter girare anche fuori dal gioco. */
+      let D=600;
+      const zt=(typeof quota==='function')?quota(occhio[0],occhio[1]):0;
+      if(_inv(vp,invVP)){
+        const w=invVP[11]+invVP[15];
+        const px=(invVP[8]+invVP[12])/w, py=(invVP[9]+invVP[13])/w, pz=(invVP[10]+invVP[14])/w;
+        let dx=px-occhio[0], dy=py-occhio[1], dz=pz-occhio[2];
+        const dl=Math.sqrt(dx*dx+dy*dy+dz*dz)||1; dx/=dl; dy/=dl; dz/=dl;
+        if(dz<-1e-4) D=_cl((zt-occhio[2])/dz, 80, 20000);
       }
-      const i0=Math.floor(x0/PZ)-1, i1=Math.floor(x1/PZ)+1;
-      const j0=Math.floor(y0/PZ)-1, j1=Math.floor(y1/PZ)+1;
-      for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
-        if(i<0||j<0||i>=NCH||j>=NCH)continue;
-        const m=maglia(i,j); m.uso=giro;
-        gl.bindBuffer(gl.ARRAY_BUFFER,m.p); gl.enableVertexAttribArray(A.p);
-        gl.vertexAttribPointer(A.p,3,gl.FLOAT,false,0,0);
-        gl.bindBuffer(gl.ARRAY_BUFFER,m.n); gl.enableVertexAttribArray(A.n);
-        gl.vertexAttribPointer(A.n,3,gl.FLOAT,false,0,0);
-        gl.bindBuffer(gl.ARRAY_BUFFER,m.c); gl.enableVertexAttribArray(A.c);
-        gl.vertexAttribPointer(A.c,3,gl.FLOAT,false,0,0);
+
+      /* il piano su cui si tirano i raggi: la quota vera sotto la camera,
+         abbassata di un rilievo intero. Piu' in basso di cosi' si
+         raccoglierebbero pezzi che nessuno vedra' mai. */
+      raccogli(vp,occhio,D, zt-(typeof QSC!=='undefined'?QSC:190));
+
+      /* Il contratto dice un pezzo per fotogramma, ed e' la regola giusta in
+         regime: costruire costa mezzo millisecondo e non si puo' pagare due
+         volte. Ma al primo fotogramma la cache e' vuota e "un pezzo per
+         volta" vuol dire dodici fotogrammi di buchi. Quindi: il primo giro
+         riempie a tempo, poi si torna alla regola. */
+      const budget = pronti ? {n:0,max:1,ms:6} : {n:0,max:64,ms:9};
+      const t0=performance.now();
+
+      gl.useProgram(prg);
+      /* La gonna dei bordi ha il verso che le capita: se qualcun altro
+         accende lo scarto delle facce di dietro per i corpi, qui va spento
+         o le cuciture fra livelli tornano a essere righe di cielo. */
+      gl.disable(gl.CULL_FACE);
+      gl.uniformMatrix4fv(U['uVP'],false,vp);
+      gl.uniform3fv(U['uOcchio'],occhio);
+      unif(U,X);
+      gl.uniform1i(U['uErba'],0); gl.uniform1i(U['uDuro'],1); gl.uniform1i(U['uMacro'],2);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,texE);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,texD);
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,texM);
+      gl.activeTexture(gl.TEXTURE0);
+      const nb = (L&&L.nebbia) ? L.nebbia : [D*.55, D*1.90];
+      gl.uniform2f(U['uNebbia'],nb[0],nb[1]);
+      gl.uniform2f(U['uDettaglio'],D*.30,D*1.15);
+      const ven=(L&&L.vento)?L.vento:[0,0];
+      const tt=(L&&typeof L.tempo==='number')?L.tempo:(performance.now()/1000);
+      gl.uniform2f(U['uVento'], ven[0]?ven[0]:tt*0.0035, ven[1]?ven[1]:tt*0.0021);
+
+      /* le decalcomanie, in coordinate relative a un'origine di fotogramma */
+      const odx=Math.round(occhio[0]/512)*512, ody=Math.round(occhio[1]/512)*512;
+      gl.uniform2f(U['uOrigD'],odx,ody);
+      if(nMacchie>0){
+        for(let i=0;i<nMacchie;i++){
+          const s2=i*4;
+          if(i<macN){
+            macU[s2]=macIn[s2]-odx; macU[s2+1]=macIn[s2+1]-ody;
+            macU[s2+2]=macIn[s2+2]; macU[s2+3]=macIn[s2+3];
+          } else { macU[s2]=0;macU[s2+1]=0;macU[s2+2]=0;macU[s2+3]=0 }
+        }
+        gl.uniform4fv(U['uMacchie[0]'],macU.subarray(0,nMacchie*4));
+      }
+      gl.uniform4f(U['uAnello'],anello[0]-odx,anello[1]-ody,anello[2],Math.max(anello[3],.001));
+      gl.uniform3fv(U['uColAnello'],colAnello);
+
+      if(ombraOn&&qual>=2&&L&&L.ombraTex&&L.ombraVP){
+        gl.uniformMatrix4fv(U['uOmbraVP'],false,L.ombraVP);
+        gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D,L.ombraTex);
+        gl.uniform1i(U['uOmbra'],3);
+        gl.uniform2f(U['uOmbraPar'], L.ombraBias||0.0022, L.ombraDado||0.0016);
+        gl.activeTexture(gl.TEXTURE0);
+      }
+
+      gl.enableVertexAttribArray(A.aP); gl.enableVertexAttribArray(A.aN);
+      gl.enableVertexAttribArray(A.aC0); gl.enableVertexAttribArray(A.aC1);
+
+      for(let q=0;q<visti.length;q+=3){
+        const m=prendi(visti[q],visti[q+1],visti[q+2],budget,t0);
+        if(!m) continue;
+        gl.uniform2f(U['uOrig'],m.ox,m.oy);
+        gl.bindBuffer(gl.ARRAY_BUFFER,m.v);
+        gl.vertexAttribPointer(A.aP,3,gl.FLOAT,false,24,0);
+        gl.vertexAttribPointer(A.aN,4,gl.BYTE,true,24,12);
+        gl.vertexAttribPointer(A.aC0,4,gl.UNSIGNED_BYTE,true,24,16);
+        gl.vertexAttribPointer(A.aC1,4,gl.UNSIGNED_BYTE,true,24,20);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.i);
-        gl.drawElements(gl.TRIANGLES,m.n_,gl.UNSIGNED_SHORT,0);
+        gl.drawElements(gl.TRIANGLES,m.n,gl.UNSIGNED_SHORT,0);
+        conto.pezzi++; conto.tri+=m.n/3; conto.chiamate++;
       }
-      /* Lo sfratto si fa a fine fotogramma e mai su un pezzo appena disegnato:
-         cancellare un buffer mentre e' legato e' l'errore che mi ha lasciato lo
-         schermo vuoto. */
-      if(cache.size>96){
-        for(const [kk,vv] of [...cache]){
-          if(cache.size<=72)break;
-          if(vv.uso===giro)continue;
-          gl.deleteBuffer(vv.p); gl.deleteBuffer(vv.n);
-          gl.deleteBuffer(vv.c); gl.deleteBuffer(vv.i);
-          cache.delete(kk);
+      if(!pronti && budget.n===0) pronti=true;
+
+      /* l'acqua, dopo il suolo, nella stessa passata: fusione accesa,
+         scrittura di profondita' spenta — altrimenti il velo cancella quello
+         che ci sta dietro. */
+      if(acquaOn){
+        let ha=false;
+        for(let q=0;q<visti.length;q+=3){
+          const m=cache.get(visti[q]+','+visti[q+1]);
+          if(m&&m.acq){ha=true;break}
+        }
+        if(ha){
+          gl.useProgram(prgA);
+          gl.uniformMatrix4fv(UA['uVP'],false,vp);
+          gl.uniform3fv(UA['uOcchio'],occhio);
+          unif(UA,X);
+          gl.uniform1f(UA['uTempo'],tt);
+          const ca=(L&&L.colAcqua)?L.colAcqua:[.055,.135,.145];
+          gl.uniform3f(UA['uAcqua'],ca[0],ca[1],ca[2]);
+          gl.uniform2f(UA['uNebbia'],nb[0],nb[1]);
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+          gl.depthMask(false);
+          gl.disableVertexAttribArray(A.aN); gl.disableVertexAttribArray(A.aC0);
+          gl.disableVertexAttribArray(A.aC1);
+          gl.enableVertexAttribArray(AA.aP); gl.enableVertexAttribArray(AA.aQ);
+          for(let q=0;q<visti.length;q+=3){
+            const m=cache.get(visti[q]+','+visti[q+1]);
+            if(!m||!m.acq) continue;
+            gl.uniform2f(UA['uOrig'],m.ox,m.oy);
+            gl.bindBuffer(gl.ARRAY_BUFFER,m.acq.v);
+            gl.vertexAttribPointer(AA.aP,3,gl.FLOAT,false,16,0);
+            gl.vertexAttribPointer(AA.aQ,4,gl.UNSIGNED_BYTE,true,16,12);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.acq.i);
+            gl.drawElements(gl.TRIANGLES,m.acq.n,gl.UNSIGNED_SHORT,0);
+            conto.tri+=m.acq.n/3; conto.chiamate++;
+          }
+          gl.disableVertexAttribArray(AA.aQ);
+          gl.depthMask(true); gl.disable(gl.BLEND);
+        }
+      }
+
+      /* Lo sfratto a fine fotogramma, e MAI su un pezzo del giro corrente:
+         cancellare un buffer mentre e' legato e' l'errore che lascia lo
+         schermo vuoto senza dire niente. Il tetto e' in byte, non in numero,
+         perche' un pezzo a 48 quadretti pesa nove volte uno a 16. */
+      conto.byte=byteTot;
+      if(byteTot>TETTO_BYTE){
+        for(const [kk,vv] of cache){
+          if(byteTot<=TETTO_BYTE*.75) break;
+          if(vv.uso===giro) continue;
+          butta(vv); cache.delete(kk);
         }
       }
     },
-    quanti(){ return cache.size }
+
+    /** La passata di profondita' per la mappa d'ombra. Stessi pezzi, fragment
+     *  minimo. La chiama il chiamante, e solo a qualita' 2. */
+    profondita(vpSole){
+      if(morto||!prgP) return;
+      gl.useProgram(prgP);
+      gl.uniformMatrix4fv(UP.uVP,false,vpSole);
+      gl.enableVertexAttribArray(AP.aP);
+      for(let q=0;q<visti.length;q+=3){
+        const m=cache.get(visti[q]+','+visti[q+1]);
+        if(!m) continue;
+        gl.bindBuffer(gl.ARRAY_BUFFER,m.v);
+        gl.vertexAttribPointer(AP.aP,3,gl.FLOAT,false,24,0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.i);
+        gl.drawElements(gl.TRIANGLES,m.n,gl.UNSIGNED_SHORT,0);
+      }
+    },
+
+    /** Le decalcomanie del fotogramma. Array piatto, 4 float per macchia:
+     *  [x, y, raggio, tipo*8+forza]. Va chiamata PRIMA di disegna(). */
+    macchie(arr,n){
+      if(morto) return;
+      /* Il tipo si converte QUI in una forza col segno, cosi' il fragment
+         non ha un solo ramo dentro il ciclo:
+         0 borgo (terra battuta scura) · 1 sentiero (polvere chiara)
+         2 impronte · 3 anello del vessillo · 4 erba calpestata */
+      const PESO=[-1.00, .78, -.55, 0, -.30];
+      const tmp=[];
+      for(let i=0;i<n;i++){
+        const x=arr[i*4], y=arr[i*4+1], r=arr[i*4+2], c=arr[i*4+3];
+        const tp=Math.floor(c/8), fz=(c-tp*8)/7;
+        if(tp===3){
+          anello[0]=x; anello[1]=y; anello[2]=r;
+          anello[3]=Math.max(2.5, r*.035);
+          const f=fz*.9+.1;
+          colAnello[0]=.42*f; colAnello[1]=.30*f; colAnello[2]=.12*f;
+          continue;
+        }
+        const d=Math.hypot(x-occhioX,y-occhioY);
+        tmp.push({x:x,y:y,r:r,w:(PESO[tp]||0)*fz,d:d});
+      }
+      tmp.sort((a,b)=>a.d-b.d);
+      macN=Math.min(8,tmp.length);
+      for(let i=0;i<macN;i++){
+        macIn[i*4]=tmp[i].x; macIn[i*4+1]=tmp[i].y;
+        macIn[i*4+2]=tmp[i].r; macIn[i*4+3]=tmp[i].w;
+      }
+    },
+
+    /** Il velo d'acqua della Riva Salsa: acceso o spento. */
+    acqua(on){ acquaOn=!!on },
+
+    /** Butta la cache di un pezzo. E' lo stesso reticolo dei chunk del gioco:
+     *  CH = 500 = il lato del pezzo del terreno. */
+    sporca(ci,cj){
+      const k=ci+','+cj, m=cache.get(k);
+      if(m){ butta(m); cache.delete(k) }
+    },
+
+    /** 0, 1 o 2. Ricompila: succede due o tre volte in una partita, mai nel
+     *  ciclo. Cambiano prelievi, decalcomanie e mappa d'ombra. */
+    qualita(n){
+      if(morto) return;
+      const q=_cl(n|0,0,2);
+      if(q===qual) return;
+      qual=q; compilaTutto();
+    },
+
+    /** Accende o spegne la lettura della mappa d'ombra (solo a qualita' 2).
+     *  E' fuori contratto ma serve: il framebuffer lo possiede il chiamante,
+     *  perche' ci disegnano dentro anche i corpi. */
+    ombra(on){
+      const v=!!on;
+      if(v===ombraOn) return;
+      ombraOn=v; compilaTutto();
+    },
+
+    /** Scalda la cache prima del primo fotogramma: utile all'avvio e dopo un
+     *  teletrasporto. Fuori contratto, facoltativa. */
+    scalda(){ pronti=false },
+
+    /** Contesto perso: cancella tutto e diventa inerte. */
+    spegni(){
+      if(morto) return;
+      morto=true;
+      for(const [,m] of cache) butta(m);
+      cache.clear();
+      if(texE)gl.deleteTexture(texE); if(texD)gl.deleteTexture(texD);
+      if(texM)gl.deleteTexture(texM);
+      if(prg)gl.deleteProgram(prg); if(prgA)gl.deleteProgram(prgA);
+      if(prgP)gl.deleteProgram(prgP);
+      prg=prgA=prgP=null; texE=texD=texM=null;
+      byteTot=0;
+    },
+
+    quanti(){ return cache.size },
+    conto: conto,
+
+    /* diagnostica extra, per la prova */
+    get qualitaOra(){ return qual },
+    get prelievi(){ return qual>=2?(ombraOn?7:6):qual>=1?3:2 }
   };
+}
+
+/* Se il modulo gira dentro un bundler o un test, esce anche di qui. */
+if(typeof module!=='undefined'&&module.exports)
+  module.exports={creaTerreno:creaTerreno, luceRiserva:luceRiserva};
+
+/* ── L3: l'oggetto della luce, quello che il contratto chiama L ─────
+   Si chiama L3 e non LUCE perche' LUCE e' gia' il nome del modulo qui
+   sopra. E' l'unico posto dove chi disegna il rilievo legge che colore
+   ha la luce: se ognuno se lo ricavasse per conto suo, la gente
+   finirebbe illuminata da un sole diverso da quello che illumina la
+   terra, e si vedrebbe al primo sguardo.
+   Una sola differenza con lo stato del modulo, ed e' la nebbia: il
+   modulo la tiene come (inizio, 1/(fine-inizio)) perche' il SUO glsl la
+   moltiplica; il terreno la usa con smoothstep e vuole (inizio, fine).
+   La conversione sta qui, in due righe, e non dentro nessuno dei due:
+   cosi' nessuno dei due ha torto. */
+const L3={
+  vp:null, occhio:null, sole:null,
+  colSole:null, colCielo:null, colTerra:null, colOriz:null, colZenit:null,
+  nebbia:new Float32Array(2),
+  ora:.5, luce:1,
+  ombraVP:null, ombraTex:null, ombraLato:0, ombraOn:false,
+  ombraBias:.0030, ombraDado:.0016,
+  vento:new Float32Array(2), tempo:0,
+  qual:2, dpr:1
+};
+
+/** Una volta per fotogramma, prima di qualunque disegno in rilievo.
+    D = la distanza camera-mira, che decide dove comincia e dove muore
+    la nebbia: [0,55*D, 1,9*D]. Agganciarla a D e non a un numero fisso
+    e' il motivo per cui il paesaggio resta grande a ogni zoom. */
+function aggiornaLuce(D){
+  const tms=performance.now();
+  const S=LUCE.aggiorna(ME.orologio.tempo, luceOra(), D, tms);
+  L3.sole=S.sole;
+  L3.colSole=S.colSole; L3.colCielo=S.colCielo; L3.colTerra=S.colTerra;
+  L3.colOriz=S.colOriz; L3.colZenit=S.colZenit;
+  L3.nebbia[0]=S.nebbia[0];
+  L3.nebbia[1]=S.nebbia[0]+1/Math.max(S.nebbia[1],1e-6);
+  L3.ora=S.ora; L3.luce=S.l;
+  /* Lo scorrimento delle nuvole. Il piu' 0,17 non e' un vezzo: il
+     terreno tratta uno zero come "non me l'hanno dato" e ci mette il
+     suo, e al primo fotogramma il valore del modulo e' esattamente
+     zero. Un numero che non e' mai zero toglie il ramo di mezzo. */
+  L3.vento[0]=S.nuvPar[1]; L3.vento[1]=S.nuvPar[2]+.17;
+  L3.tempo=tms/1000;
+  return S;
+}
+
+/* Le decalcomanie del fotogramma: dove la terra e' stata calpestata.
+   Sono un termine in piu' nel fragment del suolo, non geometria nuova
+   e non un disegno sopra — per questo non possono mai coprire nessuno.
+   Il terreno ne prende al massimo otto, le piu' vicine alla camera.
+   Formato: [x, y, raggio, tipo*8+forza]
+   0 borgo (terra battuta) 1 sentiero 2 impronte 3 anello del vessillo
+   4 erba calpestata. */
+const MACCHIE=new Float32Array(4*10);
+function macchieDelGiro(){
+  let n=0;
+  const met=(x,y,r,t,f)=>{ if(n>=10)return; const s=n*4;
+    MACCHIE[s]=x; MACCHIE[s+1]=y; MACCHIE[s+2]=r; MACCHIE[s+3]=t*8+f; n++ };
+  /* Il borgo: la terra intorno al fuoco e' battuta da anni di piedi. */
+  met(ME.borgo.x, ME.borgo.y, BS*.42, 0, 6);
+  /* L'anello del vessillo. Il cerchio ha 230 unita' di diametro e a
+     zoom normale non ci sta in larghezza su un telefono: non si
+     rimpicciolisce il raggio (e' una REGOLA, R_ASTA=115), si disegna
+     come un filo di luce sul terreno e se ne legge l'arco dove taglia
+     lo schermo. A zoom largo si rivede intero. Uno solo per volta: il
+     piu' vicino al capo, che e' quello che gli interessa. */
+  let vic=null, dv=1e9;
+  for(const a of ME.aste){
+    const d=dist(a.x,a.y,ME.capo.x,ME.capo.y);
+    if(d<dv){ dv=d; vic=a }
+  }
+  if(vic) met(vic.x, vic.y, R_ASTA, 3, vic.fuoco?7:5);
+  /* L'erba calpestata sotto il capo, e la scia di chi lo segue. */
+  const c=ME.capo;
+  met(ix(c), iy(c), 30, 4, 4);
+  for(let k=scia.length-1, salto=0; k>=0 && n<10; k-=6, salto++){
+    const p=scia[k];
+    const eta=1-(sciaD-p.d)/720;
+    if(eta<=0) break;
+    met(p.x, p.y, 22, 2, Math.max(1,Math.round(eta*6)));
+  }
+  return n;
 }
 
 function disegna(){
