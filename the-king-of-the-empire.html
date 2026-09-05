@@ -131,11 +131,20 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
 #pborsa .bdx b{color:#f3ece0}
 #pcorpo h2{margin:0 0 6px;font-size:clamp(19px,5vw,24px);font-weight:800;letter-spacing:-.5px}
 #pcorpo .psotto{margin:0 auto 16px;max-width:46ch;font-size:12.5px;color:#9fb1ba;line-height:1.55}
-/* le schede: una fila che scorre col dito. Ogni scheda e' un ritratto,
-   il nome, il tratto, il prezzo e lo stato (tuo / in vendita / troppo caro). */
-#pscelte{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 2px 14px;
+/* le schede: quattro file, una per popolo, e ognuna scorre col dito. Ogni
+   scheda e' un ritratto, il nome, il dono, il prezzo e lo stato (tuo / in
+   vendita / troppo caro). Il popolo sta in testa alla fila, con il colore
+   del suo stendardo. */
+#pscelte{display:block}
+.ppop{display:flex;align-items:baseline;gap:10px;margin:14px 2px 2px;text-align:left}
+.ppop:first-child{margin-top:4px}
+.ppop i{display:inline-block;width:10px;height:10px;border-radius:50%;flex:0 0 10px;
+  box-shadow:0 0 0 2px rgba(255,255,255,.12);align-self:center}
+.ppop b{font-size:15px;font-weight:800;letter-spacing:-.2px}
+.ppop span{font-size:11px;color:#8fb8c8;line-height:1.3}
+.pfila{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 2px 10px;
   scrollbar-width:none;-webkit-overflow-scrolling:touch}
-#pscelte::-webkit-scrollbar{display:none}
+.pfila::-webkit-scrollbar{display:none}
 .pc{flex:0 0 150px;scroll-snap-align:center;position:relative;text-align:left;
   background:#0f1a22;border:1.5px solid rgba(143,184,200,.18);border-radius:16px;overflow:hidden;
   padding:0;cursor:pointer;transition:transform .14s,border-color .14s,box-shadow .14s;color:inherit}
@@ -237,7 +246,7 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
   <div id="pcielo">
     <canvas id="pscena"></canvas>
     <div id="ptitolo">
-      <p class="peye">Terre alte · anteprima</p>
+      <p class="peye">Quattro popoli · venti condottieri · anteprima</p>
       <h1>The King of the Empire</h1>
       <p class="pclaim">Un popolo ti cammina dietro. Non dai ordini: pianti un'asta,
          e chi ti segue resta lì a lavorare. Tienilo vivo.</p>
@@ -251,13 +260,14 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
     </div>
     <h2>Scegli il tuo condottiero</h2>
     <p class="psotto">Il condottiero è un NFT: lo compri, è tuo, e il villaggio che fonderai
-       resta legato a lui. Ognuno ha una terra, un'arma e un dono diverso.</p>
+       resta legato a lui. Quattro popoli, cinque condottieri ciascuno: ognuno ha una
+       terra, un'arma e un dono diverso, e in campo è lui a guidare la fila.</p>
     <div id="pscelte"></div>
     <div id="pazione">
       <button id="pcompra" type="button">Scegli un condottiero</button>
       <p id="pmsg"></p>
     </div>
-    <p class="pnota">Anteprima: i TON qui sono di prova e i cinque condottieri sono segnaposto.
+    <p class="pnota">Anteprima: i TON qui sono di prova e i venti condottieri sono segnaposto.
        Nel gioco vero si comprano sulla blockchain TON e il portafoglio te li mostra qui.</p>
   </div>
 </div></div>
@@ -975,6 +985,7 @@ function ondata(dt){
   const fuoco=ME.aste.some(a=>a.fuoco);
   let p=(notte?.055:.014)*dt*(fuoco?4.5:1);
   p*=clamp(VIVI.length/8,.5,2.2);
+  if(notte&&DONO('notte')) p*=.65;      // dono 'notte': i predoni la evitano
   if(nemici.length>=16)p=0;
   if(Math.random()<p){
     const an=Math.random()*TAU, d=560+Math.random()*260;
@@ -1214,7 +1225,14 @@ function passo(dt){
      arriva in tre fotogrammi. V_CAPO e i moltiplicatori del carico non si
      toccano — cambia solo come ci si arriva, e cioè che si sente il peso. */
   const mv=leggiMovimento();
-  const vmax=V_CAPO*(c.porta.length>2?.9:1)*(c.spalla?.75:1);
+  const vmax=V_CAPO*(DONO('corsa')?1.12:1)*(c.porta.length>2?.9:1)*(c.spalla?.75:1);
+  /* anche il capo si cura al fuoco: piano, o in fretta col dono 'fuoco' */
+  if(c.vita<c.vitaMax&&dist(c.x,c.y,ME.borgo.x,ME.borgo.y)<70)
+    c.vita=Math.min(c.vitaMax,c.vita+dt*(DONO('fuoco')?.15:.05));
+  /* i rivali della partita: quando arrivi al loro campo, te lo si dice una volta */
+  if(ME.rivali) for(let k=0;k<ME.rivali.length;k++){ const r=ME.rivali[k];
+    if(!r.visto&&dist(c.x,c.y,r.x,r.y)<460){ r.visto=true; const C=RIVALE(r);
+      dire('Il campo di '+C.nome+', '+POPOLO(C.pop|0).nome.toLowerCase()+' di '+r.nome) } }
   const dvx=mv.x*vmax*Math.min(1,mv.f), dvy=mv.y*vmax*Math.min(1,mv.f);
   const ovx=c.vx||0, ovy=c.vy||0;
   const kc=mv.f>.02?K_CAPO:K_FCAPO;
@@ -1280,8 +1298,13 @@ function passo(dt){
 
     /* respiro: fuori dal cerchio ci si consuma, e si torna a casa da soli */
     const dBorgo=dist(p.x,p.y,ME.borgo.x,ME.borgo.y);
-    if(dBorgo>ME.respiro){ p.vig-=8*dt } else { p.vig=Math.min(100,p.vig+6*dt) }
-    if(p.vig<=15&&p.stato!=='torna'&&p.stato!=='ferito'){
+    if(dBorgo>ME.respiro){ p.vig-=8*dt*(DONO('canto')?.6:1) } else { p.vig=Math.min(100,p.vig+6*dt) }
+    /* Al fuoco le ferite si chiudono: piano per tutti, in fretta col dono
+       'fuoco'. Prima nessuno guariva mai in sessione, e un contadino morso
+       restava a mezza vita fino al giorno dopo. */
+    if(dBorgo<70&&p.vita<p.vitaMax&&p.stato!=='ferito'&&p.stato!=='inspalla')
+      p.vita=Math.min(p.vitaMax,p.vita+dt*(DONO('fuoco')?.10:.03));
+    if(p.vig<=(DONO('cuore')?7:15)&&p.stato!=='torna'&&p.stato!=='ferito'){
       p.stato='torna'; p.asta=null; p.attesa=3; p.obb=null;
     }
     /* La fame è a lungo termine: non la vedi mai mentre giochi, la vedi nel
@@ -1291,7 +1314,7 @@ function passo(dt){
        la salute. Minuti di preavviso, non secondi. */
     if(FAME.vuoto){
       p.fame=Math.min(1,(p.fame||0)+dt/240);
-      if(p.fame>.55&&p.stato==='lavora'){ p.stato='torna'; p.asta=null; p.attesa=1; p.obb=null }
+      if(p.fame>(DONO('cuore')?.68:.55)&&p.stato==='lavora'){ p.stato='torna'; p.asta=null; p.attesa=1; p.obb=null }
       if(p.fame>.85&&p.stato!=='ferito'){ p.vita-=dt*.012; if(p.vita<=0){ p.vita=0; p.stato='ferito'; p.agonia=0 } }
     } else if(p.fame>0) p.fame=Math.max(0,p.fame-dt/60);
 
@@ -1332,7 +1355,7 @@ function passo(dt){
         if(dist(p.x,p.y,a.x,a.y)<44){
           const e=ME.edifici.find(e=>e.asta===a.id);
           if(e&&e.prog<1){
-            e.prog=Math.min(1,e.prog+dt*.055);
+            e.prog=Math.min(1,e.prog+dt*.055*(DONO('muro')?1.4:1));
             if(Math.random()<dt*3)scintilla(p.x,p.y-10,'#d9c08a');
             if(e.prog>=1){ dire(EDIFICI[e.tipo].n+' finita'); strappaAsta(a); salva(true) }
           }
@@ -1392,7 +1415,7 @@ function passo(dt){
       let bers=null,md=1e9;
       for(const n of nemici){ const d=dist(n.x,n.y,p.x,p.y); if(d<g&&d<md){md=d;bers=n} }
       if(bers){
-        p.colpo=A.gitt&&A.gitt>100?1.5:.8;
+        p.colpo=A.gitt&&A.gitt>100?(DONO('freccia')?1.05:1.5):.8;
         p.guarda=Math.atan2(bers.y-p.y,bers.x-p.x);
         if(A.gitt&&A.gitt>100){ frecce.push({x:p.x,y:p.y-8,tx:bers.x,ty:bers.y,t:0,dmg:A.dmg,da:p.uid}) }
         else { ferisciNemico(bers,A.dmg,p) }
@@ -1461,8 +1484,8 @@ function passo(dt){
         n.ric=N.ric;
         if(n.t==='ladro'&&b.carico){ n.rubato=b.carico; b.carico=null; n.fuga=true;
           dire('Ti hanno strappato un sacco'); }
-        else if(b.capo){ feriscilCapo(N.dmg) }
-        else { ferisciPersona(b,N.dmg) }
+        else { const dm=N.dmg*(n.t==='lupo'&&DONO('paura')?.7:1);   // dono 'paura': i lupi mordono piano
+          if(b.capo) feriscilCapo(dm); else ferisciPersona(b,dm) }
       }
     }
     muovi(n,bx,by,vel,dt);
@@ -1559,7 +1582,7 @@ function passo(dt){
   /* ── Nascite: il granaio pieno apre la porta di una capanna ── */
   if(ME.scorte.grano>=40&&VIVI.length<postiTot()){
     ME.natura=(ME.natura||0)+dt;
-    if(ME.natura>26){
+    if(ME.natura>(DONO('nascita')?18:26)){
       ME.natura=0; ME.scorte.grano-=40;
       const b=nuovaPersona(ME.borgo.x+(Math.random()-.5)*50,ME.borgo.y+(Math.random()-.5)*50,null);
       b.mest='bambino'; b.arma=null; b.cresce=170; b.vitaMax=2; b.vita=2;
@@ -1655,7 +1678,7 @@ function trovaCosa(x,y,r,p){
   return best;
 }
 function raccogli(p,o,dt){
-  const q=COSA[o.t].raccolta*dt*(p.mest==='contadino'?1:.55)*(CONDOTTIERO().tratto==='terra'?1.2:1);
+  const q=COSA[o.t].raccolta*dt*(p.mest==='contadino'?1:.55)*resaDono(COSA[o.t].res);
   const preso=Math.min(q,o.v);
   o.v-=preso;
   const res=COSA[o.t].res;
@@ -1709,7 +1732,7 @@ function polvere(o){
 }
 
 function ferisciPersona(p,d){
-  const mult=p.invulno<0?2:1;                 // vestizione: danno doppio
+  const mult=(p.invulno<0?2:1)*(DONO('scudo')?.75:1);   // vestizione: danno doppio · dono 'scudo': un quarto in meno
   p.vita-=d*mult;
   p.colpito=.2;
   if(p.vita<=0&&p.stato!=='ferito'){
@@ -1730,6 +1753,8 @@ function feriscilCapo(d){
 }
 function ferisciNemico(n,d,da){
   n.vita-=d; n.colpito=.2;
+  /* dono 'paura': un lupo a mezza vita scappa invece di finire il lavoro */
+  if(n.vita>0&&n.t==='lupo'&&!n.fuga&&DONO('paura')&&n.vita<=NEMICI.lupo.vita*.5) n.fuga=true;
   if(n.vita<=0){
     const N=NEMICI[n.t];
     if(N.bottino) posaATerra(N.bottino,n.x,n.y);
@@ -1779,6 +1804,9 @@ function colpoAsta(){
     FERMO=Math.max(FERMO,.04);
     c.vx-=Math.cos(c.dir||0)*60; c.vy-=Math.sin(c.dir||0)*60;
     SCOSSA=Math.max(SCOSSA,presi>1?4:2.5);
+    /* dono 'grido': il colpo a segno e' un grido, e chi lo sente riprende fiato */
+    if(DONO('grido')) for(let i=0;i<SEG.length;i++){ const p=SEG[i];
+      if(dist(p.x,p.y,c.x,c.y)<110) p.vig=Math.min(100,p.vig+15) }
   }
 }
 let FERMO=0, SCOSSA=0;
@@ -3634,7 +3662,7 @@ function morbida(u){ return u*u*(3-2*u) }   // la stessa curva dello smoothstep
    relativa e non della stessa quantita' assoluta. */
 var CD = {
   specie:0,   // 0 uomo · 1 gallina · 2 mucca · 3 cavallo · 4 lupo
-  pop:0,      // popolazione 0..7 (0 = Terre alte) · 15 = nemici
+  pop:0,      // popolo: 0 celti · 1 egizi · 2 romani · 3 nordici · 15 nemici
   mest:0,     // 0 contadino 1 guerriero 2 lanciere 3 arciere 4 spadaccino
               // 5 bambino 6 capo 7 eroe
   riga:-1,    // se >=0 vince sulla coppia (pop,mest): la riga della tavolozza
@@ -3697,16 +3725,19 @@ var C_PELLE=0,C_CAP=1,C_VESTE=2,C_SCURA=3,C_CUOIO=4,C_MET=5,C_ACC=6,
 var LUCIDO = [0.10, 0.06, 0.00, 0.00, 0.34, 1.00, 0.20, 0.00,
               0.12, 0.02, 0.88, 0.30, 0.14, 0.12, 0.55, 0.16];
 
-/* ── Le tavolozze di partenza. Le righe 0..7 sono pop 0 (Terre alte) e sono
-   esattamente le tinte del gioco di oggi: il modulo non cambia i colori,
-   cambia i corpi. Le altre popolazioni sono i segnaposto per i 25 eroi. */
+/* ── Le tavolozze di partenza. QUATTRO POPOLI, sempre gli stessi, come in
+   Imperivm: 0 CELTI (le Terre alte), 1 EGIZI, 2 ROMANI, 3 NORDICI. Le righe
+   0..7 sono pop 0 e sono esattamente le tinte del gioco di oggi: il modulo
+   non cambia i colori, cambia i corpi. Ogni popolo ha cinque condottieri
+   (venti in tutto): la loro riga personale sta nella meta' alta della
+   tavolozza, vedi TAV_H. Le pop 4..6 non esistono e ricadono sui Celti. */
 function riga16(pelle,cap,veste,scura,cuoio,met,acc,mant,legno,tes2,oro){
   return [pelle,cap,veste,scura,cuoio,met,acc,mant,legno,tes2,oro,
           '#8a8072','#d9bb52','#8a6134','#9098a0','#e8eae4'];
 }
 var TAVOLE = {};   // pop -> array di 8 righe (una per mestiere)
 (function(){
-  // pop 0 — TERRE ALTE. Le tinte del gioco, una per una.
+  // pop 0 — CELTI delle Terre alte. Le tinte del gioco, una per una.
   TAVOLE[0] = [
     riga16('#e0b184','#3b2a1c','#d9cfbb','#8a8472','#7a5a31','#c9c4b8','#c8342c','#c8342c','#7a5f38','#cfc4ad','#c8a94a'),
     riga16('#e0b184','#3b2a1c','#c9b9a0','#7e7460','#6b4f2e','#c9c4b8','#c8342c','#c8342c','#6b4f2e','#bdab90','#c8a94a'),
@@ -3728,14 +3759,9 @@ var TAVOLE = {};   // pop -> array di 8 righe (una per mestiere)
   TAVOLE[2] = [ ro('#d8c9a4','#8d8062'), ro('#c8b48a','#7d6f52'), ro('#c2b184','#786a4e'),
                 ro('#bfae86','#756748'), ro('#cdbc92','#7f7154'), ro('#e0d3b4','#948764'),
                 ro('#e3d6b8','#978a68'), ro('#e8dcc0','#9c8f6c') ];
-  // pop 3 — ELLENI. Bianco e azzurro, bronzo caldo.
-  var el = function(v,s){ return riga16('#dda878','#2f2318',v,s,'#7d5a30','#c3a86c','#2f6b9a','#2f6b9a','#7a5f38','#cfd6da','#d9b84c') };
-  TAVOLE[3] = [ el('#e6e2d8','#9aa0a2'), el('#dcd8cc','#8f9698'), el('#d2d6da','#858e94'),
-                el('#cfd8d4','#828f8c'), el('#dfe4e8','#8e979c'), el('#eeeae0','#a3a9ab'),
-                el('#f0ece2','#a6acae'), el('#f4f0e6','#aab0b2') ];
-  // pop 4 — NORDICI. Lana grezza, pelliccia, ferro scuro.
+  // pop 3 — NORDICI. Lana grezza, pelliccia, ferro scuro.
   var no = function(v,s){ return riga16('#dfb28c','#7a4a24',v,s,'#5c4026','#8e96a0','#6f8e3a','#3f5a2a','#6b4f2e','#a89a80','#b8a04a') };
-  TAVOLE[4] = [ no('#c2b49a','#7e7360'), no('#a9987e','#6d6250'), no('#9fae9c','#68715f'),
+  TAVOLE[3] = [ no('#c2b49a','#7e7360'), no('#a9987e','#6d6250'), no('#9fae9c','#68715f'),
                 no('#a6a086','#6b6754'), no('#b0b6b8','#71767a'), no('#cdc2ab','#867c68'),
                 no('#d2c7b0','#8a8070'), no('#d8cdb6','#8e8474') ];
   // pop 7 (== pop 15 dei nemici, rimappata) — il bruno-violaceo del gioco.
@@ -3743,8 +3769,8 @@ var TAVOLE = {};   // pop -> array di 8 righe (una per mestiere)
   TAVOLE[7] = [ ne('#5a3a4e','#3a2432'), ne('#5a3a4e','#3a2432'), ne('#553a52','#352438'),
                 ne('#4e3a4e','#32242e'), ne('#5f3f52','#3d2636'), ne('#63465a','#40283c'),
                 ne('#6a4a5e','#442a3e'), ne('#6a4a5e','#442a3e') ];
-  // pop 5 e 6 restano libere: finche' non arrivano, ripetono le Terre alte
-  TAVOLE[5] = TAVOLE[0]; TAVOLE[6] = TAVOLE[0];
+  // pop 4, 5 e 6 non esistono: i popoli sono quattro. Ricadono sui Celti.
+  TAVOLE[4] = TAVOLE[0]; TAVOLE[5] = TAVOLE[0]; TAVOLE[6] = TAVOLE[0];
 })();
 /* pop 15 (nemici) non entra in 64 righe: si rimappa sul blocco 7. */
 function rigaDi(pop,mest){ return ((pop===15?7:(pop&7))*8 + (mest&7))|0 }
@@ -4482,11 +4508,13 @@ var KIT = [
   /*6 capo      */ bit(P_ELMO)|bit(P_CRESTA)|bit(P_MANTELLO)|bit(P_COTTA)|bit(P_SPALLACCI)|bit(P_GONNA),
   /*7 eroe      */ bit(P_ELMO)|bit(P_CRESTA)|bit(P_MANTELLO)|bit(P_COTTA)|bit(P_SPALLACCI)|bit(P_SCUDO)|bit(P_GONNA)
 ];
-/* Quel che la popolazione cambia sopra al corredo: gli egizi non portano
-   elmi ma il nemes, i nordici hanno corna e barba e non conoscono la cotta.
-   Due maschere: la prima toglie, la seconda aggiunge. */
-var POP_TOGLIE = {1: bit(P_ELMO)|bit(P_COTTA), 4: bit(P_CRESTA)|bit(P_SCUDO)|bit(P_COTTA)};
-var POP_METTE  = {1: bit(P_NEMES), 4: bit(P_CORNI)|bit(P_BARBA)|bit(P_TONDO)};
+/* Quel che la popolazione cambia sopra al corredo: gli egizi (1) non
+   portano elmi ma il nemes, i nordici (3) hanno corna e barba e non
+   conoscono la cotta; celti (0) e romani (2) tengono l'elmo con la cresta
+   e si distinguono per le tinte. Due maschere: la prima toglie, la seconda
+   aggiunge. */
+var POP_TOGLIE = {1: bit(P_ELMO)|bit(P_COTTA), 3: bit(P_CRESTA)|bit(P_SCUDO)|bit(P_COTTA)};
+var POP_METTE  = {1: bit(P_NEMES), 3: bit(P_CORNI)|bit(P_BARBA)|bit(P_TONDO)};
 
 function pezziDi(d){
   if(d.pezzi>=0) return d.pezzi;
@@ -7408,6 +7436,32 @@ const C3={
       }
     }
     this.capo(ME.capo);
+    /* I tre rivali della partita, ognuno al suo fuoco con tre dei suoi. Il
+       condottiero e' grande come il tuo e guarda verso il tuo borgo; la sua
+       gente sta attorno al fuoco con la veste del suo popolo. Nessuno
+       cammina: a farli muovere e' la tappa della partita a quattro. */
+    if(ME.rivali) for(let k=0;k<ME.rivali.length;k++){
+      const r=ME.rivali[k], C=RIVALE(r), zr=quota(r.x,r.y);
+      if(!dentroVista(r.x,r.y,zr+14,.30)) continue;
+      const ci=CONDOTTIERI.indexOf(C), hx=r.x+18, hy=r.y+30;
+      let o=this.prendi();
+      o.specie=0; o.pop=C.pop|0; o.mest=6; o.arma=C.arma|0; o.riga=ci>=0?64+ci:-1; o.pezzi=-1;
+      o.x=hx; o.y=hy; o.z=quota(hx,hy);
+      o.dir=Math.atan2(ME.borgo.y-hy,ME.borgo.x-hx); o.fase=0; o.and=false;
+      o.carico=0; o.pieno=0; o.colpito=0; o.inc=0; o.giu=0; o.azione=0; o.avanz=0;
+      o.scala=1.30; o.seme=(ci*41+7)&255; o.uid=-5000000-k;
+      /* tre attorno al fuoco a 40 unita', su angoli che lasciano libero il
+         lato dell'eroe (+y) e i tre pezzi di scena: nessuno dentro una capanna */
+      for(let i=0;i<3;i++){
+        const an=1.9+i*1.6+k*.3, px=r.x+Math.cos(an)*40, py=r.y+Math.sin(an)*40;
+        o=this.prendi();
+        o.specie=0; o.pop=C.pop|0; o.mest=(i===2)?1:0; o.arma=(i===2)?2:1; o.riga=-1; o.pezzi=-1;
+        o.x=px; o.y=py; o.z=quota(px,py);
+        o.dir=Math.atan2(r.y-py,r.x-px); o.fase=0; o.and=false;
+        o.carico=0; o.pieno=0; o.colpito=0; o.inc=0; o.giu=0; o.azione=0; o.avanz=0;
+        o.scala=.95+(((k*3+i)*7)%11)/100; o.seme=(k*50+i*17+3)&255; o.uid=-5000100-k*10-i;
+      }
+    }
     /* La sentinella della torre: sta in cima, non cammina, e guarda fuori.
        È l'unica figura che non sta per terra, e per questo si vede. */
     for(const e of ME.edifici){
@@ -7479,8 +7533,8 @@ const SC={
      la regola in testa alla sezione vale anche per una cache. Una WeakMap
      lascia andare la voce quando il chunk viene sfrattato, senza che nessuno
      debba ricordarsi di pulire. */
-  zc:new WeakMap(), dc:new WeakMap(), borgoOm:{},
-  scorda(){ this.zc=new WeakMap(); this.dc=new WeakMap(); this.borgoOm={} },
+  zc:new WeakMap(), dc:new WeakMap(), borgoOm:{}, rivOm:[],
+  scorda(){ this.zc=new WeakMap(); this.dc=new WeakMap(); this.borgoOm={}; this.rivOm=[] },
   /* I chunk che la vista vorrebbe e che non esistono ancora. Il disegno li
      SEGNA, il passo di simulazione li GENERA — pochi per tick, cosi' un
      teletrasporto o uno schermo largo non fanno nascere cinquanta chunk in
@@ -7749,6 +7803,25 @@ const SC={
       for(let i=0;i<ns;i++){
         const an=i/6*TAU+.4, x=gr.x+Math.cos(an)*30, y=gr.y+Math.sin(an)*30;
         this.metti(I.sacco,x,y,quota(x,y),an,15,1.0,i,0);
+      }
+    }
+
+    /* 2b · i campi dei tre rivali: un fuoco, due capanne e un granaio. Per
+       ora con le stesse maglie del tuo borgo: le maglie per popolo (la villa
+       romana, la casa di fango egizia, la casa lunga nordica) sono nella
+       tabella di marcia. L'ombra della collina e' calcolata una volta per
+       campo, come per il borgo, in una cache che non si salva. */
+    if(ME.rivali) for(let k=0;k<ME.rivali.length;k++){
+      const r=ME.rivali[k], zr=quota(r.x,r.y);
+      if(!dentroVista(r.x,r.y,zr+20,.40)) continue;
+      this.metti(I.fuoco,r.x,r.y,zr,0,26,1.0,3,1);
+      const omR=this.ombraDi(this.rivOm[k]||(this.rivOm[k]={}),r.x,r.y,zr,k);
+      this.lista[this.n-1].om=omR;
+      const pezzi=[[I.capanna,-78,-40,SCALE_EDIF.capanna],[I.capanna,64,-58,SCALE_EDIF.capanna],[I.granaio,10,92,SCALE_EDIF.granaio]];
+      for(let i=0;i<3;i++){
+        const x=r.x+pezzi[i][1], y=r.y+pezzi[i][2];
+        const dir=Math.atan2(r.y-y,r.x-x)-Math.PI/2+(h2(x|0,y|0,443)-.5)*.5;
+        this.metti(pezzi[i][0],x,y,quota(x,y),dir,pezzi[i][3],1.0,1,0).om=omR;
       }
     }
 
@@ -10758,7 +10831,7 @@ function avvio(){
       const p=nuovaPersona(ME.borgo.x+Math.cos(an)*44,ME.borgo.y+Math.sin(an)*44,'falce');
       ME.gente.push(p);
     }
-    ME.capo.vitaMax=8; ME.capo.vita=8;
+    ME.capo.vitaMax=vitaCapo(); ME.capo.vita=ME.capo.vitaMax;
   }
   for(const p of ME.gente){ UID=Math.max(UID,p.uid+1) }
   for(const a of ME.aste){ ASTA_UID=Math.max(ASTA_UID,a.id+1) }
@@ -10772,6 +10845,10 @@ function avvio(){
   if(!ME.borsa) ME.borsa={ton:0, regalo:0, comprati:[]};
   if(ME.condottiero&&ME.condottiero.id&&ME.borsa.comprati.indexOf(ME.condottiero.id)<0)
     ME.borsa.comprati.push(ME.condottiero.id);
+  /* la vita del capo la decide l'eroe: si rilegge a ogni avvio, cosi' un
+     villaggio salvato con un eroe di ieri prende i numeri di oggi */
+  if(ME.condottiero){ ME.capo.vitaMax=vitaCapo(); ME.capo.vita=Math.min(ME.capo.vita||ME.capo.vitaMax,ME.capo.vitaMax);
+    assegnaRivali() }   // una partita e' a quattro: chi ha gia' un eroe trova i suoi tre rivali
 
   recuperaAssenza();
   if(ME.rubatoMentreVia){
@@ -10836,29 +10913,143 @@ function avvio(){
    che vedi nella scheda è quello che cammina nel mondo. Il catalogo
    vero lo fa Aless; il gioco legge id, nome, mantello, tratto.
    ═══════════════════════════════════════════════════════════════ */
-/* Cinque, e DIVERSI: non cinque colori dello stesso uomo. Ognuno viene da
-   una terra, e la terra gli da' la sagoma (pop, letta dal modulo dei corpi:
-   nemes, corna, elmo), l'arma che tiene in mano, il mantello, e un dono che
-   la simulazione legge davvero — cerca CONDOTTIERO().tratto nel passo.
-   Il prezzo e' in TON. Il regalo iniziale ne compra uno, non tutti. */
+/* I QUATTRO POPOLI. Sempre questi, come in Imperivm: chi gioca ne sceglie
+   uno con il suo condottiero, e gli altri tre sono i vicini, gli alleati e i
+   nemici del mondo. `k` e' l'indice che il modulo dei corpi usa per la
+   sagoma (nemes, corna, elmo) e per la tavolozza; `col` e' il colore dello
+   stendardo, che si vede nella porta e un giorno sulle mura degli altri. */
+const POPOLI=[
+  {k:0, nome:'Celti',   terra:'Terre alte',   col:'#c8342c', d:'Boschi, colline e nebbia. Lance lunghe e asce.'},
+  {k:2, nome:'Romani',  terra:'Piana lunga',  col:'#a52a2a', d:'Strade, mura e legioni. La spada corta.'},
+  {k:1, nome:'Egizi',   terra:'Deserto',      col:'#d9a441', d:'Sabbia, oro e archi lunghi. Il fiume che dà da mangiare.'},
+  {k:3, nome:'Nordici', terra:'Nord',         col:'#3e5a3a', d:'Ghiaccio, ferro e scudi tondi. La forgia che non tace.'}
+];
+const POPOLO=k=>POPOLI.find(p=>p.k===k)||POPOLI[0];
+
+/* Venti condottieri, cinque per popolo, e DIVERSI: non venti colori dello
+   stesso uomo. Ognuno viene da una terra, e il popolo gli da' la sagoma
+   (pop, letta dal modulo dei corpi), l'arma che tiene in mano, il mantello,
+   e un DONO che la simulazione legge davvero — cerca DONO('...') nel passo:
+   ogni dono tocca un numero del mondo, nessuno e' un'etichetta. Il prezzo
+   e' in TON. Il regalo iniziale ne compra uno, non tutti. In campo il
+   condottiero E' il capo: quello che vedi nella scheda e' quello che cammina
+   davanti alla fila, e il suo dono e' addosso a tutto il villaggio.
+   Le armi: 2 randello · 3 lancia · 4 arco · 5 spada. */
 const CONDOTTIERI=[
-  {id:'cnd-001', nome:'Rosso di Corno',   terra:'Terre alte', pop:0, arma:3,
+  // ── CELTI ──────────────────────────────────────────────────────────
+  {id:'cnd-001', nome:'Rosso di Corno',      terra:'Terre alte',       pop:0, arma:3,
    mantello:'#c8342c', tratto:'asta',  prezzo:5,
    d:'Il colpo d\'asta spinge i nemici più lontano.', cielo:['#d98a5a','#3f8a56','#2b6b44']},
-  {id:'cnd-002', nome:'Brann del Guado', terra:'Guado',      pop:2, arma:5,
+  {id:'cnd-006', nome:'Brenno della Quercia', terra:'Bosco di Quercia', pop:0, arma:5,
+   mantello:'#2f6b3a', veste:'#cdbf9a', tratto:'grido', prezzo:8,
+   d:'Quando colpisce, la fila attorno a lui riprende fiato.', cielo:['#e2a96a','#4a7a44','#2c5232']},
+  {id:'cnd-007', nome:'Morrigan dei Corvi',  terra:'Brughiera nera',   pop:0, arma:4,
+   mantello:'#22303c', veste:'#8a8aa0', capelli:'#16120f', tratto:'notte', prezzo:10,
+   d:'Di notte i predoni la evitano: ne arrivano meno.', cielo:['#6a5a7a','#3a4a4e','#22302c']},
+  {id:'cnd-008', nome:'Dubh il Taglialegna', terra:'Valle dei Faggi',  pop:0, arma:2,
+   mantello:'#6b4a2a', veste:'#b9a888', tratto:'legno', prezzo:6,
+   d:'Le sue asce tagliano più legno a ogni colpo.', cielo:['#d9b27a','#5a8a4a','#34603a']},
+  {id:'cnd-009', nome:'Aine dei Prati',      terra:'Piana d\'Oro',     pop:0, arma:3,
+   mantello:'#b8902a', oro:'#f0d070', capelli:'#a05a2a', tratto:'grano', prezzo:13,
+   d:'I suoi campi rendono un terzo in più.', cielo:['#f0c878','#7aa050','#4a7040']},
+  // ── ROMANI ─────────────────────────────────────────────────────────
+  {id:'cnd-002', nome:'Gaio del Guado',      terra:'Guado',            pop:2, arma:5,
    mantello:'#2f6b9a', veste:'#d8c9a4', tratto:'passo', prezzo:7,
    d:'La sua gente cammina più svelta e non si sfilaccia.', cielo:['#8fb8c8','#4a8a62','#2f6b4a']},
-  {id:'cnd-003', nome:'Vanda Ferrara',   terra:'Costolone',  pop:3, arma:2,
+  {id:'cnd-003', nome:'Vanda Ferrara',       terra:'Costolone',        pop:2, arma:2,
    mantello:'#6a4a8a', veste:'#e6e2d8', tratto:'terra', prezzo:9,
    d:'Sente la terra: i campi e le vene rendono di più.', cielo:['#b8a6c8','#5c6a78','#46545c']},
-  {id:'cnd-004', nome:'Ulf Barbagrigia', terra:'Nord',       pop:4, arma:5,
+  {id:'cnd-010', nome:'Tito Tre Ponti',      terra:'Tre Ponti',        pop:2, arma:3,
+   mantello:'#a52a2a', veste:'#d8c9a4', tratto:'muro', prezzo:6,
+   d:'I suoi cantieri chiudono in un terzo di tempo in meno.', cielo:['#e8d2a8','#8a9a6a','#5a6a48']},
+  {id:'cnd-011', nome:'Lucilla Ardente',     terra:'Colle del Fuoco',  pop:2, arma:4,
+   mantello:'#c86a2a', capelli:'#4a2a18', oro:'#e0bf5e', tratto:'freccia', prezzo:12,
+   d:'I suoi arcieri incoccano più in fretta.', cielo:['#f0b070','#9a7a50','#6a5038']},
+  {id:'cnd-012', nome:'Aurelio l\'Aquila',   terra:'Roccia dell\'Aquila', pop:2, arma:5,
+   mantello:'#5a2a6a', oro:'#f0d070', metallo:'#d9c07a', tratto:'vita', prezzo:19,
+   d:'Il capo regge più colpi prima di cadere.', cielo:['#c9d8e2','#6a8a7a','#3f5a52']},
+  // ── EGIZI ──────────────────────────────────────────────────────────
+  {id:'cnd-013', nome:'Khai del Nilo',       terra:'Riva del Nilo',    pop:1, arma:3,
+   mantello:'#2f7f9a', veste:'#efe9dc', tratto:'sale', prezzo:5,
+   d:'Le sue saline rendono un terzo in più.', cielo:['#9ac8d8','#c8b070','#7a6a40']},
+  {id:'cnd-014', nome:'Meret la Bianca',     terra:'Oasi',             pop:1, arma:2,
+   mantello:'#e8e0c8', oro:'#f0d070', capelli:'#241a14', tratto:'fuoco', prezzo:8,
+   d:'Al suo fuoco le ferite si chiudono tre volte più in fretta.', cielo:['#f4d6a0','#b8a468','#7a6a44']},
+  {id:'cnd-015', nome:'Sethi Due Corone',    terra:'Città delle Corone', pop:1, arma:5,
+   mantello:'#b83a2a', oro:'#f0d070', metallo:'#d9c07a', tratto:'canto', prezzo:11,
+   d:'La sua gente si stanca più piano lontano dal fuoco.', cielo:['#e8a868','#a88848','#6a5430']},
+  {id:'cnd-016', nome:'Anhur del Vento',     terra:'Dune del Vento',   pop:1, arma:3,
+   mantello:'#c8a02c', veste:'#f7f2e8', tratto:'corsa', prezzo:14,
+   d:'Il capo corre più svelto di chiunque.', cielo:['#f6d8a8','#c2a060','#8a6c3a']},
+  {id:'cnd-005', nome:'Nefer di Sabbia',     terra:'Deserto',          pop:1, arma:4,
+   mantello:'#d9a441', oro:'#f0d070', tratto:'occhio', prezzo:18,
+   d:'Vede lontano: i suoi arcieri tirano più in là.', cielo:['#f2c27a','#c7a458','#8a7040']},
+  // ── NORDICI ────────────────────────────────────────────────────────
+  {id:'cnd-017', nome:'Sigrid Lupa',         terra:'Fiordo dei Lupi',  pop:3, arma:3,
+   mantello:'#4a5a6a', capelli:'#d8c090', veste:'#b0b6b8', tratto:'paura', prezzo:6,
+   d:'I lupi la temono: mordono piano e scappano feriti.', cielo:['#b8c8d0','#5a6a5a','#3a4a3a']},
+  {id:'cnd-018', nome:'Halvar Scudo di Quercia', terra:'Baia delle Querce', pop:3, arma:2,
+   mantello:'#5a3a2a', veste:'#a6a086', tratto:'scudo', prezzo:9,
+   d:'La sua gente incassa un quarto in meno.', cielo:['#a8b8c0','#4a5a4a','#2e3a2e']},
+  {id:'cnd-004', nome:'Ulf Barbagrigia',     terra:'Nord',             pop:3, arma:5,
    mantello:'#3e5a3a', capelli:'#b9b2a4', tratto:'ferro', prezzo:12,
    d:'La sua forgia batte una spada in metà tempo.', cielo:['#c9d6dc','#6e7a4e','#4b5a3a']},
-  {id:'cnd-005', nome:'Nefer di Sabbia', terra:'Deserto',    pop:1, arma:4,
-   mantello:'#d9a441', oro:'#f0d070', tratto:'occhio', prezzo:18,
-   d:'Vede lontano: i suoi arcieri tirano più in là.', cielo:['#f2c27a','#c7a458','#8a7040']}
+  {id:'cnd-019', nome:'Freya dei Ghiacci',   terra:'Ghiacci',          pop:3, arma:4,
+   mantello:'#e8eef0', capelli:'#e8d8b0', metallo:'#b8c0c8', tratto:'nascita', prezzo:15,
+   d:'Nel suo borgo nascono più bambini.', cielo:['#dce8f0','#8a9aa0','#5a6a70']},
+  {id:'cnd-020', nome:'Bjorn Mano di Ferro', terra:'Monte del Ferro',  pop:3, arma:5,
+   mantello:'#2a2a3a', metallo:'#d0d4d8', oro:'#c8a94a', tratto:'cuore', prezzo:20,
+   d:'La sua gente lavora più a lungo prima di tornare.', cielo:['#9aa8b0','#4a5a5a','#2a3a3a']}
 ];
 function CONDOTTIERO(){ return CONDOTTIERI.find(c=>c.id===(ME.condottiero&&ME.condottiero.id))||CONDOTTIERI[0] }
+/* Il dono del condottiero alla guida. Un nome solo per tutta la simulazione:
+   dove leggi DONO('x') c'e' un numero del mondo che cambia per chi ha
+   quell'eroe in campo. E' l'elenco completo, per non doverlo cercare:
+   asta (colpo d'asta piu' forte) · grido (il colpo ridà vigore alla fila) ·
+   notte (meno predoni di notte) · legno · grano · sale (quella risorsa rende
+   di piu') · terra (grano e ferro) · passo (la fila cammina piu' svelta) ·
+   muro (cantieri piu' rapidi) · freccia (arcieri piu' rapidi) · vita (il capo
+   ha piu' vita) · fuoco (ci si cura piu' in fretta al fuoco) · canto (il
+   vigore cala piu' piano) · corsa (il capo corre) · occhio (arcieri piu'
+   lontano) · paura (i lupi mordono piano e scappano) · scudo (la gente
+   incassa meno) · ferro (forgia rapida) · nascita (piu' nascite) · cuore (la
+   gente resiste di piu' prima di tornare). */
+function DONO(t){ return CONDOTTIERO().tratto===t }
+/* La vita del capo dipende dall'eroe: e' l'unico numero suo che si salva. */
+function vitaCapo(){ return DONO('vita')?11:8 }
+/* Quanto rende una risorsa con questo eroe alla guida. */
+function resaDono(res){
+  if(res==='grano') return DONO('grano')?1.33:(DONO('terra')?1.2:1);
+  if(res==='ferro') return DONO('terra')?1.2:1;
+  if(res==='legno') return DONO('legno')?1.33:1;
+  if(res==='sale')  return DONO('sale')?1.35:1;
+  return 1;
+}
+
+/* ── LA PARTITA A QUATTRO. Ogni partita ha quattro eroi in campo, uno per
+   popolo: tu e tre rivali. I tre si scelgono quando entri con il tuo
+   condottiero — dagli altri tre popoli, uno ciascuno, con un villaggio fra
+   i sessantaquattro del mondo, i piu' vicini al tuo — e restano scritti nel
+   salvataggio: sono i tuoi vicini per tutta la partita. Oggi stanno al loro
+   fuoco con la loro gente; muoversi, raccogliere, alzare mura e attaccare
+   e' la tappa della partita a quattro nella tabella di marcia. */
+function assegnaRivali(){
+  if(ME.rivali&&ME.rivali.length===3) return ME.rivali;
+  const mio=CONDOTTIERO(), b=ME.borgo;
+  const altri=POPOLI.filter(P=>P.k!==(mio.pop|0));
+  const cand=((MONDO&&MONDO.villaggi)||[]).filter(v=>dist(v.x,v.y,b.x,b.y)>1500)
+    .sort((u,v)=>dist(u.x,u.y,b.x,b.y)-dist(v.x,v.y,b.x,b.y));
+  const pid=String(ME.pid||'x');
+  let h=0; for(let i=0;i<pid.length;i++) h=(h*31+pid.charCodeAt(i))>>>0;
+  ME.rivali=altri.slice(0,3).map((P,k)=>{
+    const rosa=CONDOTTIERI.filter(c=>(c.pop|0)===P.k);
+    const C=rosa[(h>>>(k*5))%rosa.length];
+    const v=cand[k]||{vid:'v-x'+k, nome:nomeLuogo(k), x:b.x+Math.cos(k*2.1)*4000, y:b.y+Math.sin(k*2.1)*4000};
+    return {id:C.id, vid:v.vid, nome:v.nome, x:v.x, y:v.y, visto:false};
+  });
+  return ME.rivali;
+}
+function RIVALE(r){ return CONDOTTIERI.find(c=>c.id===r.id)||CONDOTTIERI[0] }
 
 /* ── Il borsellino. In prova: un regalo, una volta sola. Il giorno del
    contratto vero questa funzione legge il saldo dal portafoglio e
@@ -11073,14 +11264,23 @@ function apriPorta(){
   const b=borsellino();
   const box=$('#pscelte'); box.innerHTML='';
   const schede={};
-  for(const C of CONDOTTIERI){
-    const el=document.createElement('button'); el.className='pc'; el.type='button';
-    el.dataset.id=C.id;
-    el.innerHTML='<span class="pcterra">'+C.terra+'</span><canvas width="160" height="160"></canvas>'+
-      '<div class="pcn">'+C.nome+'</div><div class="pct">'+C.d+'</div>'+
-      '<div class="pcp"><span class="ton">'+tonFmt(C.prezzo)+' TON</span><span class="stato"></span></div>';
-    el.onclick=()=>{ sceltoId=C.id; aggiornaPorta(schede) };
-    box.appendChild(el); schede[C.id]=el;
+  /* una fila per popolo, nell'ordine di POPOLI; dentro, i suoi cinque */
+  for(const P of POPOLI){
+    const testa=document.createElement('div'); testa.className='ppop';
+    testa.innerHTML='<i style="background:'+P.col+'"></i><b>'+P.nome+'</b><span>'+P.d+'</span>';
+    box.appendChild(testa);
+    const fila=document.createElement('div'); fila.className='pfila';
+    for(const C of CONDOTTIERI){
+      if((C.pop|0)!==P.k) continue;
+      const el=document.createElement('button'); el.className='pc'; el.type='button';
+      el.dataset.id=C.id;
+      el.innerHTML='<span class="pcterra">'+C.terra+'</span><canvas width="160" height="160"></canvas>'+
+        '<div class="pcn">'+C.nome+'</div><div class="pct">'+C.d+'</div>'+
+        '<div class="pcp"><span class="ton">'+tonFmt(C.prezzo)+' TON</span><span class="stato"></span></div>';
+      el.onclick=()=>{ sceltoId=C.id; aggiornaPorta(schede) };
+      fila.appendChild(el); schede[C.id]=el;
+    }
+    box.appendChild(fila);
   }
   ritrattiSolidi=false; dipingiRitratti();
   if(!ritrattiSolidi){
@@ -11116,7 +11316,7 @@ function aggiornaPorta(schede){
   const C=CONDOTTIERI.find(c=>c.id===sceltoId);
   if(!C){ bt.disabled=true; bt.className=''; bt.textContent='Scegli un condottiero'; msg.textContent=''; return }
   bt.disabled=false;
-  if(possiede(C)){ bt.className='entra'; bt.textContent='Entra con '+C.nome; msg.textContent=C.terra+' · '+C.d }
+  if(possiede(C)){ bt.className='entra'; bt.textContent='Entra con '+C.nome; msg.textContent=POPOLO(C.pop|0).nome+' · '+C.terra+' · '+C.d }
   else if(b.ton>=C.prezzo){ bt.className=''; bt.textContent='Compra '+C.nome+' per '+tonFmt(C.prezzo)+' TON';
     msg.textContent='Ti restano '+tonFmt(b.ton-C.prezzo)+' TON dopo l\'acquisto.' }
   else { bt.disabled=true; bt.className=''; bt.textContent='Ti mancano '+tonFmt(C.prezzo-b.ton)+' TON';
@@ -11134,11 +11334,14 @@ function azionePorta(schede){
     return;
   }
   ME.condottiero={id:C.id, nome:C.nome, preso:now()};
-  ME.capo.vitaMax=8; if(ME.capo.vita>8) ME.capo.vita=8;
+  ME.capo.vitaMax=vitaCapo(); if(ME.capo.vita>ME.capo.vitaMax) ME.capo.vita=ME.capo.vitaMax;
+  /* la partita e' a quattro: scelto il tuo, si scelgono i tre rivali */
+  const riv=assegnaRivali().map(r=>RIVALE(r).nome+' ('+POPOLO(RIVALE(r).pop|0).nome+')');
   salva(true);
   $('#porta').classList.remove('on');
   if(sceneRAF){ cancelAnimationFrame(sceneRAF); sceneRAF=0 }
   dire(C.nome+' è alla guida');
+  setTimeout(()=>dire('In campo con te: '+riv.join(', ')),3000);
   requestAnimationFrame(t=>{ultimo=t;requestAnimationFrame(giro)});
 }
 
@@ -11154,7 +11357,7 @@ window.__MIS={ct:()=>ct,ME:()=>ME,nemici:()=>nemici,POLV:()=>POLV,scia:()=>scia,
      scenografie. Sono riferimenti in sola lettura — nessuno di questi
      oggetti va scritto da fuori, e il gioco non li rilegge mai da qui. */
   R3,quota,MONDO,L3,C3,SC,PT,chunkAt,seguaci,EDIFICI,w2s,s2w,bioma,campo,LUCE,chunks,
-  dipingiRitratti,apriPorta,ritratto3D,CONDOTTIERI};
+  dipingiRitratti,apriPorta,ritratto3D,CONDOTTIERI,POPOLI,assegnaRivali,DONO};
 })();
 </script>
 </body>
