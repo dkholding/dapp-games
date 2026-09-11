@@ -50,8 +50,17 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
 #store small{color:var(--dim2);font-size:9.5px;font-weight:600;text-transform:uppercase;
   letter-spacing:.5px}
 
+/* ── La minimappa: una spia, non una plancia. Ti dice dove sono i
+   quattro della partita e chi marcia; un tocco ci porta lo sguardo. ── */
+#mappa{position:absolute;left:12px;top:calc(50px + env(safe-area-inset-top));
+  width:92px;height:92px;border-radius:12px;pointer-events:auto;cursor:pointer;
+  border:1px solid rgba(243,236,224,.24);background:rgba(16,22,14,.62);
+  box-shadow:0 4px 14px rgba(0,0,0,.35);touch-action:none}
+@media (min-width:700px){ #mappa{width:150px;height:150px} }
+
 /* ── Una riga sola, un secondo, poi sparisce ── */
 #say{position:absolute;left:0;right:0;top:calc(52px + env(safe-area-inset-top));
+  padding-left:110px !important;padding-right:60px !important;
   text-align:center;font-size:13px;font-weight:600;color:var(--txt);
   text-shadow:0 2px 8px rgba(0,0,0,.9);opacity:0;transition:opacity .5s;
   padding:0 24px;line-height:1.5}
@@ -281,6 +290,7 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
   <button id="salva">🪶</button>
   <button id="zitto" title="Suono">🔊</button>
 
+  <canvas id="mappa" width="184" height="184"></canvas>
   <div id="vassoio"></div>
   <div id="bsel"></div>
 
@@ -12589,8 +12599,75 @@ function aggiornaBarra(){
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   LA MINIMAPPA
+   Il riquadro tiene il tuo borgo e i tre campi rivali: si allarga fino
+   a contenerli tutti, così a colpo d'occhio si vede la partita intera.
+   Si ridisegna quattro volte al secondo, non sessanta. Un tocco porta
+   la camera dove hai toccato; niente ordini da qui: a questa scala un
+   dito copre mezza valle, e un ordine sarebbe una bugia.
+   ═══════════════════════════════════════════════════════════════ */
+let _mappaT=0, _mappaR=null;
+function riquadroMappa(){
+  const b=ME.borgo;
+  let R=1600;
+  if(ME.rivali) for(const r of ME.rivali) R=Math.max(R,Math.hypot(r.x-b.x,r.y-b.y)*1.12);
+  return {cx:b.x,cy:b.y,R};
+}
+function disegnaMappa(){
+  const cv2=$('#mappa'); if(!cv2) return;
+  const g=cv2.getContext('2d'), S=cv2.width;
+  const Q=_mappaR=riquadroMappa(), k=S/(2*Q.R);
+  const X=x=>S/2+(x-Q.cx)*k, Y=y=>S/2+(y-Q.cy)*k;
+  g.clearRect(0,0,S,S);
+  // il terreno: una trama grossa dei biomi, cotta una volta sola per riquadro
+  if(!disegnaMappa.fondo||disegnaMappa.fondoR!==Math.round(Q.R)){
+    const f=document.createElement('canvas'); f.width=f.height=S;
+    const h=f.getContext('2d'), N=46, c=S/N;
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+      const wx=Q.cx+((i+.5)/N*2-1)*Q.R, wy=Q.cy+((j+.5)/N*2-1)*Q.R;
+      const bi=BIOMI[bioma(wx,wy)];
+      h.fillStyle=(bi&&bi.suolo)||'#3e6b3a'; h.fillRect(i*c,j*c,c+1,c+1);
+    }
+    h.fillStyle='rgba(10,14,10,.35)'; h.fillRect(0,0,S,S);
+    disegnaMappa.fondo=f; disegnaMappa.fondoR=Math.round(Q.R);
+  }
+  g.drawImage(disegnaMappa.fondo,0,0);
+  // la vista della camera
+  const a=s2w(0,0), bb=s2w(cw,ch);
+  g.strokeStyle='rgba(243,236,224,.55)'; g.lineWidth=1.5;
+  g.strokeRect(X(Math.min(a.x,bb.x)),Y(Math.min(a.y,bb.y)),Math.abs(bb.x-a.x)*k,Math.abs(bb.y-a.y)*k);
+  // le mura
+  if(ME.mura){ g.strokeStyle='#cfc4ad'; g.lineWidth=2;
+    for(const m of ME.mura){ g.beginPath(); g.moveTo(X(m.x1),Y(m.y1)); g.lineTo(X(m.x2),Y(m.y2)); g.stroke() } }
+  // i campi rivali: il quadratino col colore del loro stendardo
+  if(ME.rivali) for(const r of ME.rivali){
+    const C=RIVALE(r), col=r.preso?POPOLO(CONDOTTIERO().pop|0).col:POPOLO(C.pop|0).col;
+    g.fillStyle=col; g.fillRect(X(r.x)-5,Y(r.y)-5,10,10);
+    g.strokeStyle=r.preso?'#f0d070':'rgba(8,6,4,.8)'; g.lineWidth=1.5; g.strokeRect(X(r.x)-5,Y(r.y)-5,10,10);
+  }
+  // il tuo borgo, i tuoi, i nemici, l'eroe
+  g.fillStyle=POPOLO(CONDOTTIERO().pop|0).col; g.fillRect(X(ME.borgo.x)-6,Y(ME.borgo.y)-6,12,12);
+  g.strokeStyle='#f0d070'; g.lineWidth=2; g.strokeRect(X(ME.borgo.x)-6,Y(ME.borgo.y)-6,12,12);
+  g.fillStyle='#f3ece0';
+  for(const p of VIVI) g.fillRect(X(p.x)-1,Y(p.y)-1,2.4,2.4);
+  g.fillStyle='#ff6a5a';
+  for(const n of nemici) g.fillRect(X(n.x)-1.5,Y(n.y)-1.5,n.riv!==undefined?3.6:2.4,n.riv!==undefined?3.6:2.4);
+  g.fillStyle='#ffd24a'; g.beginPath(); g.arc(clamp(X(ME.capo.x),4,S-4),clamp(Y(ME.capo.y),4,S-4),4,0,TAU); g.fill();
+}
+function legaMappa(){
+  const cv2=$('#mappa'); if(!cv2) return;
+  cv2.addEventListener('pointerdown',e=>{
+    e.preventDefault(); e.stopPropagation();
+    const r=cv2.getBoundingClientRect(), Q=_mappaR||riquadroMappa();
+    const u=(e.clientX-r.left)/r.width*2-1, v=(e.clientY-r.top)/r.height*2-1;
+    centraSu(Q.cx+u*Q.R, Q.cy+v*Q.R);
+  });
+}
+
 function aggiornaHud(){
   const c=ME.capo;
+  _mappaT-=DT_ULT; if(_mappaT<=0){ _mappaT=.25; try{ disegnaMappa() }catch(e){} }
   $('#aNome').textContent=ME.borgo.nome;
   $('#aCoord').textContent=gentePiedi().length+' anime · '+
     (ME.stat.giorni+1)+'° giorno'+(nemici.length?' · '+nemici.length+' nemici':'');
@@ -12819,6 +12896,7 @@ function avvio(){
     b.textContent=on?'🔊':'🔇'; b.classList.toggle('muto',!on);
   };
   legaMani();
+  legaMappa();
   $('#salva').onclick=apriCodice;
   $('#bChiudi').onclick=()=>$('#velo').classList.remove('on');
   $('#bCopia').onclick=()=>{
