@@ -105,18 +105,25 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
    scorre col dito, si chiude toccando fuori. Non e' un menu: e' la barra
    che si allunga di una riga. */
 #vassoio{position:absolute;left:0;right:0;bottom:calc(84px + env(safe-area-inset-bottom));
-  display:none;gap:6px;padding:6px 10px;overflow-x:auto;scrollbar-width:none;
-  pointer-events:auto;touch-action:pan-x}
+  display:none;flex-direction:column;gap:4px;padding:6px 10px;
+  pointer-events:auto;background:linear-gradient(to top,rgba(10,8,6,.55),rgba(10,8,6,0))}
 #vassoio.on{display:flex}
-#vassoio::-webkit-scrollbar{display:none}
-.vc{flex:0 0 auto;min-width:76px;height:62px;border-radius:12px;padding:5px 8px;
+.vriga{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;touch-action:pan-x;padding-bottom:2px}
+.vriga::-webkit-scrollbar{display:none}
+.vc{flex:0 0 auto;min-width:76px;max-width:128px;min-height:62px;border-radius:12px;padding:5px 8px;
   border:1.5px solid rgba(243,236,224,.24);background:rgba(24,20,15,.9);
   color:var(--txt);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   font:800 9.5px/1.15 inherit;text-align:center;cursor:pointer;touch-action:none}
 .vc i{font-style:normal;font-size:17px;line-height:1}
 .vc b{font-size:8.5px;font-weight:700;color:#c8a94a;letter-spacing:.2px}
 .vc.caro{opacity:.42}
+.vc.su{border-color:rgba(224,164,74,.6)}
 .vc:active{transform:scale(.95);background:rgba(224,164,74,.3)}
+/* il titolo della scheda: chi sei e a che livello, prima delle carte */
+.vtit{font-size:11.5px;color:var(--txt);padding:2px 2px 0;
+  text-shadow:0 1px 4px #000;line-height:1.35}
+.vtit b{font-weight:800}
+.vtit em{font-style:normal;color:#b8c9d2;font-weight:600}
 
 /* ── La manina del primo avvio: l'unico insegnamento del gioco ── */
 #manina{position:absolute;width:54px;height:54px;border-radius:50%;
@@ -264,6 +271,7 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
     <div><small>legno</small><span id="sLegno">0</span></div>
     <div><small>ferro</small><span id="sFerro">0</span></div>
     <div><small>sale</small><span id="sSale">0</span></div>
+    <div><small>pietra</small><span id="sPietra">0</span></div>
     <div id="sCiboR"><small>uova e latte</small><span id="sCibo">0</span></div>
   </div>
 
@@ -436,12 +444,15 @@ function fert(x,y){ return clamp(campo(x+2200,y+7700,317)*1.35-.12,0,1) }
    Non c'è una lista globale: ogni chunk sa da sé cosa contiene,
    perché lo ricava dal seme. Visitare non consuma memoria.
    ───────────────────────────────────────────────────────────── */
+/* Cinque risorse, come in Imperivm e in Ikariam: poche, e ognuna serve
+   a qualcosa di preciso. Il sasso non è più paesaggio: è la PIETRA, e
+   senza pietra non si alzano il foro, il tempio, le mura. */
 const COSA={
-  spiga:  {res:'grano', vita:26, r:9,  raccolta:2.6},
-  albero: {res:'legno', vita:60, r:13, raccolta:1.5},
-  vena:   {res:'ferro', vita:70, r:12, raccolta:1.0},
-  salina: {res:'sale',  vita:22, r:11, raccolta:1.2},
-  sasso:  {res:null,    vita:0,  r:10, raccolta:0}
+  spiga:  {res:'grano',  vita:26, r:9,  raccolta:2.6},
+  albero: {res:'legno',  vita:60, r:13, raccolta:1.5},
+  vena:   {res:'ferro',  vita:70, r:12, raccolta:1.0},
+  salina: {res:'sale',   vita:22, r:11, raccolta:1.2},
+  sasso:  {res:'pietra', vita:40, r:10, raccolta:0.9}
 };
 
 /** Genera il contenuto di un chunk. Deterministico: stesso chunk, stesso contenuto. */
@@ -569,7 +580,8 @@ function nuovoIo(spawn){
     v:1, pid, idx,
     borgo:{vid:'v-me', nome:nomeLuogo(idx), x:p.x, y:p.y},
     capo:{x:p.x+40, y:p.y+30, px:p.x+40, py:p.y+30, vx:0, vy:0, vita:8, vitaMax:8, porta:[]},
-    scorte:{grano:30, legno:24, ferro:0, sale:0, cibo:0},
+    scorte:{grano:40, legno:60, ferro:0, sale:0, pietra:0, cibo:0},
+    foro:1,
     animali:[],
     respiro:1500,
     rastrelliera:['falce','falce','randello'],
@@ -634,24 +646,36 @@ function salva(subito){
    per una, con un mestiere che si legge dalla sagoma e un'arma che
    è un oggetto vero, contato, che si può posare e raccogliere.
    ═══════════════════════════════════════════════════════════════ */
+/* LE ARMI decidono chi sei: l'attrezzo in mano è il mestiere. Le cinque
+   unità di Imperivm sono cinque armi — il soldato con la spada corta, lo
+   scudato con lo scudo grande, il lanciere, l'arciere, e il cavaliere,
+   che è una lancia lunga su un cavallo. Il randello resta: è quello che
+   si prende dalla rastrelliera quando i lupi sono già al fuoco. */
+/* I danni sono quelli di Imperivm III: la spada corta dello Swordsman,
+   la lancia dello Spearman, l'arco dell'Archer, la lancia lunga del
+   Horseman gallico. */
 const ARMI={
-  falce:   {n:'Falce',    mest:'contadino',  dmg:.5,  port:1,   costo:{legno:6},  era:0},
-  randello:{n:'Randello', mest:'guerriero',  dmg:1.7, port:.7,  costo:{legno:12}, era:0},
-  lancia:  {n:'Lancia',   mest:'lanciere',   dmg:2.3, port:.55, gitt:38, costo:{legno:30}, era:1},
-  arco:    {n:'Arco',     mest:'arciere',    dmg:1.6, port:.45, gitt:250,costo:{legno:40}, era:3},
-  spada:   {n:'Spada',    mest:'spadaccino', dmg:3.3, port:.5,  costo:{ferro:45}, era:4}
+  falce:    {n:'Falce',        mest:'contadino',  dmg:5,  port:1,   costo:{legno:6},  era:0},
+  randello: {n:'Randello',     mest:'guerriero',  dmg:12, port:.7,  costo:{legno:12}, era:0},
+  gladio:   {n:'Spada corta',  mest:'guerriero',  dmg:16, port:.6,  costo:{legno:12}, era:0},
+  lancia:   {n:'Lancia',       mest:'lanciere',   dmg:20, port:.55, gitt:38, costo:{legno:30}, era:1},
+  arco:     {n:'Arco',         mest:'arciere',    dmg:12, port:.45, gitt:250,costo:{legno:40}, era:3},
+  spada:    {n:'Spada e scudo',mest:'spadaccino', dmg:22, port:.5,  costo:{ferro:45}, era:4},
+  lanciacav:{n:'Lancia da cavallo',mest:'cavaliere',dmg:26,port:.3, gitt:42, costo:{ferro:20}, era:4}
 };
-/* Chi ti segue deve essere piu' svelto di te, o non ti sta dietro e la fila
-   si sfilaccia da sola: il capo cammina a 105. Il ritardo deve venire dal
-   carico sulle spalle, non dalle gambe — e infatti il sacco pieno taglia
-   la velocita' del 28%, e quello si vede. */
+/* Le velocità: il cavaliere corre il doppio di tutti, ed è per questo che
+   esiste; lo scudato è il più lento, ed è per questo che regge. */
+/* Le vite sono quelle di Imperivm III (Spearman 200, Archer 140, Shield
+   Bearer 280, Horseman 380); il contadino ne ha cento, il bambino
+   cinquanta. */
 const MESTIERI={
-  contadino:{n:'Contadino', vel:116, vita:4, alt:16},
-  guerriero:{n:'Guerriero', vel:114, vita:6, alt:16},
-  lanciere: {n:'Lanciere',  vel:110, vita:7, alt:16},
-  arciere:  {n:'Arciere',   vel:118, vita:4, alt:16},
-  spadaccino:{n:'Spadaccino',vel:108,vita:9, alt:17},
-  bambino:  {n:'Bambino',   vel:132, vita:2, alt:9}
+  contadino: {n:'Contadino', vel:116, vita:100, alt:16},
+  guerriero: {n:'Soldato',   vel:114, vita:200, alt:16},
+  lanciere:  {n:'Lanciere',  vel:110, vita:200, alt:16},
+  arciere:   {n:'Arciere',   vel:118, vita:140, alt:16},
+  spadaccino:{n:'Scudato',   vel:100, vita:280, alt:17},
+  cavaliere: {n:'Cavaliere', vel:190, vita:380, alt:22},
+  bambino:   {n:'Bambino',   vel:132, vita:50,  alt:9}
 };
 const mestDi=a=>a&&ARMI[a]?ARMI[a].mest:'contadino';
 
@@ -672,10 +696,14 @@ const gentePiedi=()=>ME.gente.filter(p=>p.stato!=='morto');
 const comandabili=()=>ME.gente.filter(p=>p.stato!=='morto'&&p.stato!=='ferito'&&p.stato!=='inspalla');
 const armati=()=>comandabili().filter(p=>p.mest!=='contadino'&&p.mest!=='bambino');
 const operai=()=>comandabili().filter(p=>p.mest==='contadino');
-function postiTot(){ return 6+ME.edifici.filter(e=>e.tipo==='capanna'&&e.prog>=1).length*4 }
-function scortaTot(){ return 60+ME.edifici.filter(e=>e.tipo==='granaio'&&e.prog>=1).length*40 }
-function armiTot(){ return 6+ME.edifici.filter(e=>e.tipo==='rastrell'&&e.prog>=1).length*6 }
-function haForgia(){ return ME.edifici.some(e=>e.tipo==='forgia'&&e.prog>=1) }
+/* I tetti della città, tutti contati col LIVELLO: una capanna al terzo
+   livello tiene dodici persone, un granaio al quarto centosessanta. Il
+   foro dà due posti per livello: la città che cresce al centro cresce
+   anche di gente. */
+function postiTot(){ return 4+livForo()*2+sommaLiv('capanna')*4 }
+function scortaTot(){ return 60+sommaLiv('granaio')*40+(livForo()-1)*20 }
+function armiTot(){ return 6+sommaLiv('rastrell')*6 }
+function haForgia(){ return livTipo('forgia')>0 }
 
 function nomina(p){
   if(p.nome)return p.nome;
@@ -776,22 +804,79 @@ function postiSchiera(n,cx,cy,dax,day){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   5 · GLI EDIFICI
-   In città si costruisce. Non c'è un menu: c'è un tavolo con sopra
-   i progetti, si tocca per girarlo, e si pianta l'asta dove lo vuoi.
+   5 · LA CITTÀ
+   Si costruisce tutto, e tutto cresce: come in Ikariam ogni edificio
+   ha un LIVELLO, e alzarlo costa di più e rende di più. Al centro
+   c'è il FORO — il fuoco del borgo — e il suo livello decide fin dove
+   può salire tutto il resto e quali edifici si possono aprire. Chi
+   vuole la stalla deve prima far crescere la città.
+
+   Il livello si vede: un edificio al quinto è una volta e mezza più
+   grande di uno al primo. La città che cresce non è un numero nella
+   scheda, è una cosa che si guarda dall'alto.
    ═══════════════════════════════════════════════════════════════ */
 const EDIFICI={
-  capanna: {n:'Capanna',      ic:'🛖', costo:{legno:30},            d:'quattro posti in più'},
-  granaio: {n:'Granaio',      ic:'🏚️', costo:{legno:45},            d:'quaranta di scorta in più'},
-  rastrell:{n:'Rastrelliera', ic:'🗡️', costo:{legno:25},            d:'sei armi appese in più'},
-  forgia:  {n:'Forgia',       ic:'🔥', costo:{legno:60,ferro:20},   d:'il ferro diventa lame'},
-  torre:   {n:'Torre',        ic:'🗼', costo:{legno:50,ferro:10},   d:'un arciere che veglia'}
+  // ── la casa: dove si vive e si tiene
+  capanna:  {n:'Capanna',      ic:'🛖', costo:{legno:30},             foro:1, cat:'casa',   d:'quattro posti per livello'},
+  granaio:  {n:'Granaio',      ic:'🏚️', costo:{legno:45},             foro:1, cat:'casa',   d:'scorta, e ci si scarica il raccolto'},
+  tempio:   {n:'Tempio',       ic:'🏛️', costo:{legno:70,pietra:40},   foro:3, cat:'casa',   d:'morale alto e ferite che si chiudono'},
+  mercato:  {n:'Mercato',      ic:'⚖️', costo:{legno:60,pietra:25},   foro:3, cat:'casa',   d:'si scambia il sale con quello che manca'},
+  // ── il lavoro: dove si rende di più
+  segheria: {n:'Segheria',     ic:'🪚', costo:{legno:40},             foro:1, cat:'lavoro', d:'il legno attorno rende di più'},
+  mulino:   {n:'Mulino',       ic:'🌬️', costo:{legno:50,pietra:10},   foro:2, cat:'lavoro', d:'il grano attorno rende di più'},
+  miniera:  {n:'Cava',         ic:'⛏️', costo:{legno:60},             foro:2, cat:'lavoro', d:'ferro e pietra attorno rendono di più'},
+  forgia:   {n:'Forgia',       ic:'🔥', costo:{legno:60,ferro:20},    foro:2, cat:'lavoro', d:'batte le spade da sola'},
+  // ── la guerra: dove si addestra e si difende
+  rastrell: {n:'Rastrelliera', ic:'🗡️', costo:{legno:25},             foro:1, cat:'guerra', d:'armi appese per chi c\'è quando servono'},
+  caserma:  {n:'Caserma',      ic:'🛡️', costo:{legno:55,pietra:10},   foro:2, cat:'guerra', d:'soldati, scudati e lancieri'},
+  bersagli: {n:'Tiro con l\'arco',ic:'🎯',costo:{legno:45},           foro:2, cat:'guerra', d:'arcieri'},
+  stalla:   {n:'Stalla',       ic:'🐎', costo:{legno:70,pietra:25},   foro:3, cat:'guerra', d:'cavalieri'},
+  torre:    {n:'Torre',        ic:'🗼', costo:{legno:50,pietra:20},   foro:2, cat:'guerra', d:'un arciere che veglia'}
 };
 const ORD_EDIF=Object.keys(EDIFICI);
+const LIV_MAX=5;
 let EDIF_UID=1;                  // ogni edificio ha un numero suo: gli ordini lo citano
 
-function puoPagare(c){ for(const r in c) if(ME.scorte[r]<c[r]) return false; return true }
-function paga(c){ for(const r in c) ME.scorte[r]-=c[r] }
+/* Il costo di un livello: quello di base, una volta e mezza in più a
+   ogni gradino. Il quinto livello di una capanna costa quanto sei
+   capanne nuove: si alza quando si vuole restare, non per abitudine. */
+function costoLiv(tipo,liv){
+  const c=EDIFICI[tipo].costo, k=Math.pow(1.55,liv-1), o={};
+  for(const r in c) o[r]=Math.round(c[r]*k);
+  return o;
+}
+/* Il FORO. Il suo livello è il tetto di tutti gli altri, e ogni gradino
+   apre edifici nuovi e due posti in più al fuoco. */
+const FORO_COSTO=[null,null,
+  {legno:80, pietra:20},
+  {legno:150,pietra:60, ferro:20},
+  {legno:260,pietra:140,ferro:60},
+  {legno:400,pietra:260,ferro:120}];
+function livForo(){ return ME.foro||1 }
+function livDi(e){ return e.liv||1 }
+/** Il livello di un tipo: quello dell'edificio più alto di quel tipo, 0 se non c'è. */
+function livTipo(tipo){ let m=0; for(const e of ME.edifici) if(e.tipo===tipo&&e.prog>=1&&livDi(e)>m) m=livDi(e); return m }
+/** Quanti ne rendono, contando il livello: due capanne al terzo valgono sei. */
+function sommaLiv(tipo){ let s=0; for(const e of ME.edifici) if(e.tipo===tipo&&e.prog>=1) s+=livDi(e); return s }
+
+/* ── LE UNITÀ DA ADDESTRARE ────────────────────────────────────────
+   Chi esce da un edificio è una persona nuova: occupa un posto nelle
+   capanne, mangia, e costa grano e tempo. È per questo che in Imperivm
+   un esercito si prepara e non si improvvisa — e la rastrelliera resta
+   per la sera in cui non c'è tempo di prepararlo. */
+const UNITA={
+  contadino: {n:'Contadino', ic:'🧑‍🌾', dove:'capanna',  costo:{grano:15},          t:9,  arma:'falce'},
+  guerriero: {n:'Soldato',   ic:'⚔️',  dove:'caserma',  costo:{grano:15,legno:12}, t:10, arma:'gladio'},
+  lanciere:  {n:'Lanciere',  ic:'🔱',  dove:'caserma',  costo:{grano:18,legno:30}, t:14, arma:'lancia'},
+  spadaccino:{n:'Scudato',   ic:'🛡️',  dove:'caserma',  costo:{grano:20,ferro:30}, t:18, arma:'spada', serve:'forgia'},
+  arciere:   {n:'Arciere',   ic:'🏹',  dove:'bersagli', costo:{grano:15,legno:40}, t:15, arma:'arco'},
+  cavaliere: {n:'Cavaliere', ic:'🐎',  dove:'stalla',   costo:{grano:40,ferro:20}, t:22, arma:'lanciacav'}
+};
+const CODA_MAX=6;
+
+function puoPagare(c){ for(const r in c) if((ME.scorte[r]||0)<c[r]) return false; return true }
+function paga(c){ for(const r in c) ME.scorte[r]=(ME.scorte[r]||0)-c[r] }
+function rendi(c,f){ for(const r in c) ME.scorte[r]=(ME.scorte[r]||0)+Math.round(c[r]*(f===undefined?1:f)) }
 
 function inBorgo(x,y){ return dist(x,y,ME.borgo.x,ME.borgo.y)<230 }
 
@@ -972,10 +1057,17 @@ function finisciTrasf(p){
 /* ═══════════════════════════════════════════════════════════════
    7 · IL MONDO CHE TI VUOLE MALE
    ═══════════════════════════════════════════════════════════════ */
+/* Sulla scala di Imperivm: un lupo è poco meno di un soldato, un predone
+   un soldato veterano. Gli ARMATI sono l'esercito dei rivali: le stesse
+   quattro unità che addestri tu, con la veste del loro popolo. */
 const NEMICI={
-  lupo:  {n:'Lupo',   vel:118, vita:4,  dmg:1,   ric:.85, r:9,  vede:520, bottino:null},
-  ladro: {n:'Ladro',  vel:104, vita:5,  dmg:.6,  ric:1.2, r:10, vede:600, bottino:'randello'},
-  predone:{n:'Predone',vel:88, vita:9,  dmg:1.8, ric:1.0, r:11, vede:700, bottino:'spada'}
+  lupo:    {n:'Lupo',     vel:118, vita:150, dmg:14, ric:.85, r:9,  vede:520, bottino:null},
+  ladro:   {n:'Ladro',    vel:104, vita:150, dmg:10, ric:1.2, r:10, vede:600, bottino:'randello'},
+  predone: {n:'Predone',  vel:88,  vita:280, dmg:22, ric:1.0, r:11, vede:700, bottino:'spada'},
+  armato:  {n:'Soldato',  vel:108, vita:200, dmg:16, ric:.8,  r:11, vede:720, bottino:'gladio'},
+  lanciaR: {n:'Lanciere', vel:104, vita:200, dmg:20, ric:.9,  r:11, vede:720, bottino:'lancia'},
+  arcoR:   {n:'Arciere',  vel:112, vita:140, dmg:12, ric:1.5, r:10, vede:760, bottino:'arco', gitt:230},
+  cavalloR:{n:'Cavaliere',vel:180, vita:380, dmg:26, ric:.9,  r:13, vede:800, bottino:null}
 };
 let nemici=[], frecce=[], scintille=[];
 /* Un contatore a parte, negativo, solo per il disegno: serve un'identità
@@ -1011,6 +1103,110 @@ function ondata(dt){
     generaNemico(t,x,y);
   }
 }
+/* ═══════════════════════════════════════════════════════════════
+   I TRE RIVALI VIVONO
+   Ognuno cresce a orologio — la sua forza sale col tempo e coi giorni,
+   come in Imperivm cresce la città dell'avversario che non vedi — e ogni
+   quattro o cinque minuti manda contro di te un esercito vero: soldati
+   all'inizio, poi arcieri, lancieri, e quando è forte i cavalieri. Escono
+   dal SUO campo e marciano sul tuo borgo: li vedi arrivare, hai il tempo
+   di schierarti. Nessuna simulazione fuori vista: solo un numero che
+   cresce, e un esercito che nasce quando è ora.
+
+   Il loro campo si prende. Porti i tuoi armati al suo fuoco, e finché
+   stanno lì e nessuno dei suoi è in piedi la sua difesa cala; a zero il
+   campo alza il tuo stendardo, paga un tributo ogni alba e non ti manda
+   più nessuno. Tre campi presi: sei il Re dell'Impero.
+   ═══════════════════════════════════════════════════════════════ */
+const T_PRIMA_ONDA=330;          // secondi prima del primo esercito: il tempo di farsi una città
+function passoRivali(dt){
+  if(!ME.rivali) return;
+  for(let k=0;k<ME.rivali.length;k++){
+    const r=ME.rivali[k];
+    if(r.forza===undefined){ r.forza=15; r.prossima=T_PRIMA_ONDA+k*90; r.difesa=1; r.preso=false }
+    if(r.preso){
+      /* il tributo: ogni alba, un po' di tutto */
+      continue;
+    }
+    r.forza=Math.min(100,r.forza+dt*.05*(1+ME.stat.giorni/15));
+    r.prossima-=dt;
+    if(r.prossima<=0){
+      r.prossima=240+Math.random()*120-Math.min(90,r.forza);
+      mandaEsercito(r,k);
+    }
+    /* L'ASSEDIO AL SUO CAMPO. I tuoi armati entro centoventi passi dal
+       suo fuoco e nessun suo difensore in piedi lì intorno: la difesa
+       cala con la loro forza. */
+    let forza=0;
+    for(const p of VIVI){ if(p.mest==='contadino'||p.mest==='bambino'||p.stato==='ferito')continue;
+      if(dist(p.x,p.y,r.x,r.y)<140) forza+=(ARMI[p.arma]?ARMI[p.arma].dmg:10) }
+    if(dist(ME.capo.x,ME.capo.y,r.x,r.y)<140) forza+=50;
+    if(forza>0){
+      const difensori=nemici.some(n=>n.riv===k&&dist(n.x,n.y,r.x,r.y)<260);
+      if(!r.allarme){ r.allarme=true; difendiCampo(r,k) }
+      if(!difensori){
+        r.difesa=Math.max(0,r.difesa-dt*forza/(2200+r.forza*18));
+        if(r.difesa<=0) prendiCampo(r,k);
+      }
+    } else r.allarme=false;
+  }
+}
+/** Il tipo d'esercito che il rivale può permettersi, con la sua forza. */
+function truppaRivale(r,i){
+  const f=r.forza, dado=(i*7+Math.floor(f))%10;
+  if(f>=50&&dado<2) return 'cavalloR';
+  if(f>=30&&dado<5) return 'lanciaR';
+  if(f>=20&&dado<7) return 'arcoR';
+  return 'armato';
+}
+function mandaEsercito(r,k){
+  if(nemici.length>=36) return;
+  const C=RIVALE(r), n=2+Math.floor(r.forza/18);
+  for(let i=0;i<n;i++){
+    const an=i/n*TAU, x=r.x+Math.cos(an)*50, y=r.y+Math.sin(an)*50;
+    generaNemico(truppaRivale(r,i),x,y);
+    const e=nemici[nemici.length-1]; e.pop=C.pop|0; e.riv=k;
+  }
+  /* il loro eroe guida gli eserciti grandi */
+  if(r.forza>=40){
+    generaNemico('predone',r.x,r.y);
+    const e=nemici[nemici.length-1]; e.pop=C.pop|0; e.riv=k; e.eroe=C.id; e.vita=900; e.n=C.nome;
+  }
+  const d=Math.round(dist(r.x,r.y,ME.borgo.x,ME.borgo.y)/100)*100;
+  dire('⚔ '+C.nome+' marcia su di te con '+n+' uomini · a '+d+' passi');
+  ALLARMI.push({x:r.x,y:r.y,t:0,riv:k}); if(ALLARMI.length>3) ALLARMI.shift();
+  AUDIO.grido(ME.borgo.x,ME.borgo.y); tocco('medium');
+}
+function difendiCampo(r,k){
+  const C=RIVALE(r), n=1+Math.floor(r.forza/25);
+  for(let i=0;i<n;i++){
+    generaNemico(truppaRivale(r,i+3),r.x+(Math.random()-.5)*60,r.y+(Math.random()-.5)*60);
+    const e=nemici[nemici.length-1]; e.pop=C.pop|0; e.riv=k; e.difesa=true;
+  }
+  dire('Il campo di '+C.nome+' si difende');
+}
+function prendiCampo(r,k){
+  const C=RIVALE(r);
+  r.preso=true; r.difesa=0;
+  for(const n of nemici) if(n.riv===k) n.fuga=true;
+  ME.scorte.sale=(ME.scorte.sale||0)+40; ME.scorte.grano=Math.min(scortaTot(),ME.scorte.grano+80);
+  const presi=ME.rivali.filter(x=>x.preso).length;
+  dire('🏴 Il campo di '+C.nome+' è tuo · '+presi+' di 3'+(presi>=3?' · SEI IL RE DELL\'IMPERO':''));
+  tocco('medium'); SCOSSA=Math.max(SCOSSA,3);
+  if(presi>=3) ME.re=true;
+  salva(true);
+}
+/* Il tributo dei campi presi, all'alba: si chiama dal passo quando cambia il giorno. */
+function tributi(){
+  if(!ME.rivali) return;
+  const n=ME.rivali.filter(r=>r.preso).length;
+  if(!n) return;
+  ME.scorte.sale=(ME.scorte.sale||0)+10*n; ME.scorte.grano=Math.min(scortaTot(),ME.scorte.grano+15*n);
+  ME.scorte.legno=(ME.scorte.legno||0)+10*n;
+  dire('Il tributo di '+n+' camp'+(n===1?'o':'i')+' è arrivato');
+}
+const ALLARMI=[];
+
 /* Le due si chiamano UNA volta per nemico per passo: con sedici nemici sono
    trentadue array buttati via al passo, cioè quasi duemila al secondo. Adesso
    leggono le liste già pronte del passo e non allocano niente. */
@@ -1237,7 +1433,7 @@ function passo(dt){
   const c=ME.capo;
   PASSI++;
   ME.orologio.tempo=(ME.orologio.tempo+dt/GIORNO)%1;
-  if(ME.orologio.tempo<dt/GIORNO) ME.stat.giorni++;
+  if(ME.orologio.tempo<dt/GIORNO){ ME.stat.giorni++; tributi() }
 
   /* Il passato di tutti, congelato prima di muovere niente. Da qui in poi la
      simulazione è l'unica verità: il disegno interpola fra questo e il dopo,
@@ -1283,7 +1479,7 @@ function passo(dt){
   })();
   /* anche il capo si cura al fuoco: piano, o in fretta col dono 'fuoco' */
   if(c.vita<c.vitaMax&&dist(c.x,c.y,ME.borgo.x,ME.borgo.y)<70)
-    c.vita=Math.min(c.vitaMax,c.vita+dt*(DONO('fuoco')?.15:.05));
+    c.vita=Math.min(c.vitaMax,c.vita+dt*c.vitaMax*(DONO('fuoco')?.024:.008));
   /* i rivali della partita: quando arrivi al loro campo, te lo si dice una volta */
   if(ME.rivali) for(let k=0;k<ME.rivali.length;k++){ const r=ME.rivali[k];
     if(!r.visto&&dist(c.x,c.y,r.x,r.y)<460){ r.visto=true; const C=RIVALE(r);
@@ -1333,7 +1529,9 @@ function passo(dt){
   if(!(c.colpo>0)){
     const ar=CONDOTTIERO().arma|0;
     const gitt=ar===4?200:(ar===3?44:36);
-    const dmg =ar===4?2.2:(ar===3?3.0:3.4);
+    /* il danno degli eroi di Imperivm: quaranta, cinquanta per colpo */
+    const dmg =ar===4?40:(ar===3?45:50);
+    const tipoE=(ar===4||ar===3)?'punta':'taglio';
     let ber=null, md=1e9;
     if(c.ord&&c.ord.t==='attacca'){
       const n=nemici.find(n=>n.uid===c.ord.uid&&n.vita>0);
@@ -1341,11 +1539,13 @@ function passo(dt){
     }
     if(!ber) for(const n of nemici){ const d=dist(n.x,n.y,c.x,c.y); if(d<gitt&&d<md){md=d;ber=n} }
     if(ber){
-      c.colpo=ar===4?1.1:.45;
+      /* un colpo ogni nove decimi, come gli eroi di Imperivm: prima era
+         uno ogni mezzo secondo, e con la vita vera l'eroe falciava tutto */
+      c.colpo=ar===4?1.1:.9;
       c.dir=Math.atan2(ber.y-c.y,ber.x-c.x);
-      if(ar===4) frecce.push({x:c.x,y:c.y-10,tx:ber.x,ty:ber.y,t:0,dmg,da:-1});
+      if(ar===4) frecce.push({x:c.x,y:c.y-10,tx:ber.x,ty:ber.y,t:0,dmg,da:-1,tipo:'punta'});
       else{
-        ferisciNemico(ber,dmg,null);
+        ferisciNemico(ber,dmg,null,tipoE);
         /* La botta dell'eroe si sente: spinta, tonfo, sussulto. È
            l'erede del vecchio colpo d'asta, senza il tasto. */
         const an=Math.atan2(ber.y-c.y,ber.x-c.x);
@@ -1395,7 +1595,7 @@ function passo(dt){
        'fuoco'. Prima nessuno guariva mai in sessione, e un contadino morso
        restava a mezza vita fino al giorno dopo. */
     if(dBorgo<70&&p.vita<p.vitaMax&&p.stato!=='ferito'&&p.stato!=='inspalla')
-      p.vita=Math.min(p.vitaMax,p.vita+dt*(DONO('fuoco')?.10:.03));
+      p.vita=Math.min(p.vitaMax,p.vita+dt*p.vitaMax*(DONO('fuoco')?.03:.01));
     /* Chi è a terra di forze molla il lavoro e torna al fuoco da sé:
        l'ordine si scorda, e chi comanda vede la gente rientrare. */
     if(p.vig<=(DONO('cuore')?7:15)&&p.ord&&p.ord.t!=='vai'&&p.stato!=='ferito'){
@@ -1409,7 +1609,7 @@ function passo(dt){
     if(FAME.vuoto){
       p.fame=Math.min(1,(p.fame||0)+dt/240);
       if(p.fame>(DONO('cuore')?.68:.55)&&p.ord&&p.ord.t==='raccogli'){ fineOrdine(p); p.ord={t:'vai',x:ME.borgo.x,y:ME.borgo.y} }
-      if(p.fame>.85&&p.stato!=='ferito'){ p.vita-=dt*.012; if(p.vita<=0){ p.vita=0; p.stato='ferito'; p.agonia=0 } }
+      if(p.fame>.85&&p.stato!=='ferito'){ p.vita-=dt*p.vitaMax*.003; if(p.vita<=0){ p.vita=0; p.stato='ferito'; p.agonia=0 } }
     } else if(p.fame>0) p.fame=Math.max(0,p.fame-dt/60);
 
     let bx=null,by=null, corri=CONDOTTIERO().tratto==='passo'?1.08:1;
@@ -1447,7 +1647,7 @@ function passo(dt){
          Una persona fa una cosa sola per volta, e la fa finché non è
          finita o finché non gliene arriva un'altra. Il sacco pesa
          sempre; chi passa dal fuoco con la roba addosso la posa. */
-      if(p.carico&&p.carico.q>0&&dBorgo<70) scaricaSacco(p);
+      if(p.carico&&p.carico.q>0&&depositoDi(p.x,p.y).d<70) scaricaSacco(p);
       corri*=p.carico&&!conCavallo(p)?.72:1;
       if(p.vig<25)corri*=.7;
 
@@ -1501,8 +1701,9 @@ function passo(dt){
            faceva la spola per sempre senza arrivare mai. */
         if(pieno||secco)p.acasa=true;
         if(p.acasa){
-          bx=ME.borgo.x; by=ME.borgo.y; corri*=.95;
-          if(dBorgo<70){ scaricaSacco(p); p.acasa=false }
+          const dep=depositoDi(p.x,p.y);
+          bx=dep.x; by=dep.y; corri*=.95;
+          if(dep.d<70){ scaricaSacco(p); p.acasa=false }
         }
         else if(p.obb){
           bx=p.obb.x; by=p.obb.y;
@@ -1519,19 +1720,36 @@ function passo(dt){
         }
       }
       else if(o.t==='costruisci'){
-        const e=ME.edifici.find(e=>e.eid===o.eid);
-        if(!e||e.prog>=1) fineOrdine(p);
+        const e=o.eid===-1?null:ME.edifici.find(e=>e.eid===o.eid);
+        const foro=o.eid===-1;
+        const daFare=foro?(ME.foroSu!==undefined):(e&&(e.prog<1||e.su!==undefined));
+        if(!daFare) fineOrdine(p);
         else{
           /* Ci si mette attorno, ognuno sul suo spicchio, e si lavora.
              Il cantiere avanza con il NUMERO di braccia: due lo fanno in
-             metà tempo, e questo si vede senza spiegarlo. */
+             metà tempo, e questo si vede senza spiegarlo. Salire di
+             livello è un cantiere come un altro, solo più lungo: ogni
+             gradino in più chiede metà tempo in più. */
+          const cx=foro?ME.borgo.x:e.x, cy=foro?ME.borgo.y:e.y;
+          const R=foro?52:Math.max(28,scalaEdif(e)*.62);
           const an=(p.uid*2.4)%TAU;
-          bx=e.x+Math.cos(an)*28; by=e.y+Math.sin(an)*28;
-          if(dist(p.x,p.y,e.x,e.y)<46){
-            e.prog=Math.min(1,e.prog+dt*.040*(DONO('muro')?1.4:1));
+          bx=cx+Math.cos(an)*R; by=cy+Math.sin(an)*R;
+          if(dist(p.x,p.y,cx,cy)<R+18){
+            const v=dt*.040*(DONO('muro')?1.4:1);
             p.lavora=Math.max(p.lavora||0,.3);
             if(Math.random()<dt*3)scintilla(p.x,p.y-10,'#d9c08a');
-            if(e.prog>=1){ dire(EDIFICI[e.tipo].n+' finita'); borgoSporco=true; salva(true) }
+            if(foro){
+              ME.foroSu=Math.min(1,ME.foroSu+v/(1+.8*livForo()));
+              if(ME.foroSu>=1){ ME.foro=livForo()+1; delete ME.foroSu;
+                dire('Il foro sale al livello '+ME.foro+' · la città può crescere'); tocco('medium'); salva(true) }
+            } else if(e.prog<1){
+              e.prog=Math.min(1,e.prog+v);
+              if(e.prog>=1){ dire(EDIFICI[e.tipo].n+' finita'); borgoSporco=true; salva(true) }
+            } else {
+              e.su=Math.min(1,e.su+v/(1+.5*livDi(e)));
+              if(e.su>=1){ e.liv=livDi(e)+1; delete e.su;
+                dire(EDIFICI[e.tipo].n+' al livello '+e.liv); tocco('medium'); salva(true) }
+            }
           }
         }
       }
@@ -1585,13 +1803,31 @@ function passo(dt){
         const forte =(att&&pop===3)?2:1;
         p.colpo=(A.gitt&&A.gitt>100?(DONO('freccia')?1.05:1.5):.8)*rapido;
         p.guarda=Math.atan2(bers.y-p.y,bers.x-p.x);
-        if(A.gitt&&A.gitt>100){ frecce.push({x:p.x,y:p.y-8,tx:bers.x,ty:bers.y,t:0,dmg:A.dmg*forte,da:p.uid}) }
-        else { ferisciNemico(bers,A.dmg*forte,p) }
+        const tipoA=TIPO_ARMA[p.arma]||'taglio';
+        /* LE ABILITÀ DI IMPERIVM, una per unità, tutte automatiche:
+           · CARICA (cavaliere): il primo colpo dopo una corsa vale il doppio
+             e butta indietro, come il Charge dei cavalieri galli;
+           · COLPO TRIPLO (soldato): un colpo su cinque vale per tre;
+           · PENETRAZIONE (lanciere): si nota nella tabella delle contro-unità.
+           L'arciere da vicino è quasi inerme: sotto trenta passi vale poco. */
+        let k=forte;
+        if(p.mest==='cavaliere'&&(p.slancio||0)>90){ k*=2; bers.vx=Math.cos(p.guarda)*240; bers.vy=Math.sin(p.guarda)*240; bers.stordito=.4;
+          SCOSSA=Math.max(SCOSSA,1.6); AUDIO.tonfo(p.x,p.y,1.1) }
+        if(p.mest==='guerriero'&&((p.colpi=(p.colpi||0)+1)%5===0)){ k*=3; scintilla(bers.x,bers.y-10,'#fff') }
+        if(p.mest==='arciere'&&md<30) k*=.4;
+        p.slancio=0;
+        if(A.gitt&&A.gitt>100){ frecce.push({x:p.x,y:p.y-8,tx:bers.x,ty:bers.y,t:0,dmg:A.dmg*k,da:p.uid,tipo:'punta'}) }
+        else { ferisciNemico(bers,A.dmg*k,p,tipoA) }
         if(A.gitt&&A.gitt>100){ bx=null;by=null;p.vx=p.vy=0 }   // l'arciere si ferma e tira
       }
     }
 
     muovi(p,bx,by,MESTIERI[p.mest].vel*corri,dt);
+    /* lo slancio del cavaliere: si carica galoppando, si perde fermi */
+    if(p.mest==='cavaliere'){
+      const v=Math.hypot(p.vx,p.vy);
+      p.slancio=v>120?Math.min(300,(p.slancio||0)+v*dt):Math.max(0,(p.slancio||0)-80*dt);
+    }
   }
 
   /* ── NESSUNO DENTRO UN ALTRO ──────────────────────────────────
@@ -1632,6 +1868,7 @@ function passo(dt){
 
   /* ── I nemici ─────────────────────────────────────────────── */
   ondata(dt);
+  passoRivali(dt);
   for(const n of nemici){
     const N=NEMICI[n.t];
     if(n.ric>0)n.ric-=dt;
@@ -1654,19 +1891,39 @@ function passo(dt){
       if(dist(n.x,n.y,ME.capo.x,ME.capo.y)>1500){ n.morto=true }
     } else {
       let b=null;
-      if(n.t==='ladro'){ b=piuCarico()||piuEsposto() }
+      /* Le bestie e i predoni cercano chi è solo; un ESERCITO no: va
+         contro il più vicino dei tuoi, armato o no, e se l'eroe è più
+         vicino di tutti va contro l'eroe. È così che in Imperivm due
+         eserciti si trovano e si prendono. */
+      const militare=n.t==='armato'||n.t==='lanciaR'||n.t==='arcoR'||n.t==='cavalloR';
+      if(militare){
+        let md=dist(n.x,n.y,ME.capo.x,ME.capo.y);
+        b={x:ME.capo.x,y:ME.capo.y,capo:true};
+        for(let i=0;i<VIVI.length;i++){ const q=VIVI[i]; if(q.stato==='ferito')continue;
+          const d=dist(n.x,n.y,q.x,q.y); if(d<md){md=d;b=q} }
+        /* niente di vicino: marcia sul borgo */
+        if(md>N.vede){ b={x:ME.borgo.x,y:ME.borgo.y,borgo:true} }
+      }
+      else if(n.t==='ladro'){ b=piuCarico()||piuEsposto() }
       else { b=piuEsposto()||VIVI[0] }
-      if(FERITI.length&&n.t==='lupo')b=FERITI[0];
+      if(!militare&&FERITI.length&&n.t==='lupo')b=FERITI[0];
       if(!b){ b={x:ME.capo.x,y:ME.capo.y,capo:true} }
       n.preda=b;
       bx=b.x; by=b.y;
       const d=dist(n.x,n.y,b.x,b.y);
-      if(d<N.r+11&&n.ric<=0){
+      const cl=classeDi(n), tipoN=(n.t==='lanciaR'||n.t==='arcoR'||n.t==='cavalloR')?'punta':'taglio';
+      /* L'arciere nemico tira da lontano e non entra in mischia. */
+      if(n.t==='arcoR'&&!b.borgo&&d<N.gitt){
+        bx=null; by=null;
+        if(n.ric<=0){ n.ric=N.ric; n.dir=Math.atan2(b.y-n.y,b.x-n.x);
+          frecce.push({x:n.x,y:n.y-8,tx:b.x,ty:b.y,t:0,dmg:N.dmg,nem:true,tipo:'punta',cl:'tiro'}) }
+      }
+      else if(!b.borgo&&d<N.r+11&&n.ric<=0){
         n.ric=N.ric;
         if(n.t==='ladro'&&b.carico){ n.rubato=b.carico; b.carico=null; n.fuga=true;
           dire('Ti hanno strappato un sacco'); }
         else { const dm=N.dmg*(n.t==='lupo'&&DONO('paura')?.7:1);   // dono 'paura': i lupi mordono piano
-          if(b.capo) feriscilCapo(dm); else ferisciPersona(b,dm) }
+          if(b.capo) feriscilCapo(dm,tipoN,cl); else ferisciPersona(b,dm,tipoN,cl) }
       }
     }
     muovi(n,bx,by,vel,dt);
@@ -1679,7 +1936,16 @@ function passo(dt){
     f.t+=dt*3.2;
     if(f.t>=1){
       f.fine=true;
-      for(const n of nemici) if(dist(n.x,n.y,f.tx,f.ty)<16){ ferisciNemico(n,f.dmg,null); break }
+      /* le frecce nemiche cadono sui tuoi, le tue sui nemici */
+      if(f.nem){
+        let hit=false;
+        for(const p of VIVI) if(p.stato!=='ferito'&&dist(p.x,p.y,f.tx,f.ty)<16){ ferisciPersona(p,f.dmg,'punta','tiro'); hit=true; break }
+        if(!hit&&dist(ME.capo.x,ME.capo.y,f.tx,f.ty)<18) feriscilCapo(f.dmg,'punta','tiro');
+      }
+      else {
+        const da=f.da>0?ME.gente.find(p=>p.uid===f.da):null;
+        for(const n of nemici) if(dist(n.x,n.y,f.tx,f.ty)<16){ ferisciNemico(n,f.dmg,da||null,f.tipo||'punta'); break }
+      }
     }
   }
   frecce=frecce.filter(f=>!f.fine);
@@ -1692,17 +1958,52 @@ function passo(dt){
     for(let i=0;i<POLV.length;i++){ const s=POLV[i]; s.pt=s.t; s.t+=dt*1.5; if(s.t<1)POLV[w++]=s }
     POLV.length=w; }
 
-  /* ── Le torri vegliano ────────────────────────────────────── */
+  /* ── Le torri vegliano ──────────────────────────────────────
+     Col livello tirano più lontano e più forte: al quinto una torre è
+     un arciere e mezzo che non si stanca mai. */
   for(const e of ME.edifici){
     if(e.tipo!=='torre'||e.prog<1)continue;
+    const L=livDi(e);
     e.ric=(e.ric||0)-dt;
     if(e.ric<=0){
       for(const n of nemici){
-        if(dist(n.x,n.y,e.x,e.y)<300){
-          frecce.push({x:e.x,y:e.y-26,tx:n.x,ty:n.y,t:0,dmg:1.6,da:0});
-          e.ric=1.6; break;
+        if(dist(n.x,n.y,e.x,e.y)<300+30*(L-1)){
+          frecce.push({x:e.x,y:e.y-26,tx:n.x,ty:n.y,t:0,dmg:14+4*(L-1),da:0,tipo:'punta'});
+          e.ric=1.6/(1+.15*(L-1)); break;
         }
       }
+    }
+  }
+
+  /* ── Il tempio: vicino al tempio le ferite si chiudono il doppio ── */
+  const tempio=ME.edifici.find(e=>e.tipo==='tempio'&&e.prog>=1);
+  if(tempio){
+    const R=200+30*livDi(tempio);
+    for(const p of VIVI){
+      if(p.stato==='ferito'||p.vita>=p.vitaMax) continue;
+      if(dist(p.x,p.y,tempio.x,tempio.y)<R) p.vita=Math.min(p.vitaMax,p.vita+dt*p.vitaMax*.015*livDi(tempio));
+    }
+  }
+
+  /* ── LE CODE DI ADDESTRAMENTO ─────────────────────────────────
+     Ogni edificio che addestra lavora sulla sua coda, una persona per
+     volta, e più alto è il livello più in fretta finisce. Chi esce è una
+     persona NUOVA: se le capanne sono piene la coda si ferma e aspetta,
+     come in Imperivm, dove l'esercito è grande quanto la città che lo
+     mantiene. */
+  for(const e of ME.edifici){
+    if(e.prog<1||!e.coda||!e.coda.length) continue;
+    const v=e.coda[0], U=UNITA[v.u];
+    if(!U){ e.coda.shift(); continue }
+    if(gentePiedi().length>=postiTot()){
+      if(!e.pieno){ e.pieno=true; dire(EDIFICI[e.tipo].n+': le capanne sono piene') }
+      continue;
+    }
+    e.pieno=false;
+    v.t=(v.t||0)+dt*(1+.25*(livDi(e)-1));
+    if(v.t>=U.t){
+      e.coda.shift();
+      escePersona(e,v.u);
     }
   }
 
@@ -1765,7 +2066,7 @@ function passo(dt){
     if(ME.natura>(DONO('nascita')?18:26)){
       ME.natura=0; ME.scorte.grano-=40;
       const b=nuovaPersona(ME.borgo.x+(Math.random()-.5)*50,ME.borgo.y+(Math.random()-.5)*50,null);
-      b.mest='bambino'; b.arma=null; b.cresce=170; b.vitaMax=2; b.vita=2;
+      b.mest='bambino'; b.arma=null; b.cresce=170; b.vitaMax=MESTIERI.bambino.vita; b.vita=b.vitaMax;
       ME.gente.push(b); ME.stat.nati++;
       dire('È nato qualcuno');
       salva();
@@ -1861,8 +2162,24 @@ function trovaCosa(x,y,r,p,res){
   }
   return best;
 }
+/* LA RESA DEGLI EDIFICI DI LAVORO. Una segheria rende il legno attorno a
+   sé, un mulino il grano, una cava ferro e pietra — ma solo entro il suo
+   raggio, che cresce col livello. È la ragione per cui in Ikariam la città
+   si progetta: il mulino si mette in mezzo ai campi, non accanto al fuoco. */
+const RESA_EDIF={segheria:['legno'], mulino:['grano'], miniera:['ferro','pietra']};
+function resaEdif(res,x,y){
+  let best=1;
+  for(const e of ME.edifici){
+    if(e.prog<1) continue;
+    const l=RESA_EDIF[e.tipo]; if(!l||l.indexOf(res)<0) continue;
+    const L=livDi(e), R=260+40*L;
+    if(dist(e.x,e.y,x,y)<R){ const k=1.35+.15*(L-1); if(k>best) best=k }
+  }
+  return best;
+}
 function raccogli(p,o,dt){
-  const q=COSA[o.t].raccolta*dt*(p.mest==='contadino'?1:.55)*resaDono(COSA[o.t].res);
+  const res0=COSA[o.t].res;
+  const q=COSA[o.t].raccolta*dt*(p.mest==='contadino'?1:.55)*resaDono(res0)*resaEdif(res0,o.x,o.y);
   const preso=Math.min(q,o.v);
   o.v-=preso;
   const res=COSA[o.t].res;
@@ -1872,7 +2189,7 @@ function raccogli(p,o,dt){
      lo decide la cosa che si sta prendendo, non chi la prende. */
   if(p.lavora<=0){
     if(o.t==='albero')AUDIO.ascia(p.x,p.y);
-    else if(o.t==='vena')AUDIO.piccone(p.x,p.y);
+    else if(o.t==='vena'||o.t==='sasso')AUDIO.piccone(p.x,p.y);
     else AUDIO.falce(p.x,p.y);
   }
   p.lavora=.25;
@@ -1881,13 +2198,24 @@ function raccogli(p,o,dt){
     const c=chunks.get(ci+','+cj); if(c)segnaChunk(c);
   }
 }
+/* IL DEPOSITO. Si scarica al fuoco o a un granaio finito, quale dei due è
+   più vicino: costruire il granaio accanto al bosco dimezza il viaggio,
+   ed è una decisione strategica vera, non un numero in più. */
+function depositoDi(x,y){
+  let bx=ME.borgo.x, by=ME.borgo.y, bd=dist(x,y,bx,by);
+  for(const e of ME.edifici){
+    if(e.tipo!=='granaio'||e.prog<1) continue;
+    const d=dist(x,y,e.x,e.y); if(d<bd){ bd=d; bx=e.x; by=e.y }
+  }
+  return {x:bx,y:by,d:bd};
+}
 function scaricaSacco(p){
   p.acasa=false;                 // scaricato o no, l'impegno di tornare è sciolto
   if(!p.carico)return;
   AUDIO.sacco(p.x,p.y,p.carico.q);
   const cap=scortaTot();
   const r=p.carico.t;
-  ME.scorte[r]=Math.min(cap,ME.scorte[r]+p.carico.q);
+  ME.scorte[r]=Math.min(cap,(ME.scorte[r]||0)+p.carico.q);
   if(r==='sale'){
     const prima=ME.respiro;
     ME.respiro=Math.min(12000,ME.respiro+600*Math.min(1,p.carico.q/12));
@@ -1898,6 +2226,30 @@ function scaricaSacco(p){
   salva();
 }
 function scintilla(x,y,col){ scintille.push({x,y,t:0,c:col||'#ffd08a'}) }
+
+/* ── CHI ESCE DALL'EDIFICIO ───────────────────────────────────────
+   Nasce davanti alla porta, si veste (la stessa vestizione di chi
+   prende un'arma: mezzo secondo, sei scintille), e cammina al punto di
+   raccolta, se ce n'è uno. È già dentro la selezione di chi l'ha
+   chiesto? No: resta fermo lì, e lo si prende col tasto ARMATI. */
+function escePersona(e,u){
+  const U=UNITA[u];
+  const dir=Math.atan2(ME.borgo.y-e.y,ME.borgo.x-e.x);
+  const d=scalaEdif(e)*.7;
+  const x=e.x+Math.cos(dir)*d, y=e.y+Math.sin(dir)*d;
+  const p=nuovaPersona(x,y,u==='contadino'?'falce':null);
+  if(u!=='contadino'){
+    p.armaIn=U.arma; p.trasf=T_TRASF; p.invulno=-T_TRASF*.6;
+    for(let i=0;i<6;i++){ const an=i/6*TAU; scintilla(x+Math.cos(an)*7,y-8+Math.sin(an)*4,'#ffe9bd') }
+  }
+  ME.gente.push(p);
+  if(u!=='contadino') ME.stat.armati++;
+  if(e.punto) daiOrdine(p,{t:'vai',x:e.punto.x+(Math.random()-.5)*30,y:e.punto.y+(Math.random()-.5)*30});
+  AUDIO.ferro(x,y);
+  dire(U.n+' pronto · '+EDIFICI[e.tipo].n);
+  rifaiListe();
+  salva();
+}
 
 /* ── La polvere ai piedi ──────────────────────────────────────────
    Non è un effetto: è il modo in cui si VEDE che partire e fermarsi costano.
@@ -1915,22 +2267,76 @@ function polvere(o){
     t:0, r:1.1+Math.random()*.9});
 }
 
-function ferisciPersona(p,d){
+/* ═══════════════════════════════════════════════════════════════
+   IL COMBATTIMENTO DI IMPERIVM
+   I numeri vengono dal gioco vero (Imperivm III, le classi delle unità
+   dentro data.pak): vita, danno, e DUE armature — contro il taglio
+   (spade, asce, morsi) e contro la punta (frecce, lance). Uno scudato
+   con diciotto di armatura prende le frecce quasi di striscio; un
+   arciere senza armatura muore sotto una spada in due colpi.
+
+   Il danno che passa: quello dell'arma meno l'armatura giusta, ma mai
+   meno di un quarto. Il quarto è il pavimento che impedisce a una
+   corazza di rendere immortali: dieci arcieri abbattono uno scudato,
+   ci mettono solo di più.
+   ═══════════════════════════════════════════════════════════════ */
+const ARMATURA={            // [contro il taglio, contro la punta]
+  contadino:[0,0], bambino:[0,0], guerriero:[6,6], lanciere:[12,12],
+  arciere:[0,0], spadaccino:[18,18], cavaliere:[8,8]
+};
+const ARM_NEMICO={lupo:[0,0], ladro:[2,2], predone:[6,6], armato:[8,8], lanciaR:[12,12], arcoR:[0,0], cavalloR:[8,8]};
+const ARM_EROE=[14,14];
+const TIPO_ARMA={falce:'taglio', randello:'taglio', gladio:'taglio', spada:'taglio',
+  lancia:'punta', arco:'punta', lanciacav:'punta'};
+/* La classe decide le contro-unità: la lancia ferma il cavallo, il
+   cavallo travolge gli arcieri, la spada sfonda la lancia, l'arco
+   punisce chi non ha scudo. */
+function classeDi(o){
+  if(o===ME.capo) return 'eroe';
+  if(o.t){ return o.t==='lupo'?'bestia':(o.t==='cavalloR'?'cavallo':(o.t==='arcoR'?'tiro':(o.t==='lanciaR'?'lancia':'fanteria'))) }
+  const m=o.mest;
+  if(m==='cavaliere') return 'cavallo';
+  if(m==='lanciere') return 'lancia';
+  if(m==='arciere') return 'tiro';
+  if(m==='guerriero'||m==='spadaccino') return 'fanteria';
+  return 'inerme';
+}
+const CONTRO={              // chi colpisce → classe di chi incassa → moltiplicatore
+  lancia:  {cavallo:2.0, bestia:1.5, fanteria:.85},
+  cavallo: {tiro:1.6, inerme:1.4},
+  fanteria:{lancia:1.35, tiro:1.2},
+  tiro:    {fanteria:1.1, inerme:1.2}
+};
+function dannoEff(d,tipo,arm,chi,contro){
+  const a=tipo==='punta'?arm[1]:arm[0];
+  let e=Math.max(d*.25,d-a);
+  if(chi&&contro){ const t=CONTRO[chi]; if(t&&t[contro]) e*=t[contro] }
+  return e;
+}
+/** Il primo testo del triangolo, una volta sola in tutta la partita. */
+function diciTriangolo(){
+  if(ME.visto.triangolo) return;
+  ME.visto.triangolo=true;
+  setTimeout(()=>dire('La lancia ferma il cavallo, il cavallo travolge gli arcieri, la spada sfonda la lancia'),600);
+}
+
+function ferisciPersona(p,d,tipo,chi){
   /* vestizione: danno doppio · dono 'scudo': un quarto in meno ·
      testuggine (il dono attivo dei Romani): la metà */
   const testu=(ME.donoAtt>0&&(CONDOTTIERO().pop|0)===2&&p.mest!=='contadino'&&p.mest!=='bambino')?.5:1;
   const mult=(p.invulno<0?2:1)*(DONO('scudo')?.75:1)*testu;
-  p.vita-=d*mult;
+  const e=dannoEff(d,tipo||'taglio',ARMATURA[p.mest]||[0,0],chi,classeDi(p));
+  p.vita-=e*mult;
   p.colpito=.2;
   if(p.vita<=0&&p.stato!=='ferito'){
     p.vita=0; p.stato='ferito'; p.agonia=0; p.ord=null; SEL.delete(p.uid);
     dire((p.nome?p.nome:'Uno dei tuoi')+' è a terra');
   }
 }
-function feriscilCapo(d){
+function feriscilCapo(d,tipo,chi){
   const c=ME.capo;
   if(c.inv>0)return;
-  c.vita-=d; c.inv=.9; c.colpito=.25;
+  c.vita-=dannoEff(d,tipo||'taglio',ARM_EROE,chi,'eroe'); c.inv=.5; c.colpito=.25;
   if(c.vita<=0){
     c.vita=Math.max(1,Math.round(c.vitaMax*.4));
     c.x=ME.borgo.x; c.y=ME.borgo.y+40;
@@ -1938,8 +2344,10 @@ function feriscilCapo(d){
     dire('Ti hanno buttato giù. Ti sei svegliato al fuoco.');
   }
 }
-function ferisciNemico(n,d,da){
-  n.vita-=d; n.colpito=.2;
+function ferisciNemico(n,d,da,tipo){
+  const e=dannoEff(d,tipo||'taglio',ARM_NEMICO[n.t]||[0,0],da?classeDi(da):'eroe',classeDi(n));
+  if(da&&CONTRO[classeDi(da)]&&CONTRO[classeDi(da)][classeDi(n)]) diciTriangolo();
+  n.vita-=e; n.colpito=.2;
   /* dono 'paura': un lupo a mezza vita scappa invece di finire il lavoro */
   if(n.vita>0&&n.t==='lupo'&&!n.fuga&&DONO('paura')&&n.vita<=NEMICI.lupo.vita*.5) n.fuga=true;
   if(n.vita<=0){
@@ -1985,7 +2393,7 @@ function recuperaAssenza(){
   while(nati>0&&ME.scorte.grano>=40&&gentePiedi().length<postiTot()){
     ME.scorte.grano-=40;
     const b=nuovaPersona(ME.borgo.x+(Math.random()-.5)*60,ME.borgo.y+(Math.random()-.5)*60,null);
-    b.mest='bambino'; b.arma=null; b.cresce=60; b.vitaMax=2; b.vita=2;
+    b.mest='bambino'; b.arma=null; b.cresce=60; b.vitaMax=MESTIERI.bambino.vita; b.vita=b.vitaMax;
     ME.gente.push(b); ME.stat.nati++; nati--;
   }
   // ladri: solo se il granaio era pieno. Fuori sessione non muore mai nessuno.
@@ -2172,7 +2580,7 @@ const NEM_VESTE='#5a3a4e', NEM_PEL='#9b7f8e', NEM_SCURA='#3a2432';
 const CAPELLI='#3b2a1c';
 /* Il colore della roba nel sacco: era un oggetto letterale dentro il ciclo,
    cioè un'allocazione per persona per fotogramma per niente. */
-const ROBACOL={grano:'#d9bb52',legno:'#8a6134',ferro:'#9098a0',sale:'#e8eae4'};
+const ROBACOL={grano:'#d9bb52',legno:'#8a6134',ferro:'#9098a0',sale:'#e8eae4',pietra:'#a9a49a'};
 
 /* ── L'ora del sole ─────────────────────────────────────────
    Non è realismo: è il modo più economico di dire "è tardi" senza
@@ -2918,15 +3326,78 @@ function disegnaComando(){
     ct.fillRect(Math.min(rett.x0,rett.x),Math.min(rett.y0,rett.y),
       Math.abs(rett.x-rett.x0),Math.abs(rett.y-rett.y0));
   }
-  /* 5 · i cantieri: l'icona di cosa sta nascendo e a che punto è */
-  for(const e of ME.edifici){
-    if(e.prog>=1) continue;
-    const q=w2s(e.x,e.y,quota(e.x,e.y)+34);
-    ct.font=(14*Math.max(.8,z*.5)|0)+'px serif'; ct.textAlign='center';
-    ct.fillText(ICONA_EDIF[e.tipo]||'🏗',q.x,q.y);
+  /* 4b · GLI ESERCITI NEMICI. Sopra ognuno una V rossa, e sul bordo dello
+     schermo una freccia verso chi marcia su di te da fuori vista, con il
+     numero. La camera non si sposta mai da sola: la freccia dice dove
+     guardare, e un tocco sul borgo ci porta. */
+  {
+    const fuori={};
+    for(const n of nemici){
+      if(n.riv===undefined) continue;
+      const q=w2s(ix(n),iy(n),quota(n.x,n.y)+(n.eroe?40:30));
+      if(q.x>0&&q.x<cw&&q.y>0&&q.y<ch){
+        ct.beginPath(); ct.moveTo(q.x-5,q.y-5); ct.lineTo(q.x,q.y); ct.lineTo(q.x+5,q.y-5);
+        ct.strokeStyle='rgba(240,96,84,.95)'; ct.lineWidth=2.2; ct.lineJoin='round'; ct.stroke();
+        if(n.vita<(NEMICI[n.t]?NEMICI[n.t].vita:n.vita)||n.eroe){
+          const vm=n.eroe?900:NEMICI[n.t].vita, L=16, f=clamp(n.vita/vm,0,1);
+          ct.fillStyle='rgba(8,6,4,.65)'; ct.fillRect(q.x-L/2,q.y-10,L,3.2);
+          ct.fillStyle='#e0665a'; ct.fillRect(q.x-L/2,q.y-10,L*f,3.2);
+        }
+      } else {
+        const k=n.riv; fuori[k]=fuori[k]||{n:0,x:0,y:0}; fuori[k].n++; fuori[k].x+=q.x; fuori[k].y+=q.y;
+      }
+    }
+    for(const k in fuori){
+      const f=fuori[k], mx=f.x/f.n, my=f.y/f.n;
+      const cx=cw/2, cy=ch/2, an=Math.atan2(my-cy,mx-cx);
+      const bx=clamp(cx+Math.cos(an)*cw,28,cw-28), by=clamp(cy+Math.sin(an)*ch,70,ch-110);
+      ct.save(); ct.translate(bx,by); ct.rotate(an);
+      ct.fillStyle='rgba(200,52,44,.92)';
+      ct.beginPath(); ct.moveTo(16,0); ct.lineTo(-8,-11); ct.lineTo(-8,11); ct.closePath(); ct.fill();
+      ct.restore();
+      ct.font='bold 11px system-ui,sans-serif'; ct.textAlign='center'; ct.fillStyle='#fff';
+      ct.fillText(f.n,bx-Math.cos(an)*18,by-Math.sin(an)*18+4);
+    }
+  }
+
+  /* 5 · i cantieri: l'icona di cosa sta nascendo e a che punto è; lo
+     stesso per chi sta salendo di livello, e per il foro */
+  const barra=(x,y,f,col)=>{
     const L=26*Math.max(.7,z*.5);
-    ct.fillStyle='rgba(8,6,4,.6)'; ct.fillRect(q.x-L/2,q.y+4,L,3.4);
-    ct.fillStyle='#e0c364'; ct.fillRect(q.x-L/2,q.y+4,L*clamp(e.prog,0,1),3.4);
+    ct.fillStyle='rgba(8,6,4,.6)'; ct.fillRect(x-L/2,y,L,3.4);
+    ct.fillStyle=col||'#e0c364'; ct.fillRect(x-L/2,y,L*clamp(f,0,1),3.4);
+  };
+  ct.textAlign='center';
+  for(const e of ME.edifici){
+    if(e.prog>=1&&e.su===undefined&&!(e.coda&&e.coda.length)&&!(EDIF_SEL===e.eid)) continue;
+    const q=w2s(e.x,e.y,quota(e.x,e.y)+scalaEdif(e)*.85);
+    ct.font=(14*Math.max(.8,z*.5)|0)+'px serif';
+    if(e.prog<1){ ct.fillText(ICONA_EDIF[e.tipo]||'🏗',q.x,q.y); barra(q.x,q.y+4,e.prog) }
+    else if(e.su!==undefined){ ct.fillText('⬆️',q.x,q.y); barra(q.x,q.y+4,e.su,'#8fd9a5') }
+    /* la coda: un pallino per voce, il primo che si riempie */
+    if(e.prog>=1&&e.coda&&e.coda.length){
+      const n=e.coda.length, v=e.coda[0], U=UNITA[v.u];
+      for(let i=0;i<n;i++){
+        const px=q.x+(i-(n-1)/2)*9, py=q.y+14;
+        ct.beginPath(); ct.arc(px,py,3.4,0,TAU);
+        ct.fillStyle='rgba(8,6,4,.7)'; ct.fill();
+        if(i===0&&U){ ct.beginPath(); ct.moveTo(px,py); ct.arc(px,py,3.4,-Math.PI/2,-Math.PI/2+TAU*clamp(v.t/U.t,0,1)); ct.closePath();
+          ct.fillStyle='#e0c364'; ct.fill() }
+      }
+    }
+    /* il punto di raccolta, quando la scheda è aperta */
+    if(EDIF_SEL===e.eid&&e.punto){
+      const r=w2s(e.punto.x,e.punto.y,quota(e.punto.x,e.punto.y));
+      ct.strokeStyle='rgba(224,196,100,.85)'; ct.lineWidth=1.5; ct.setLineDash([4,4]);
+      ct.beginPath(); ct.moveTo(w2s(e.x,e.y,quota(e.x,e.y)).x,w2s(e.x,e.y,quota(e.x,e.y)).y); ct.lineTo(r.x,r.y); ct.stroke();
+      ct.setLineDash([]);
+      ct.fillStyle='#c8342c'; ct.beginPath(); ct.moveTo(r.x,r.y-18); ct.lineTo(r.x+11,r.y-14); ct.lineTo(r.x,r.y-10); ct.closePath(); ct.fill();
+      ct.strokeStyle='#4a3b28'; ct.lineWidth=1.6; ct.beginPath(); ct.moveTo(r.x,r.y); ct.lineTo(r.x,r.y-19); ct.stroke();
+    }
+  }
+  if(ME.foroSu!==undefined){
+    const q=w2s(ME.borgo.x,ME.borgo.y,quota(ME.borgo.x,ME.borgo.y)+40);
+    ct.font=(14*Math.max(.8,z*.5)|0)+'px serif'; ct.fillText('⬆️',q.x,q.y); barra(q.x,q.y+4,ME.foroSu,'#8fd9a5');
   }
 }
 
@@ -4732,7 +5203,8 @@ function angoli(d, S, tempo){
   for(i=0;i<NOSSA;i++) _a[i]=0;
   _bX=_bY=_bZ=0; _rX=_rY=_rZ=0;
 
-  var cam = d.and?1:0, fermo = 1-cam;
+  /* In sella le gambe non camminano: è il cavallo che cammina. */
+  var cam = (d.and&&!d.sella)?1:0, fermo = 1-cam;
   var pezzi = _pezziCorr;
 
   /* ── LA CAMMINATA. Le braccia sono in controfase alle gambe perche'
@@ -4848,6 +5320,16 @@ function angoli(d, S, tempo){
      inc e giu, e il modulo li rispetta invece di rifarli a modo suo. */
   if(d.inc){ _a[0] -= d.inc; _a[12] += d.inc*0.72 }
   if(d.giu){ _rZ -= d.giu }
+
+  /* ── IN SELLA. Le cosce avanti quasi in orizzontale, le ginocchia
+     piegate giù lungo i fianchi del cavallo, il busto appena indietro
+     per reggere la lancia. Al trotto si sobbalza: il saliscendi è quello
+     del cavallo sotto, due volte per passo come la sua andatura. */
+  if(d.sella){
+    _a[1]=_a[4]=78*RAD; _a[2]=_a[5]=-92*RAD; _a[3]=_a[6]=14*RAD;
+    _a[0]+=0.10;
+    if(d.and) _rZ += Math.abs(Math.sin((d.fase||0)*2))*0.03;
+  }
 
   /* ── LO SCUDO non balla. Un braccio che porta venti chili di legno non
      oscilla come uno libero: lo si tiene fermo davanti, e proprio perche'
@@ -5928,7 +6410,16 @@ var C = {
   cenere:     col('#3a342e'),
   terra:      col('#6b5537'),
   pietra:     col('#6d6862'),
-  acqua:      col('#2f6f77')
+  acqua:      col('#2f6f77'),
+  /* i materiali della città che cresce: il marmo del tempio, l'intonaco
+     della caserma, il fieno della stalla, la tela colorata del mercato */
+  marmo:      col('#d8d2c4'),
+  marmoOmb:   col('#aaa293'),
+  intonaco:   col('#c9b48e'),
+  fieno:      col('#c9a24e'),
+  telaBlu:    col('#3f6f9a'),
+  telaRossa:  col('#b0443a'),
+  bersaglio:  col('#e8e0c8')
 };
 C.fiamma = col('#ffca62');
 
@@ -6154,6 +6645,152 @@ function torre(M){
   M.tetto(0,0,H+0.26, 0.30,0.30,0.24, C.ardesia, 0.06);
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   4a · LA CITTÀ CHE CRESCE
+   Otto edifici nuovi, uno per mestiere della città. La regola è la
+   stessa delle capanne: ognuno deve dire cosa fa dalla SAGOMA, a
+   cinquanta pixel, prima che uno legga l'icona. La caserma è lunga e
+   bassa con gli scudi appesi, la stalla ha la porta larga e il fieno,
+   il tempio le colonne bianche, il mulino le pale.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── LA CASERMA. Una casa lunga di muro intonacato, il tetto di tegole
+   scure, la porta larga, e tre scudi appesi alla facciata: è l'unico
+   edificio con le insegne di guerra addosso. */
+function caserma(M){
+  var hx=0.62, hy=0.34, h=0.46;
+  M.scatola(0,0,0, hx,hy,h, C.intonaco, 0.96, C.legnoScuro);
+  M.scatola(0,-hy-0.010,0.02, hx*1.01,0.012,0.06, C.pietra);           // lo zoccolo
+  M.tetto(0,0,h, hx,hy,0.34, C.ardesia, 0.08);
+  M.scatola(0,-hy-0.02,0, 0.16,0.02,0.32, C.legnoScuro);               // la porta
+  // gli scudi della facciata: tondi, rossi col bordo d'oro, ai lati della porta
+  var xs=[-0.40,0.40];
+  for(var i=0;i<2;i++){
+    M.cono(xs[i],-hy-0.03,0.30,0.30+0.012,0.10,0.10,8,C.rossoCupo,0,0);
+    M.cono(xs[i],-hy-0.04,0.30,0.30+0.012,0.035,0.035,6,C.oro,0,0);
+  }
+  // due lance incrociate sopra la porta
+  M.cono(-0.12,-hy-0.05,0.34,0.62,0.012,0.010,4,C.legnoScuro,0,0,[0.22,0]);
+  M.cono( 0.12,-hy-0.05,0.34,0.62,0.012,0.010,4,C.legnoScuro,0,0,[-0.22,0]);
+}
+
+/* ── IL TIRO CON L'ARCO. Un recinto basso, tre sagome di paglia con il
+   bersaglio tondo, e la rastrelliera degli archi: si capisce da lontano
+   che lì si tira. */
+function bersagli(M){
+  var s=[[-1,-1],[1,-1],[1,1],[-1,1]];
+  for(var i=0;i<4;i++) M.cono(s[i][0]*0.60,s[i][1]*0.44,0,0.26,0.024,0.020,4,C.legnoScuro,0,0);
+  M.scatola(0,-0.44,0.20, 0.60,0.012,0.022, C.legno);
+  M.scatola(0, 0.44,0.20, 0.60,0.012,0.022, C.legno);
+  M.scatola(-0.60,0,0.20, 0.012,0.44,0.022, C.legno);
+  for(i=0;i<3;i++){
+    var x=-0.36+i*0.36;
+    M.cono(x,0.24,0,0.52,0.026,0.022,4,C.legnoScuro,0,0);
+    M.cono(x,0.22,0.36,0.36+0.02,0.15,0.15,10,C.paglia,0,0);
+    M.cono(x,0.20,0.36,0.36+0.02,0.10,0.10,10,C.bersaglio,0,0);
+    M.cono(x,0.19,0.36,0.36+0.02,0.045,0.045,8,C.rosso,0,0);
+  }
+  M.scatola(0,-0.20,0.02, 0.30,0.05,0.035, C.legnoScuro);              // la linea di tiro
+}
+
+/* ── LA STALLA. Bassa e larga, il tetto di paglia che scende lungo, la
+   porta grande a due battenti, e il mucchio di fieno davanti. */
+function stalla(M){
+  var hx=0.60, hy=0.40, h=0.38;
+  M.scatola(0,0,0, hx,hy,h, C.legno, 0.96, C.legnoScuro);
+  M.tetto(0,0,h, hx,hy,0.30, C.paglia, 0.12);
+  M.scatola(0,-hy-0.02,0, 0.24,0.02,0.30, C.legnoScuro);               // la porta larga
+  M.scatola(0,-hy-0.03,0.15, 0.24,0.012,0.012, C.legnoCh);             // la traversa
+  M.roccia(0.42,-0.58,0,0.20,0.16,0.20,6,2,C.fieno,11,true);           // il fieno
+  M.roccia(0.20,-0.62,0,0.14,0.12,0.14,6,2,C.fieno,23,true);
+  for(var i=0;i<3;i++) M.cono(-0.52+i*0.12,-0.56,0,0.22,0.018,0.016,4,C.legnoScuro,0,0); // lo steccato
+  M.scatola(-0.40,-0.56,0.18, 0.14,0.010,0.016, C.legno);
+}
+
+/* ── IL MULINO. Una torre tonda di pietra, il cappello conico, e quattro
+   pale che il vento fa girare — sono l'unica cosa del borgo che si
+   muove da sola oltre al fuoco. */
+function mulino(M){
+  /* intonacato e chiaro, col cappello di paglia: una torre scura in un
+     prato verde spariva appena calava il sole */
+  M.cono(0,0,0,0.78,0.30,0.22,8,C.intonaco,0,0);
+  M.cono(0,0,0.02,0.10,0.31,0.305,8,C.pietra,0,0);                    // lo zoccolo
+  M.cono(0,0,0.78,1.14,0.27,0,8,C.paglia,0,0);
+  M.scatola(0,-0.30,0, 0.08,0.02,0.20, C.legnoScuro);                  // la porta
+  /* le pale: quattro tele larghe su un telaio di legno, davanti alla
+     porta. Larghe abbastanza da leggersi a cinquanta pixel: sono la sola
+     cosa che dice "mulino" prima dell'icona. */
+  var cz=0.70, cy=-0.33;
+  for(var i=0;i<4;i++){
+    var a=i/4*TAU+0.35, ca=Math.cos(a), sa=Math.sin(a);
+    var x1=ca*0.10, z1=cz+sa*0.10, x2=ca*0.70, z2=cz+sa*0.70;
+    var px=-sa*0.16, pz=ca*0.16;
+    M.pannello([x1,cy,z1],[x2,cy,z2],[x2+px,cy,z2+pz],[x1+px,cy,z1+pz],C.tela,0.02,0.01);
+    M.pannello([x1,cy-0.005,z1],[x2,cy-0.005,z2],[x2+px*0.12,cy-0.005,z2+pz*0.12],[x1+px*0.12,cy-0.005,z1+pz*0.12],C.legnoScuro,0.02,0.01);
+  }
+  M.cono(0,cy-0.01,cz-0.04,cz+0.04,0.06,0.06,6,C.legnoScuro,0,0);      // il mozzo
+}
+
+/* ── LA SEGHERIA. Una tettoia aperta su quattro pali, il cavalletto con
+   il tronco, e la catasta di assi già tagliate. */
+function segheria(M){
+  var s=[[-1,-1],[1,-1],[1,1],[-1,1]];
+  for(var i=0;i<4;i++) M.cono(s[i][0]*0.46,s[i][1]*0.34,0,0.46,0.030,0.026,5,C.legnoScuro,0,0);
+  M.tetto(0,0,0.46, 0.50,0.38,0.24, C.legnoCh, 0.06);
+  M.scatola(0,0,0.20, 0.34,0.06,0.05, C.legno);                        // il cavalletto
+  M.cono(-0.34,0,0.28,0.28+0.001,0.08,0.08,7,C.legno,0,0);             // il tronco
+  M.scatola(0,0,0.27, 0.40,0.07,0.07, C.legno);
+  for(i=0;i<4;i++) M.scatola(0.52,-0.20+i*0.02,0.03+i*0.05, 0.14,0.10,0.022, C.legnoCh); // le assi
+}
+
+/* ── LA CAVA. Tre blocchi di pietra squadrati, il muro della rupe tagliato
+   a gradini, l'argano di legno: si scava ferro e si squadra pietra. */
+function miniera(M){
+  M.roccia(0,0.20,0,0.60,0.34,0.62,7,3,C.rupe,7,true);
+  M.scatola(-0.10,-0.10,0, 0.30,0.18,0.20, C.sassoCh, 0.9);           // il gradino tagliato
+  M.scatola(0.40,-0.30,0, 0.12,0.10,0.10, C.pietra, 0.9);              // i blocchi pronti
+  M.scatola(0.22,-0.42,0, 0.10,0.09,0.09, C.pietra, 0.9);
+  M.scatola(0.44,-0.30,0.20, 0.10,0.08,0.08, C.sassoCh, 0.9);
+  // l'argano
+  M.cono(-0.44,-0.34,0,0.62,0.025,0.022,4,C.legnoScuro,0,0,[0.18,0.10]);
+  M.cono(-0.08,-0.34,0,0.62,0.025,0.022,4,C.legnoScuro,0,0,[-0.18,0.10]);
+  M.scatola(-0.26,-0.24,0.60, 0.06,0.05,0.05, C.legno);
+  M.scatola(-0.10,-0.22,0.36, 0.012,0.012,0.22, C.tela);               // la fune
+}
+
+/* ── IL TEMPIO. Il basamento a gradini, sei colonne bianche, il frontone.
+   È l'unica cosa bianca della città, ed è giusto: è quella che si vede
+   per prima arrivando da lontano. */
+function tempio(M){
+  M.scatola(0,0,0, 0.62,0.44,0.06, C.pietra);
+  M.scatola(0,0,0.06, 0.56,0.38,0.05, C.marmoOmb);
+  var z0=0.11, h=0.52;
+  for(var i=0;i<4;i++){
+    var x=-0.45+i*0.30;
+    M.cono(x,-0.31,z0,z0+h,0.050,0.044,7,C.marmo,0,0);
+    M.cono(x, 0.31,z0,z0+h,0.050,0.044,7,C.marmo,0,0);
+  }
+  M.scatola(0,0,z0, 0.34,0.22,h*0.92, C.marmoOmb, 0.9);               // la cella
+  M.scatola(0,0,z0+h, 0.58,0.40,0.07, C.marmo);                         // l'architrave
+  M.tetto(0,0,z0+h+0.07, 0.58,0.40,0.22, C.marmoOmb, 0.04);
+  M.scatola(0,-0.40,z0+h+0.10, 0.10,0.012,0.06, C.oro);                 // l'insegna
+}
+
+/* ── IL MERCATO. Tre banchi sotto tre tende di colore, sacchi e anfore:
+   il posto più colorato della città, ed è il posto dove si scambia. */
+function mercato(M){
+  var cols=[C.telaRossa,C.telaBlu,C.fieno];
+  for(var i=0;i<3;i++){
+    var x=-0.46+i*0.46;
+    var s=[[-1,-1],[1,-1],[1,1],[-1,1]];
+    for(var k=0;k<4;k++) M.cono(x+s[k][0]*0.18,s[k][1]*0.22,0,0.44,0.016,0.014,4,C.legnoScuro,0,0);
+    M.tetto(x,0,0.44, 0.21,0.25,0.12, cols[i], 0.03);
+    M.scatola(x,-0.06,0.18, 0.18,0.10,0.04, C.legnoCh);                // il banco
+    M.cono(x-0.06,-0.06,0.22,0.30,0.035,0.020,6,C.ruggine,0,0);        // un'anfora
+    M.roccia(x+0.07,-0.06,0.22,0.05,0.04,0.06,5,2,i===0?C.grano:C.sale,31+i,true);
+  }
+}
+
 /* ── IL TAVOLO DEI PROGETTI. Il piano, quattro gambe, e il rotolo aperto
    sopra: il gioco ci disegna sopra l'icona dell'edificio scelto, ma il
    tavolo deve esistere come oggetto o l'icona galleggia. */
@@ -6376,6 +7013,14 @@ var TIPI = [
   {n:'rastrell', f:rastrelliera, alt:0.62, omb:0.40, semi:1},
   {n:'forgia',   f:forgia,       alt:1.02, omb:0.44, semi:1},
   {n:'torre',    f:torre,        alt:1.50, omb:0.32, semi:1},
+  {n:'caserma',  f:caserma,      alt:0.84, omb:0.48, semi:1},
+  {n:'bersagli', f:bersagli,     alt:0.54, omb:0.22, semi:1},
+  {n:'stalla',   f:stalla,       alt:0.70, omb:0.46, semi:1},
+  {n:'mulino',   f:mulino,       alt:1.28, omb:0.36, semi:1},
+  {n:'segheria', f:segheria,     alt:0.70, omb:0.30, semi:1},
+  {n:'miniera',  f:miniera,      alt:0.72, omb:0.44, semi:1},
+  {n:'tempio',   f:tempio,       alt:0.92, omb:0.40, semi:1},
+  {n:'mercato',  f:mercato,      alt:0.58, omb:0.26, semi:1},
   {n:'tavolo',   f:tavolo,       alt:0.39, omb:0.32, semi:1},
   {n:'asta',     f:asta,         alt:1.10, omb:0.08, semi:1, ao:false},
   {n:'fuoco',    f:fuoco,        alt:0.74, omb:0.00, semi:3, ao:false},
@@ -7300,9 +7945,12 @@ return function(gl){
 /* Le tabelle di traduzione. Il gioco parla per nomi perché un nome si
    legge in un salvataggio; i moduli parlano per numeri perché un numero
    entra in un uniform. La conversione sta scritta una volta sola. */
-const MEST_N={contadino:0, guerriero:1, lanciere:2, arciere:3, spadaccino:4, bambino:5};
-const ARMA_N={falce:1, randello:2, lancia:3, arco:4, spada:5};
-const CARICO_N={grano:1, legno:2, ferro:3, sale:4};
+/* Il cavaliere nel modulo dei corpi è un lanciere (corredo: elmo,
+   cotta, scudo) seduto su un cavallo: il cavallo lo aggiunge il ponte
+   sotto di lui. La spada corta si disegna come la spada. */
+const MEST_N={contadino:0, guerriero:1, lanciere:2, arciere:3, spadaccino:4, bambino:5, cavaliere:2};
+const ARMA_N={falce:1, randello:2, lancia:3, arco:4, spada:5, gladio:5, lanciacav:3};
+const CARICO_N={grano:1, legno:2, ferro:3, sale:4, pietra:3};
 const SPECIE_N={gallina:1, mucca:2, cavallo:3, lupo:4};
 const _gradCorpi=new Float32Array([1,1,0]);
 
@@ -7318,7 +7966,11 @@ const ALT3={contadino:22, guerriero:22, lanciere:22, arciere:22, spadaccino:23, 
    uomini — e la torre ne fa sei. Se questi numeri sono sbagliati non c'è
    nessun dettaglio che salvi la scena: si vede subito che è un plastico. */
 const SCALA_TORRE=44;
-const SCALE_EDIF={capanna:46, granaio:42, rastrell:34, forgia:44, torre:SCALA_TORRE};
+const SCALE_EDIF={capanna:46, granaio:42, rastrell:34, forgia:44, torre:SCALA_TORRE,
+  caserma:54, bersagli:48, stalla:54, mulino:46, segheria:46, miniera:52, tempio:56, mercato:52};
+/* La città che cresce si VEDE: ogni livello allarga l'edificio dell'otto
+   per cento. Al quinto è una volta e un terzo quello del primo. */
+function scalaEdif(e){ return (SCALE_EDIF[e.tipo]||44)*(1+.08*(livDi(e)-1)) }
 /* La tinta dell'erba per bioma: il suolo2 di BIOMI diviso per il grigio in
    cui e' cucito il ciuffo (#a6b0a0), e alzato un po' — l'erba in piedi
    prende piu' luce della terra sotto. Calcolata una volta. */
@@ -7453,7 +8105,23 @@ const C3={
     let o=this.lista[this.n];
     if(!o) o=this.lista[this.n]=this.mod.nuovo();
     this.n++;
+    o.sella=false;               // gli oggetti si riusano: la sella va tolta ogni volta
     return o;
+  },
+
+  /* ── IL CAVALIERE: un cavallo, e un lanciere seduto sopra. Il cavallo
+     prende la direzione e il passo dell'uomo; l'uomo sta sulla sua
+     groppa, un poco indietro dal garrese, con la posa in sella. Due
+     corpi, un'unità sola: nella simulazione è una persona. */
+  sottoCavallo(p,o){
+    const h=this.prendi();
+    h.specie=3; h.pop=0; h.mest=0; h.riga=-1; h.pezzi=-1; h.arma=0;
+    h.x=o.x; h.y=o.y; h.z=o.z; h.dir=o.dir; h.fase=o.fase*1.1; h.and=o.and;
+    h.carico=0; h.pieno=0; h.colpito=o.colpito; h.inc=0; h.giu=0; h.azione=0; h.avanz=0;
+    h.scala=1.06; h.seme=(o.seme*7)&255; h.uid=-(700000+(p.uid|0));
+    /* l'uomo sale sulla groppa: il bacino a quattordici unità da terra */
+    o.z+=5.2; o.sella=true;
+    o.x-=Math.cos(o.dir)*1.5; o.y-=Math.sin(o.dir)*1.5;
   },
 
   /* La vestizione: la stessa curva del ramo piatto, negli stessi 500 ms.
@@ -7475,7 +8143,8 @@ const C3={
   persona(p,nemico){
     const o=this.prendi();
     const vest=p.trasf>0;
-    o.specie=0; o.pop=nemico?15:0; o.riga=-1; o.pezzi=-1;
+    /* la tua gente veste il tuo popolo: un rivale non ha mai i tuoi colori */
+    o.specie=0; o.pop=nemico?15:(CONDOTTIERO().pop|0); o.riga=-1; o.pezzi=-1;
     o.mest=vest?0:(MEST_N[p.mest]!==undefined?MEST_N[p.mest]:0);
     o.x=ix(p); o.y=iy(p); o.z=quota(o.x,o.y);
     o.dir=(p.colpo>0&&p.guarda!==undefined)?p.guarda:(p.dir||0);
@@ -7503,6 +8172,7 @@ const C3={
          vedeva all'indietro: dal ritorno al caricamento. */
       if(u>0){ o.azione=(p.mest==='arciere')?2:1; o.avanz=1-u }
     }
+    if(p.mest==='cavaliere'&&!vest) this.sottoCavallo(p,o);
     return o;
   },
 
@@ -7591,15 +8261,27 @@ const C3={
         /* Ladri e predoni sono uomini: stessa geometria, altra popolazione.
            Il ladro ha il randello, il predone la spada. */
         const o=this.prendi();
-        o.specie=0; o.pop=15; o.pezzi=-1;
-        o.mest=(n.t==='predone')?4:1;
-        /* La RIGA si forza a mano: il blocco dei nemici ha otto righe e le
-           ultime quattro (60..63) sono delle bestie. Con pop 15 e mest 4 il
-           modulo avrebbe preso la riga 60, e il predone usciva dipinto con
-           la tavolozza della gallina. mest resta 4 per il corredo (elmo,
-           cotta, scudo); la tinta e' quella del guerriero nemico. */
-        o.riga=this.mod.rigaDi(15,1);
-        o.arma=(n.t==='predone')?5:2;
+        o.specie=0; o.pezzi=-1;
+        /* L'esercito di un rivale porta la veste del SUO popolo: i Romani
+           in ocra e rosso, gli Egizi in lino, i Nordici con le corna. Si
+           riconosce chi ti attacca prima di leggere un nome. L'eroe
+           rivale è grande come il tuo e ha la sua riga di tavolozza. */
+        const MIL={armato:[1,5],lanciaR:[2,3],arcoR:[3,4],cavalloR:[2,3]};
+        if(MIL[n.t]||n.eroe){
+          o.pop=(n.pop|0); o.mest=n.eroe?6:MIL[n.t][0]; o.arma=n.eroe?5:MIL[n.t][1];
+          o.riga=-1;
+          if(n.eroe){ const ci=CONDOTTIERI.findIndex(c=>c.id===n.eroe); if(ci>=0) o.riga=64+ci; o.arma=CONDOTTIERI[ci>=0?ci:0].arma|0 }
+        } else {
+          o.pop=15;
+          o.mest=(n.t==='predone')?4:1;
+          /* La RIGA si forza a mano: il blocco dei nemici ha otto righe e le
+             ultime quattro (60..63) sono delle bestie. Con pop 15 e mest 4 il
+             modulo avrebbe preso la riga 60, e il predone usciva dipinto con
+             la tavolozza della gallina. mest resta 4 per il corredo (elmo,
+             cotta, scudo); la tinta e' quella del guerriero nemico. */
+          o.riga=this.mod.rigaDi(15,1);
+          o.arma=(n.t==='predone')?5:2;
+        }
         o.x=x; o.y=y; o.z=quota(x,y);
         o.dir=n.dir||0; o.fase=n.fase||0;
         o.and=Math.hypot(n.vx||0,n.vy||0)>4;
@@ -7610,8 +8292,9 @@ const C3={
            ric=NEMICI.ric nell'istante in cui ferisce e poi lo scala. */
         { const R=(NEMICI[n.t]||{}).ric||1, e=R-(n.ric||0);
           if(e>=0&&e<.18){ o.azione=1; o.avanz=clamp(e/.18,0,1) } }
-        o.scala=1.02+((Math.abs(n.uid|0)*17)%9)/100;
+        o.scala=(n.eroe?1.30:1.02)+((Math.abs(n.uid|0)*17)%9)/100;
         o.seme=(Math.abs(n.uid|0)*23)&255; o.uid=n.uid;
+        if(n.t==='cavalloR') this.sottoCavallo({uid:Math.abs(n.uid|0)+900000},o);
       }
     }
     for(const a of ME.animali){
@@ -7636,18 +8319,24 @@ const C3={
       const r=ME.rivali[k], C=RIVALE(r), zr=quota(r.x,r.y);
       if(!dentroVista(r.x,r.y,zr+14,.30)) continue;
       const ci=CONDOTTIERI.indexOf(C), hx=r.x+18, hy=r.y+30;
-      let o=this.prendi();
-      o.specie=0; o.pop=C.pop|0; o.mest=6; o.arma=C.arma|0; o.riga=ci>=0?64+ci:-1; o.pezzi=-1;
-      o.x=hx; o.y=hy; o.z=quota(hx,hy);
-      o.dir=Math.atan2(ME.borgo.y-hy,ME.borgo.x-hx); o.fase=0; o.and=false;
-      o.carico=0; o.pieno=0; o.colpito=0; o.inc=0; o.giu=0; o.azione=0; o.avanz=0;
-      o.scala=1.30; o.seme=(ci*41+7)&255; o.uid=-5000000-k;
+      /* il campo preso: il suo eroe se n'è andato, e la sua gente veste
+         i tuoi colori */
+      const popC=r.preso?(CONDOTTIERO().pop|0):(C.pop|0);
+      let o;
+      if(!r.preso){
+        o=this.prendi();
+        o.specie=0; o.pop=C.pop|0; o.mest=6; o.arma=C.arma|0; o.riga=ci>=0?64+ci:-1; o.pezzi=-1;
+        o.x=hx; o.y=hy; o.z=quota(hx,hy);
+        o.dir=Math.atan2(ME.borgo.y-hy,ME.borgo.x-hx); o.fase=0; o.and=false;
+        o.carico=0; o.pieno=0; o.colpito=0; o.inc=0; o.giu=0; o.azione=0; o.avanz=0;
+        o.scala=1.30; o.seme=(ci*41+7)&255; o.uid=-5000000-k;
+      }
       /* tre attorno al fuoco a 40 unita', su angoli che lasciano libero il
          lato dell'eroe (+y) e i tre pezzi di scena: nessuno dentro una capanna */
       for(let i=0;i<3;i++){
         const an=1.9+i*1.6+k*.3, px=r.x+Math.cos(an)*40, py=r.y+Math.sin(an)*40;
         o=this.prendi();
-        o.specie=0; o.pop=C.pop|0; o.mest=(i===2)?1:0; o.arma=(i===2)?2:1; o.riga=-1; o.pezzi=-1;
+        o.specie=0; o.pop=popC; o.mest=(i===2)?1:0; o.arma=(i===2)?2:1; o.riga=-1; o.pezzi=-1;
         o.x=px; o.y=py; o.z=quota(px,py);
         o.dir=Math.atan2(r.y-py,r.x-px); o.fase=0; o.and=false;
         o.carico=0; o.pieno=0; o.colpito=0; o.inc=0; o.giu=0; o.azione=0; o.avanz=0;
@@ -7958,7 +8647,8 @@ const SC={
     /* 2 · il borgo. Non si taglia: sono venti pezzi in tutto e il borgo è
        il posto dove si sta. */
     const b=ME.borgo, bz=quota(b.x,b.y);
-    this.metti(I.fuoco,b.x,b.y,bz,0,26,1.0,3,1);
+    /* il Foro: il fuoco cresce col livello della città */
+    this.metti(I.fuoco,b.x,b.y,bz,0,26*(1+.14*(livForo()-1)),1.0,3,1);
     this.metti(I.tavolo,b.x+62,b.y-16,quota(b.x+62,b.y-16),-.5,30,1.0,1,0);
     this.metti(I.rastrell,b.x-64,b.y-12,quota(b.x-64,b.y-12),.12,34,1.0,1,0);
     const omB=this.ombraDi(this.borgoOm,b.x,b.y,bz,0);
@@ -7975,9 +8665,11 @@ const SC={
       /* Un cantiere non è l'edificio in miniatura: è l'edificio che CRESCE
          dentro il recinto dei pali. Sotto un quarto non si vede ancora
          niente, e si vede solo il recinto. */
-      if(pr<1) this.metti(I.cantiere,e.x,e.y,z,dir,SCALE_EDIF[e.tipo]||40,1.0,1,0);
+      /* Anche un edificio che sale di livello ha il recinto del cantiere
+         attorno: si vede che ci stanno lavorando, e resta in piedi. */
+      if(pr<1||e.su!==undefined) this.metti(I.cantiere,e.x,e.y,z,dir,scalaEdif(e)*(e.su!==undefined?1.12:1),1.0,1,0);
       if(pr>.14){
-        const s=(SCALE_EDIF[e.tipo]||40)*(0.30+0.70*pr);
+        const s=scalaEdif(e)*(0.30+0.70*pr);
         const acceso=(e.tipo==='forgia'&&pr>=1)
           ? 1.0+0.16*(Math.sin(performance.now()/140)*.5+.5) : 1.0;
         this.metti(t,e.x,e.y,z,dir,s,acceso,1,0).om=omB;
@@ -8009,12 +8701,21 @@ const SC={
       this.metti(I.fuoco,r.x,r.y,zr,0,26,1.0,3,1);
       const omR=this.ombraDi(this.rivOm[k]||(this.rivOm[k]={}),r.x,r.y,zr,k);
       this.lista[this.n-1].om=omR;
+      /* il campo CRESCE con la forza del rivale: la caserma quando comincia
+         ad armarsi, la torre quando teme te, la stalla quando ha i cavalieri.
+         Arrivarci e vederlo già con la stalla vuol dire: è tardi. */
+      const f=r.forza||0;
       const pezzi=[[I.capanna,-78,-40,SCALE_EDIF.capanna],[I.capanna,64,-58,SCALE_EDIF.capanna],[I.granaio,10,92,SCALE_EDIF.granaio]];
-      for(let i=0;i<3;i++){
+      if(f>=25) pezzi.push([I.caserma,-100,70,SCALE_EDIF.caserma]);
+      if(f>=45) pezzi.push([I.torre,110,40,SCALA_TORRE]);
+      if(f>=60) pezzi.push([I.bersagli,-20,-120,SCALE_EDIF.bersagli]);
+      if(f>=75) pezzi.push([I.stalla,120,-120,SCALE_EDIF.stalla]);
+      for(let i=0;i<pezzi.length;i++){
         const x=r.x+pezzi[i][1], y=r.y+pezzi[i][2];
         const dir=Math.atan2(r.y-y,r.x-x)-Math.PI/2+(h2(x|0,y|0,443)-.5)*.5;
         this.metti(pezzi[i][0],x,y,quota(x,y),dir,pezzi[i][3],1.0,1,0).om=omR;
       }
+      if(r.preso){ const sx=r.x-30, sy=r.y-26; this.metti(I.asta,sx,sy,quota(sx,sy),Math.PI*.15,52,1.0,1,1) }
     }
 
     /* 3 · le aste. Sono il solo verbo del gioco: la loro maglia è cucita
@@ -10828,7 +11529,7 @@ function ordinaA(b){
   else if(b.t==='nemico'){ px=b.n.x; py=b.n.y; verbo='attacca' }
   else if(b.t==='bestia'){ px=b.b.x; py=b.b.y; verbo='prendi' }
   else if(b.t==='miabestia'){ px=b.a.x; py=b.a.y; verbo='vai' }
-  else if(b.t==='edificio'){ px=b.e.x; py=b.e.y; verbo=b.e.prog<1?'costruisci':'vai' }
+  else if(b.t==='edificio'){ px=b.e.x; py=b.e.y; verbo=(b.e.prog<1||b.e.su!==undefined)?'costruisci':'vai' }
   else if(b.t==='fuoco'){ px=ME.borgo.x; py=ME.borgo.y; verbo='vai' }
   else if(b.t==='rivale'){ px=b.r.x; py=b.r.y; verbo='attacca-campo' }
 
@@ -10860,6 +11561,14 @@ function ordinaA(b){
       if(p.mest!=='bambino') daiOrdine(p,{t:'prendi',x:px,y:py});
       else daiOrdine(p,{t:'vai',x:q.x,y:q.y});
     }
+    else if(verbo==='attacca-campo'){
+      /* l'assalto: gli armati si piantano attorno al suo fuoco e ci
+         restano, i contadini non si mandano in guerra */
+      if(p.mest!=='contadino'&&p.mest!=='bambino'){
+        const an=i/Math.max(1,l.length)*TAU, R=70;
+        daiOrdine(p,{t:'presidia',x:px+Math.cos(an)*R,y:py+Math.sin(an)*R});
+      } else { fatti--; }
+    }
     else daiOrdine(p,{t:'vai',x:q.x,y:q.y});
     fatti++;
   }
@@ -10869,7 +11578,7 @@ function ordinaA(b){
   else if(verbo==='attacca') dire('All\'attacco');
   else if(verbo==='prendi') dire('Accerchiatela');
   else if(verbo==='costruisci') dire('Al cantiere');
-  else if(verbo==='attacca-campo') dire('Il campo di '+(b.r?RIVALE(b.r).nome:'')+' è ancora fuori portata');
+  else if(verbo==='attacca-campo') dire(b.r&&b.r.preso?'Quel campo è già tuo':('All\'assalto del campo di '+(b.r?RIVALE(b.r).nome:'')));
   AUDIO.nota({x:px,y:py,onda:'triangle',hz:520,hz2:700,dur:.11,amp:.07,taglio:2600});
 }
 const nomeRes=r=>({grano:'Grano',legno:'Legno',ferro:'Ferro',sale:'Sale'})[r]||'Roba';
@@ -10897,8 +11606,9 @@ function posaCantiere(x,y){
   if(!puoPagare(E.costo)){ dire('Non basta più: serve '+costoTesto(E.costo)); modo=null; aggiornaBarra(); return }
   if(dist(x,y,ME.borgo.x,ME.borgo.y)>560){ dire('Troppo lontano dal fuoco'); return }
   for(const e of ME.edifici) if(dist(e.x,e.y,x,y)<52){ dire('Troppo vicino a un\'altra') ; return }
+  if(livForo()<E.foro){ dire(E.n+': serve il foro al livello '+E.foro); modo=null; aggiornaBarra(); return }
   paga(E.costo);
-  const e={eid:EDIF_UID++, tipo, x, y, prog:0, nato:now()};
+  const e={eid:EDIF_UID++, tipo, x, y, prog:0, liv:1, coda:[], punto:null, nato:now()};
   ME.edifici.push(e);
   /* Chi ci va: i contadini scelti, o se non ne hai scelto nessuno i tre
      più vicini che non stanno facendo niente di meglio. */
@@ -10931,8 +11641,24 @@ function tocca(sx,sy,aggiungi,forzaOrdine){
     posaCantiere(w.x,w.y);
     return;
   }
-  if(b.t==='mio'&&!forzaOrdine){ scegli(b.p,aggiungi); return }
+  /* La scheda di un edificio aperta, e un tocco sulla terra: è il punto
+     di raccolta. Un vessillo piccolo lo segna, e chi esce ci va. */
+  if(EDIF_SEL!==null&&b.t==='terra'&&!SEL.size){
+    const e=ME.edifici.find(e=>e.eid===EDIF_SEL);
+    if(e&&unitaDi(e.tipo).length){
+      e.punto={x:b.x,y:b.y}; segnoOrdine(b.x,b.y,'vai');
+      dire('Punto di raccolta · '+EDIFICI[e.tipo].n); salva(); return;
+    }
+  }
+  if(b.t==='mio'&&!forzaOrdine){ chiudiVassoio(); scegli(b.p,aggiungi); return }
   if(b.t==='edificio'&&b.e.prog>=1&&!SEL.size){ mostraAddestra(b.e); return }
+  if(b.t==='fuoco'&&!SEL.size){ mostraForo(); return }
+  /* Con dei contadini in mano, un tocco sul fuoco mentre il foro è in
+     cantiere li manda a lavorarci. */
+  if(b.t==='fuoco'&&ME.foroSu!==undefined&&selPersone().some(p=>p.mest==='contadino')){
+    for(const p of selPersone()) if(p!==ME.capo&&p.mest==='contadino') daiOrdine(p,{t:'costruisci',eid:-1});
+    segnoOrdine(ME.borgo.x,ME.borgo.y,'costruisci'); dire('Al foro'); return;
+  }
   if(!SEL.size){
     /* Niente in mano: un tocco sul mondo non deve essere un buco nel
        vuoto. Sul fuoco si guarda il borgo, su un nemico si sceglie chi
@@ -11122,53 +11848,154 @@ function apriCodice(){
    La regola: un tasto che non serve non si spegne e basta, sparisce.
    Chi guarda la barra deve leggere le sue possibilità in un secondo.
    ═══════════════════════════════════════════════════════════════ */
-const ICONA_EDIF={capanna:'🛖',granaio:'🏚️',rastrell:'🗡️',forgia:'🔥',torre:'🗼'};
-const ICONA_ARMA={randello:'🏏',lancia:'🔱',arco:'🏹',spada:'⚔️'};
+const ICONA_EDIF={};
+for(const k in EDIFICI) ICONA_EDIF[k]=EDIFICI[k].ic;
+const ICONA_ARMA={randello:'🏏',gladio:'⚔️',lancia:'🔱',arco:'🏹',spada:'🛡️',lanciacav:'🐎'};
 
-function chiudiVassoio(){ const v=$('#vassoio'); if(v){ v.classList.remove('on'); v.innerHTML='' } }
-function vassoio(voci){
+function chiudiVassoio(){ const v=$('#vassoio'); if(v){ v.classList.remove('on'); v.innerHTML='' } ; EDIF_SEL=null }
+function vassoio(voci,titolo){
   const v=$('#vassoio'); v.innerHTML='';
+  if(titolo){
+    const t=document.createElement('div'); t.className='vtit'; t.innerHTML=titolo;
+    v.appendChild(t);
+  }
+  const riga=document.createElement('div'); riga.className='vriga';
   for(const c of voci){
     const b=document.createElement('button');
-    b.className='vc'+(c.caro?' caro':''); b.type='button';
+    b.className='vc'+(c.caro?' caro':'')+(c.su?' su':''); b.type='button';
     b.innerHTML='<i>'+c.ic+'</i>'+c.n+(c.costo?'<b>'+c.costo+'</b>':'');
     b.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); c.f() });
-    v.appendChild(b);
+    riga.appendChild(b);
   }
+  v.appendChild(riga);
   v.classList.add('on');
 }
-/* Il vassoio degli edifici: quello che sai costruire adesso. Il costo
-   sotto il nome, in grigio se non ce la fai — non si nasconde, si
-   vede quanto manca. */
+/* ── IL VASSOIO DELLA COSTRUZIONE ─────────────────────────────────
+   Tutto quello che la città sa costruire, in tre gruppi: la casa, il
+   lavoro, la guerra. Quello che il foro non ha ancora aperto si vede lo
+   stesso, in grigio, con scritto a che livello del foro si apre: il
+   giocatore deve sapere dove sta andando. */
 function mostraCostruzioni(){
   if($('#vassoio').classList.contains('on')&&_vass==='costr'){ chiudiVassoio(); _vass=null; modo=null; aggiornaBarra(); return }
   _vass='costr';
-  vassoio(ORD_EDIF.map(k=>{
-    const E=EDIFICI[k];
-    return {ic:ICONA_EDIF[k]||'🏗', n:E.n, costo:costoTesto(E.costo), caro:!puoPagare(E.costo),
-      f:()=>{ chiudiVassoio(); _vass=null; iniziaCostruzione(k) }};
-  }));
+  const voci=[];
+  for(const cat of ['casa','lavoro','guerra']) for(const k of ORD_EDIF){
+    const E=EDIFICI[k]; if(E.cat!==cat) continue;
+    const aperto=livForo()>=E.foro;
+    voci.push({ic:E.ic, n:E.n, costo:aperto?costoTesto(E.costo):('Foro '+E.foro),
+      caro:!aperto||!puoPagare(E.costo),
+      f:()=>{ if(!aperto){ dire(E.n+': serve il foro al livello '+E.foro); return }
+        chiudiVassoio(); _vass=null; iniziaCostruzione(k) }});
+  }
+  vassoio(voci,'<b>Costruisci</b> · foro al livello '+livForo());
 }
-/* Il vassoio dell'addestramento: si tocca un edificio del borgo e si
-   vede cosa ne esce. La rastrelliera dà le armi, la forgia le spade:
-   armare qualcuno è dargli l'arma che sta appesa lì. */
+
+/* ── LA SCHEDA DI UN EDIFICIO ─────────────────────────────────────
+   Si tocca un edificio finito, senza nessuno in mano, e sale il suo
+   vassoio: il livello, il tasto per alzarlo, e — se addestra — le carte
+   delle unità con costo e tempo, più la coda. Con la scheda aperta un
+   tocco sulla terra mette il PUNTO DI RACCOLTA: è lì che va chi esce.
+   Un edificio non cammina, quindi quel tocco non può voler dire altro. */
+let EDIF_SEL=null;
+function unitaDi(tipo){ const l=[]; for(const u in UNITA) if(UNITA[u].dove===tipo) l.push(u); return l }
 function mostraAddestra(e){
   _vass='addestra';
-  const l=[];
+  EDIF_SEL=e.eid;
+  const E=EDIFICI[e.tipo], L=livDi(e), l=[];
+  // 1 · salire di livello
+  if(e.su!==undefined){
+    l.push({ic:'🏗', n:'Sale al '+(L+1)+'°', costo:Math.round(e.su*100)+'% · manda gente', su:true,
+      f:()=>mandaAlCantiere(e.eid)});
+  } else if(L<LIV_MAX){
+    const c=costoLiv(e.tipo,L+1), bloccato=L>=livForo();
+    l.push({ic:'⬆️', n:'Livello '+(L+1), costo:bloccato?('prima il foro al '+(L+1)):costoTesto(c),
+      caro:bloccato||!puoPagare(c), su:true,
+      f:()=>{
+        if(bloccato){ dire('Prima alza il foro al livello '+(L+1)); return }
+        if(!puoPagare(c)){ dire('Serve '+costoTesto(c)); return }
+        paga(c); e.su=0; mandaAlCantiere(e.eid);
+        dire(E.n+': lavori per il livello '+(L+1)); salva(true); mostraAddestra(e);
+      }});
+  }
+  // 2 · le unità, se ne addestra
+  for(const u of unitaDi(e.tipo)){
+    const U=UNITA[u], manca=U.serve&&!livTipo(U.serve);
+    l.push({ic:U.ic, n:U.n, costo:manca?('serve la '+EDIFICI[U.serve].n.toLowerCase()):(costoTesto(U.costo)+' · '+U.t+'s'),
+      caro:manca||!puoPagare(U.costo)||e.coda.length>=CODA_MAX,
+      f:()=>{
+        if(manca){ dire(U.n+': serve la '+EDIFICI[U.serve].n.toLowerCase()); return }
+        if(e.coda.length>=CODA_MAX){ dire('La coda è piena'); return }
+        if(!puoPagare(U.costo)){ dire('Serve '+costoTesto(U.costo)); return }
+        paga(U.costo); e.coda.push({u,t:0});
+        tocco('light'); salva(); mostraAddestra(e);
+      }});
+  }
+  // 3 · la coda, se c'è: un tocco sull'ultima la annulla e rende la spesa
+  if(e.coda.length){
+    const ult=e.coda[e.coda.length-1];
+    l.push({ic:'✖', n:'Annulla '+UNITA[ult.u].n.toLowerCase(), costo:'in coda: '+e.coda.length,
+      f:()=>{ const v=e.coda.pop(); if(v) rendi(UNITA[v.u].costo); salva(); mostraAddestra(e) }});
+  }
+  // 4 · le schede di chi non addestra: cosa fa, col suo numero
   if(e.tipo==='rastrell'||e.tipo==='forgia'){
     const conta={};
     for(const a of ME.rastrelliera) conta[a]=(conta[a]||0)+1;
-    for(const a in conta) l.push({ic:ICONA_ARMA[a]||'🗡️', n:ARMI[a].n, costo:conta[a]+' pront'+(conta[a]===1?'a':'e'),
+    for(const a in conta) if(a!=='falce') l.push({ic:ICONA_ARMA[a]||'🗡️', n:ARMI[a].n, costo:conta[a]+' appes'+(conta[a]===1?'a':'e'),
       f:()=>{ chiudiVassoio(); _vass=null; armaUno(a) }});
-    if(!l.length) l.push({ic:'🗡️',n:'Niente armi',costo:'la forgia le batte',caro:true,f:()=>{}});
-  } else if(e.tipo==='capanna'){
-    l.push({ic:'👶',n:'Posti',costo:gentePiedi().length+' di '+postiTot(),caro:true,f:()=>{}});
-  } else if(e.tipo==='granaio'){
-    l.push({ic:'🌾',n:'Scorta',costo:Math.round(ME.scorte.grano)+' di '+scortaTot(),caro:true,f:()=>{}});
-  } else if(e.tipo==='torre'){
-    l.push({ic:'🏹',n:'Sentinella',costo:'veglia da sola',caro:true,f:()=>{}});
   }
-  if(l.length) vassoio(l); else chiudiVassoio();
+  const info={capanna:'Posti '+gentePiedi().length+' di '+postiTot(),
+    granaio:'Scorta '+Math.round(ME.scorte.grano)+' di '+scortaTot()+' · ci si scarica',
+    segheria:'Legno ×'+(1.35+.15*(L-1)).toFixed(2)+' entro '+(260+40*L),
+    mulino:'Grano ×'+(1.35+.15*(L-1)).toFixed(2)+' entro '+(260+40*L),
+    miniera:'Ferro e pietra ×'+(1.35+.15*(L-1)).toFixed(2)+' entro '+(260+40*L),
+    tempio:'Cura entro '+(200+30*L),
+    torre:'Tiro a '+(300+30*(L-1))+', colpo '+(1.6+.4*(L-1)).toFixed(1),
+    mercato:'10 sale = 15 legno · 10 pietra · 8 ferro'}[e.tipo];
+  if(e.tipo==='mercato'){
+    for(const [r,q] of [['legno',15],['pietra',10],['ferro',8],['grano',20]])
+      l.push({ic:'⚖️', n:q+' '+r, costo:'10 sale', caro:(ME.scorte.sale||0)<10,
+        f:()=>{ if((ME.scorte.sale||0)<10){ dire('Servono 10 sale'); return }
+          ME.scorte.sale-=10; ME.scorte[r]=(ME.scorte[r]||0)+q; dire('Scambiato: '+q+' '+r); salva(); mostraAddestra(e) }});
+  }
+  const tit='<b>'+E.ic+' '+E.n+'</b> · livello '+L+(info?' · '+info:'')+
+    (unitaDi(e.tipo).length?' · <em>tocca la terra per il punto di raccolta</em>':'');
+  vassoio(l,tit);
+}
+/* ── LA SCHEDA DEL FORO ───────────────────────────────────────────
+   Il cuore della città. Alzarlo è la decisione più cara del gioco, ed è
+   quella che apre tutto il resto: nuovi edifici, livelli più alti, due
+   posti in più al fuoco. */
+function mostraForo(){
+  _vass='foro';
+  const L=livForo(), l=[];
+  if(ME.foroSu!==undefined){
+    l.push({ic:'🏗', n:'Sale al '+(L+1)+'°', costo:Math.round(ME.foroSu*100)+'% · manda gente', su:true,
+      f:()=>mandaAlCantiere(-1)});
+  } else if(L<LIV_MAX){
+    const c=FORO_COSTO[L+1];
+    l.push({ic:'⬆️', n:'Foro livello '+(L+1), costo:costoTesto(c), caro:!puoPagare(c), su:true,
+      f:()=>{
+        if(!puoPagare(c)){ dire('Serve '+costoTesto(c)); return }
+        paga(c); ME.foroSu=0; mandaAlCantiere(-1);
+        dire('Il foro è in cantiere'); salva(true); mostraForo();
+      }});
+  }
+  // cosa apre il prossimo livello
+  const apre=ORD_EDIF.filter(k=>EDIFICI[k].foro===L+1).map(k=>EDIFICI[k].ic+' '+EDIFICI[k].n);
+  if(apre.length) l.push({ic:'🔓', n:'Al '+(L+1)+'° si apre', costo:apre.join(' · '), caro:true, f:()=>{}});
+  l.push({ic:'👥', n:'Posti', costo:gentePiedi().length+' di '+postiTot(), caro:true, f:()=>{}});
+  vassoio(l,'<b>🔥 Il Foro</b> · livello '+L+' · tutto il resto sale fin qui');
+}
+/* Chi va a lavorare a un cantiere di miglioramento: i contadini scelti,
+   o i tre più vicini. eid -1 è il foro. */
+function mandaAlCantiere(eid){
+  const x=eid===-1?ME.borgo.x:(ME.edifici.find(e=>e.eid===eid)||ME.borgo).x;
+  const y=eid===-1?ME.borgo.y:(ME.edifici.find(e=>e.eid===eid)||ME.borgo).y;
+  let l=selPersone().filter(p=>p!==ME.capo&&p.mest==='contadino');
+  if(!l.length) l=operai().sort((a,b)=>dist(a.x,a.y,x,y)-dist(b.x,b.y,x,y)).slice(0,3);
+  for(const p of l) daiOrdine(p,{t:'costruisci',eid});
+  if(l.length){ dire(l.length+' al cantiere'); segnoOrdine(x,y,'costruisci') }
+  else dire('Non hai contadini liberi');
 }
 let _vass=null;
 
@@ -11276,6 +12103,7 @@ function aggiornaHud(){
   $('#sLegno').textContent=Math.round(ME.scorte.legno);
   $('#sFerro').textContent=Math.round(ME.scorte.ferro);
   $('#sSale').textContent=Math.round(ME.scorte.sale);
+  $('#sPietra').textContent=Math.round(ME.scorte.pietra||0);
   $('#sCibo').textContent=Math.round(ME.scorte.cibo||0);
   $('#sCiboR').style.display=ME.animali.length?'flex':'none';
   /* La manina insegna una cosa sola: tocca uno dei tuoi. Il resto lo
@@ -11339,6 +12167,7 @@ function giro(ts){
   /* i segni degli ordini invecchiano col tempo del DISEGNO: sono un
      ritorno al dito, non un fatto del mondo */
   for(let i=SEGNI.length-1;i>=0;i--){ SEGNI[i].t+=dt; if(SEGNI[i].t>1.1)SEGNI.splice(i,1) }
+  for(let i=ALLARMI.length-1;i>=0;i--){ ALLARMI[i].t+=dt; if(ALLARMI[i].t>60)ALLARMI.splice(i,1) }
   const t0=performance.now();
   disegna();
   if(R3.attivo)R3.misura(performance.now()-t0);
@@ -11384,8 +12213,11 @@ function apriTelegram(){
   tgEvento('web_app_setup_closing_behavior',{need_confirmation:true});
 }
 /** Il telefono che risponde al dito: un colpetto quando l'ordine parte. */
+let GESTO=false;                 // il browser vieta la vibrazione prima del primo tocco
+addEventListener('pointerdown',()=>{ GESTO=true },{capture:true,once:true});
 function tocco(tipo){
   tgEvento('web_app_trigger_haptic_feedback',{type:'impact',impact_style:tipo||'light'});
+  if(!GESTO) return;
   try{ if(navigator.vibrate) navigator.vibrate(tipo==='medium'?14:9) }catch(e){}
 }
 
@@ -11416,6 +12248,18 @@ function avvio(){
   ME.capo.porta=ME.capo.porta||[];
   ME.terra=ME.terra||[]; ME.pietre=ME.pietre||[]; ME.edifici=ME.edifici||[];
   ME.animali=ME.animali||[]; if(ME.scorte.cibo===undefined)ME.scorte.cibo=0;
+  /* la città a livelli: chi arriva da prima ha un foro al primo, niente
+     pietra, e ogni edificio al primo livello con la coda vuota */
+  if(ME.scorte.pietra===undefined) ME.scorte.pietra=0;
+  if(!ME.foro) ME.foro=1;
+  /* le vite di prima erano su una scala dieci volte più piccola: chi
+     arriva da lì si ritrova la sua gente sana nella stessa proporzione */
+  for(const p of ME.gente){
+    const M_=MESTIERI[p.mest]; if(!M_) continue;
+    if(p.vitaMax<30){ const f=p.vitaMax>0?p.vita/p.vitaMax:1; p.vitaMax=M_.vita; p.vita=Math.max(1,Math.round(M_.vita*f)) }
+  }
+  if(ME.capo.vitaMax<30){ const f=ME.capo.vitaMax>0?ME.capo.vita/ME.capo.vitaMax:1; ME.capo.vitaMax=vitaCapo(); ME.capo.vita=Math.max(1,Math.round(ME.capo.vitaMax*f)) }
+  for(const e of ME.edifici){ if(!e.liv) e.liv=1; if(!e.coda) e.coda=[]; if(e.punto===undefined) e.punto=null }
   /* ── Il passaggio dal gioco vecchio a questo ──────────────────
      Chi ha un villaggio salvato quando c'erano le aste se lo ritrova
      intatto: le aste spariscono, la sua gente resta ferma dov'era in
@@ -11611,7 +12455,9 @@ function CONDOTTIERO(){ return CONDOTTIERI.find(c=>c.id===(ME.condottiero&&ME.co
    gente resiste di piu' prima di tornare). */
 function DONO(t){ return CONDOTTIERO().tratto===t }
 /* La vita del capo dipende dall'eroe: e' l'unico numero suo che si salva. */
-function vitaCapo(){ return DONO('vita')?11:8 }
+/* L'eroe sulla scala di Imperivm: mille di vita come gli eroi a cavallo
+   del gioco vero, milleduecentocinquanta col dono 'vita'. */
+function vitaCapo(){ return DONO('vita')?1250:1000 }
 /* Quanto rende una risorsa con questo eroe alla guida. */
 function resaDono(res){
   if(res==='grano') return DONO('grano')?1.33:(DONO('terra')?1.2:1);
