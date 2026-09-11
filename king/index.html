@@ -993,6 +993,52 @@ const UNITA={
 };
 const CODA_MAX=6;
 
+/* ── LE MURA ───────────────────────────────────────────────────────
+   Si costruiscono a TRATTI: due tocchi, dove comincia e dove finisce, e
+   la tua gente le tira su pezzo dopo pezzo. Un nemico che ci arriva
+   contro si ferma e le deve abbattere — la porta è solo il posto dove
+   costa meno. I tuoi passano: sono le tue mura, e la città è dentro.
+   La vita è quella degli edifici di Imperivm, in scala col tratto. */
+const MURA={
+  palizzata:{n:'Palizzata', ic:'🪵', costo:{legno:10},          vita:700,  foro:2, d:'legno appuntito, ferma lupi e ladri'},
+  porta:    {n:'Porta',     ic:'🚪', costo:{legno:40,ferro:10}, vita:1800, foro:3, d:'un tocco solo, si apre per i tuoi'},
+  muraglia: {n:'Mura',      ic:'🧱', costo:{pietra:25},         vita:2400, foro:4, d:'pietra: la città murata'}
+};
+const TRATTO=40, MURO_MAX=480;
+let MURO_UID=1;
+function trattiDi(m){ return Math.max(1,Math.ceil(Math.hypot(m.x2-m.x1,m.y2-m.y1)/TRATTO)) }
+/** La distanza di un punto dal segmento, e il punto più vicino. */
+function suMuro(px,py,m){
+  const dx=m.x2-m.x1, dy=m.y2-m.y1, L2=dx*dx+dy*dy||1;
+  const t=clamp(((px-m.x1)*dx+(py-m.y1)*dy)/L2,0,1);
+  const qx=m.x1+dx*t, qy=m.y1+dy*t;
+  return {d:Math.hypot(px-qx,py-qy),x:qx,y:qy};
+}
+/** Il primo muro in piedi che il passo da A a B attraversa. */
+function muroSulPasso(ax,ay,bx,by){
+  if(!ME.mura||!ME.mura.length) return null;
+  for(const m of ME.mura){
+    if(m.vita<=0||m.prog<.5) continue;
+    const r=m.x2-m.x1, s=m.y2-m.y1, u=bx-ax, v=by-ay;
+    const den=r*v-s*u; if(Math.abs(den)<1e-6) continue;
+    const t=((ax-m.x1)*v-(ay-m.y1)*u)/den, w=((ax-m.x1)*s-(ay-m.y1)*r)/den;
+    /* si attraversa solo la parte costruita: il muro sale da x1 verso x2 */
+    if(t>=0&&t<=m.prog&&w>=0&&w<=1) return m;
+    /* e chi ci sta addosso non ci scivola attraverso */
+    if(suMuro(bx,by,m).d<5&&suMuro(bx,by,m).d<suMuro(ax,ay,m).d) return m;
+  }
+  return null;
+}
+function muroColpito(m,d){
+  m.vita-=d;
+  if(m.vita<=0){
+    m.vita=0;
+    dire('Hanno sfondato '+(m.tipo==='porta'?'la porta':(m.tipo==='muraglia'?'le mura':'la palizzata'))+'!');
+    SCOSSA=Math.max(SCOSSA,3); AUDIO.tonfo(m.x1,m.y1,1.4); tocco('medium');
+    for(let i=0;i<8;i++){ const f=i/8; scintilla(m.x1+(m.x2-m.x1)*f,m.y1+(m.y2-m.y1)*f-10,'#c9a46a') }
+  }
+}
+
 function puoPagare(c){ for(const r in c) if((ME.scorte[r]||0)<c[r]) return false; return true }
 function paga(c){ for(const r in c) ME.scorte[r]=(ME.scorte[r]||0)-c[r] }
 function rendi(c,f){ for(const r in c) ME.scorte[r]=(ME.scorte[r]||0)+Math.round(c[r]*(f===undefined?1:f)) }
@@ -1838,6 +1884,32 @@ function passo(dt){
           fineOrdine(p);
         }
       }
+      else if(o.t==='costruisci'&&o.mid!==undefined){
+        /* IL CANTIERE DELLE MURA. Si lavora sul punto del muro più vicino
+           al tratto ancora da fare; finito, si ripara quel che è rotto. */
+        const m=(ME.mura||[]).find(m=>m.mid===o.mid);
+        if(!m||(m.prog>=1&&m.vita>=m.vmax)) fineOrdine(p);
+        else{
+          const f=m.prog>=1?.5:Math.min(1,m.prog+.04);
+          const tx=m.x1+(m.x2-m.x1)*f, ty=m.y1+(m.y2-m.y1)*f;
+          /* ci si mette dal lato del borgo, non da quello dei nemici */
+          const nx=-(m.y2-m.y1), ny=(m.x2-m.x1), nl=Math.hypot(nx,ny)||1;
+          const verso=((ME.borgo.x-tx)*nx+(ME.borgo.y-ty)*ny)>0?1:-1;
+          const off=((p.uid*13)%5-2)*9;
+          bx=tx+nx/nl*18*verso+(m.x2-m.x1)/(nl)*off; by=ty+ny/nl*18*verso+(m.y2-m.y1)/(nl)*off;
+          if(dist(p.x,p.y,tx,ty)<46){
+            p.lavora=Math.max(p.lavora||0,.3);
+            if(Math.random()<dt*3)scintilla(p.x,p.y-10,'#d9c08a');
+            if(m.prog<1){
+              const L=Math.hypot(m.x2-m.x1,m.y2-m.y1)||1;
+              m.prog=Math.min(1,m.prog+dt*.075*(DONO('muro')?1.4:1)*TRATTO/L*(m.tipo==='muraglia'?.6:1));
+              if(m.prog>=1){ dire(MURA[m.tipo].n+' finita'); salva(true) }
+            } else {
+              m.vita=Math.min(m.vmax,m.vita+dt*m.vmax*.02);
+            }
+          }
+        }
+      }
       else if(o.t==='costruisci'){
         const e=o.eid===-1?null:ME.edifici.find(e=>e.eid===o.eid);
         const foro=o.eid===-1;
@@ -2046,9 +2118,23 @@ function passo(dt){
           if(b.capo) feriscilCapo(dm,tipoN,cl); else ferisciPersona(b,dm,tipoN,cl) }
       }
     }
+    const ox=n.x, oy=n.y;
     muovi(n,bx,by,vel,dt);
+    /* IL MURO. Chi ci sbatte contro torna indietro di un passo e colpisce
+       il muro, finché non cade. È l'assedio: si vede la palizzata che
+       trema, e si ha il tempo di mandarci gli arcieri. */
+    const mu=muroSulPasso(ox,oy,n.x,n.y);
+    if(mu){
+      n.x=ox; n.y=oy; n.vx*=-.2; n.vy*=-.2;
+      if(n.ric<=0){ n.ric=N.ric;
+        const q=suMuro(n.x,n.y,mu); n.dir=Math.atan2(q.y-n.y,q.x-n.x);
+        muroColpito(mu,N.dmg*(n.t==='lupo'?.25:(mu.tipo==='porta'?.8:.6)));
+        if(Math.random()<.4) scintilla(q.x,q.y-12,'#d9c08a');
+      }
+    }
   }
   nemici=nemici.filter(n=>n.vita>0&&!n.morto);
+  if(ME.mura&&ME.mura.some(m=>m.vita<=0)){ ME.mura=ME.mura.filter(m=>m.vita>0); borgoSporco=true }
 
   /* ── Le frecce ────────────────────────────────────────────── */
   for(const f of frecce){
@@ -3385,6 +3471,11 @@ function disegnaEdificio(x,y,z,tipo,pr){
    gioco di strategia col dito è indovinare. */
 function disegnaComando(){
   const z=CAM.z, t=performance.now()/1000;
+  const barra=(x,y,f,col)=>{
+    const L=26*Math.max(.7,z*.5);
+    ct.fillStyle='rgba(8,6,4,.6)'; ct.fillRect(x-L/2,y,L,3.4);
+    ct.fillStyle=col||'#e0c364'; ct.fillRect(x-L/2,y,L*clamp(f,0,1),3.4);
+  };
   /* 1 · chi è scelto: un anello schiacciato ai piedi, come l'ombra */
   if(SEL.size){
     ct.lineWidth=Math.max(1.4,1.8*z*.5);
@@ -3445,6 +3536,49 @@ function disegnaComando(){
     ct.font=(20*Math.max(.8,z*.5)|0)+'px serif'; ct.textAlign='center';
     ct.fillText(ICONA_EDIF[modo.tipo]||'🏗',q.x,q.y-8*z);
   }
+  /* 3b · le mura in posa: il punto d'inizio, la linea fino al dito, i
+     tratti contati e il costo, prima di spendere */
+  if(modo&&modo.t==='muro'){
+    const w=s2w(mouseX||cw/2,mouseY||ch/2);
+    const W_=MURA[modo.tipo];
+    const a=modo.a||(modo.tipo==='porta'?null:w);
+    if(a){
+      let bx=w.x, by=w.y, L=Math.hypot(bx-a.x,by-a.y);
+      if(L>MURO_MAX){ bx=a.x+(bx-a.x)/L*MURO_MAX; by=a.y+(by-a.y)/L*MURO_MAX; L=MURO_MAX }
+      const p1=w2s(a.x,a.y,quota(a.x,a.y)), p2=w2s(bx,by,quota(bx,by));
+      const n=Math.max(1,Math.ceil(L/TRATTO)), c={}; for(const r in W_.costo) c[r]=W_.costo[r]*n;
+      const ok=puoPagare(c);
+      ct.strokeStyle=ok?'rgba(224,196,100,.95)':'rgba(232,102,90,.95)'; ct.lineWidth=4; ct.setLineDash([8,6]);
+      ct.beginPath(); ct.moveTo(p1.x,p1.y); ct.lineTo(p2.x,p2.y); ct.stroke(); ct.setLineDash([]);
+      ct.fillStyle='#e0c364'; ct.beginPath(); ct.arc(p1.x,p1.y,5,0,TAU); ct.fill();
+      if(modo.a){
+        ct.font='bold 11px system-ui,sans-serif'; ct.textAlign='center';
+        const tx=(p1.x+p2.x)/2, ty=(p1.y+p2.y)/2-12;
+        ct.fillStyle='rgba(8,6,4,.72)'; ct.fillRect(tx-60,ty-11,120,16);
+        ct.fillStyle=ok?'#f0e0a0':'#f0a09a'; ct.fillText(n+' tratti · '+costoTesto(c),tx,ty+1);
+      }
+    } else {
+      const p=w2s(w.x,w.y,quota(w.x,w.y));
+      ct.font='20px serif'; ct.textAlign='center'; ct.fillText(W_.ic,p.x,p.y-6);
+    }
+  }
+  /* 3c · le mura in cantiere o ferite: la barra sopra il centro. Nel
+     disegno piatto si disegna anche il muro, come una linea spessa. */
+  if(ME.mura) for(const m of ME.mura){
+    const cx2=(m.x1+m.x2)/2, cy2=(m.y1+m.y2)/2;
+    if(!R3.attivo){
+      const f=m.prog, ex=m.x1+(m.x2-m.x1)*f, ey=m.y1+(m.y2-m.y1)*f;
+      const p1=w2s(m.x1,m.y1,0), p2=w2s(ex,ey,0);
+      ct.strokeStyle=m.tipo==='palizzata'?'#7a6244':(m.tipo==='porta'?'#5a4028':'#8a8378');
+      ct.lineWidth=Math.max(3,(m.tipo==='palizzata'?6:9)*z*.5); ct.lineCap='round';
+      ct.beginPath(); ct.moveTo(p1.x,p1.y); ct.lineTo(p2.x,p2.y); ct.stroke(); ct.lineCap='butt';
+    }
+    if(m.prog<1||m.vita<m.vmax){
+      const q=w2s(cx2,cy2,quota(cx2,cy2)+(m.tipo==='palizzata'?34:44));
+      if(m.prog<1) barra(q.x,q.y,m.prog); else barra(q.x,q.y,m.vita/m.vmax,m.vita/m.vmax<.35?'#e0665a':'#8fd9a5');
+    }
+  }
+
   /* 4 · il rettangolo del mouse */
   if(rett&&rett.mosso){
     ct.strokeStyle='rgba(150,230,170,.95)'; ct.lineWidth=1.5;
@@ -3492,11 +3626,6 @@ function disegnaComando(){
 
   /* 5 · i cantieri: l'icona di cosa sta nascendo e a che punto è; lo
      stesso per chi sta salendo di livello, e per il foro */
-  const barra=(x,y,f,col)=>{
-    const L=26*Math.max(.7,z*.5);
-    ct.fillStyle='rgba(8,6,4,.6)'; ct.fillRect(x-L/2,y,L,3.4);
-    ct.fillStyle=col||'#e0c364'; ct.fillRect(x-L/2,y,L*clamp(f,0,1),3.4);
-  };
   ct.textAlign='center';
   for(const e of ME.edifici){
     if(e.prog>=1&&e.su===undefined&&!(e.coda&&e.coda.length)&&!(EDIF_SEL===e.eid)) continue;
@@ -6921,6 +7050,43 @@ function mercato(M){
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   4c · LE MURA
+   Un tratto lungo 1.0 sull'asse x (da -0.5 a +0.5), che il ponte ripete
+   lungo il segmento e orienta. Con la scala a 40 un tratto è quaranta
+   unità: una palizzata di duecento passi sono cinque tratti.
+   ══════════════════════════════════════════════════════════════════════ */
+/* ── LA PALIZZATA. Tronchi appuntiti affiancati e una traversa: si fa
+   col legno del bosco in un pomeriggio, e ferma i lupi e i ladri. */
+function palizzata(M,seme){
+  for(var i=0;i<6;i++){
+    var x=-0.46+i*0.184, h=0.62+rnd(seme+i*7)*0.10;
+    M.cono(x,0,0,h,0.058,0.050,5,i%2?C.legno:C.legnoCh,0,0);
+    M.cono(x,0,h,h+0.12,0.050,0,5,C.legnoCh,0,0);
+  }
+  M.scatola(0,-0.06,0.40, 0.50,0.022,0.030, C.legnoScuro);
+  M.scatola(0, 0.06,0.18, 0.50,0.022,0.030, C.legnoScuro);
+}
+/* ── LE MURA. Blocchi di pietra squadrati, il camminamento, e tre merli:
+   la sagoma che in Imperivm dice "città" da un capo all'altro della mappa. */
+function muraglia(M,seme){
+  M.scatola(0,0,0, 0.50,0.16,0.70, C.pietra, 0.94, C.sassoCh);
+  M.scatola(0,0,0, 0.51,0.17,0.08, C.sasso);                      // lo zoccolo
+  M.scatola(0,0,0.70, 0.52,0.19,0.05, C.sassoCh);                 // il camminamento
+  for(var i=0;i<3;i++) M.scatola(-0.34+i*0.34,-0.12,0.75, 0.09,0.06,0.12, C.pietra);
+  for(i=0;i<2;i++) M.scatola(-0.25+i*0.5,-0.165,0.22+i*0.14, 0.08,0.004,0.035, C.ruggine);
+}
+/* ── LA PORTA. Due pilastri, l'architrave, e il battente di legno con le
+   borchie: si apre per i tuoi, per gli altri è l'unico punto dove sfondare. */
+function porta(M,seme){
+  M.scatola(-0.42,0,0, 0.10,0.20,0.90, C.pietra, 0.94, C.sassoCh);
+  M.scatola( 0.42,0,0, 0.10,0.20,0.90, C.pietra, 0.94, C.sassoCh);
+  M.scatola(0,0,0.80, 0.52,0.20,0.14, C.sassoCh);
+  M.scatola(0,-0.02,0, 0.32,0.035,0.78, C.legno, 0.9, C.legnoScuro);
+  for(var i=0;i<3;i++) M.scatola(0,-0.06,0.16+i*0.24, 0.30,0.006,0.022, C.metallo);
+  M.scatola(0,-0.21,0.94, 0.08,0.004,0.06, C.rosso);                // l'insegna
+}
+
 /* ── IL TAVOLO DEI PROGETTI. Il piano, quattro gambe, e il rotolo aperto
    sopra: il gioco ci disegna sopra l'icona dell'edificio scelto, ma il
    tavolo deve esistere come oggetto o l'icona galleggia. */
@@ -7151,6 +7317,9 @@ var TIPI = [
   {n:'miniera',  f:miniera,      alt:0.72, omb:0.44, semi:1},
   {n:'tempio',   f:tempio,       alt:0.92, omb:0.40, semi:1},
   {n:'mercato',  f:mercato,      alt:0.58, omb:0.26, semi:1},
+  {n:'palizzata',f:palizzata,    alt:0.74, omb:0.00, semi:2},
+  {n:'muraglia', f:muraglia,     alt:0.87, omb:0.00, semi:1},
+  {n:'porta',    f:porta,        alt:1.00, omb:0.00, semi:1},
   {n:'tavolo',   f:tavolo,       alt:0.39, omb:0.32, semi:1},
   {n:'asta',     f:asta,         alt:1.10, omb:0.08, semi:1, ao:false},
   {n:'fuoco',    f:fuoco,        alt:0.74, omb:0.00, semi:3, ao:false},
@@ -8803,6 +8972,21 @@ const SC={
         const acceso=(e.tipo==='forgia'&&pr>=1)
           ? 1.0+0.16*(Math.sin(performance.now()/140)*.5+.5) : 1.0;
         this.metti(t,e.x,e.y,z,dir,s,acceso,1,0).om=omB;
+      }
+    }
+    /* LE MURA: un tratto ogni quaranta passi, orientato lungo il segmento.
+       Il muro cresce da un capo all'altro con la costruzione, e quando è
+       ferito si scurisce: si vede dove sta per cedere. */
+    if(ME.mura) for(const m of ME.mura){
+      const n=m.tipo==='porta'?1:trattiDi(m), dir=Math.atan2(m.y2-m.y1,m.x2-m.x1);
+      const ferito=m.vmax?m.vita/m.vmax:1, tinta=.55+.45*ferito;
+      const tp=m.tipo==='porta'?I.porta:(m.tipo==='muraglia'?I.muraglia:I.palizzata);
+      const L=Math.hypot(m.x2-m.x1,m.y2-m.y1), sc=m.tipo==='porta'?L:L/n;
+      for(let i=0;i<n;i++){
+        if((i+.5)/n>m.prog) break;
+        const f=(i+.5)/n, x=m.x1+(m.x2-m.x1)*f, y=m.y1+(m.y2-m.y1)*f, z=quota(x,y);
+        if(!dentroVista(x,y,z+20,.25)) continue;
+        this.metti(tp,x,y,z,dir,sc*1.02,tinta,(m.mid*7+i)&3,0).om=omB;
       }
     }
     for(let i=0;i<ME.pietre.length;i++){
@@ -11608,6 +11792,14 @@ function cosaSotto(sx,sy){
     if(COSA[o.t].res&&o.v>0) prova({t:'cosa',o},4,o.x,o.y,quota(o.x,o.y)+6);
   // 5 · i campi dei rivali
   if(ME.rivali) for(const r of ME.rivali) prova({t:'rivale',r},5,r.x,r.y,quota(r.x,r.y)+14);
+  // 2b · le mura: si tocca la linea, non un punto
+  if(ME.mura) for(const m of ME.mura){
+    const a=w2s(m.x1,m.y1,quota(m.x1,m.y1)+12), c=w2s(m.x2,m.y2,quota(m.x2,m.y2)+12);
+    const dx=c.x-a.x, dy=c.y-a.y, L2=dx*dx+dy*dy||1;
+    const t=clamp(((sx-a.x)*dx+(sy-a.y)*dy)/L2,0,1);
+    const d=Math.hypot(sx-(a.x+dx*t),sy-(a.y+dy*t));
+    if(d<R&&(2<cat||(2===cat&&d<md))){ best={t:'muro',m}; cat=2; md=d }
+  }
   if(best) return best;
   return {t:'terra',x:w0.x,y:w0.y};
 }
@@ -11662,6 +11854,7 @@ function ordinaA(b){
   else if(b.t==='edificio'){ px=b.e.x; py=b.e.y; verbo=(b.e.prog<1||b.e.su!==undefined)?'costruisci':'vai' }
   else if(b.t==='fuoco'){ px=ME.borgo.x; py=ME.borgo.y; verbo='vai' }
   else if(b.t==='rivale'){ px=b.r.x; py=b.r.y; verbo='attacca-campo' }
+  else if(b.t==='muro'){ const q=suMuro(cxSel(),cySel(),b.m); px=q.x; py=q.y; verbo='muro' }
 
   /* Il posto di ognuno: uno schieramento, non un mucchio. L'avanti è
      la direzione da cui arrivano, così la prima fila resta la prima. */
@@ -11693,6 +11886,17 @@ function ordinaA(b){
       if(p.mest!=='bambino') daiOrdine(p,{t:'prendi',x:px,y:py});
       else daiOrdine(p,{t:'vai',x:q.x,y:q.y});
     }
+    else if(verbo==='muro'){
+      /* i contadini costruiscono o riparano; gli armati si piantano sul
+         lato interno, a difenderlo */
+      if(p.mest==='contadino') daiOrdine(p,{t:'costruisci',mid:b.m.mid});
+      else if(p.mest!=='bambino'){
+        const m=b.m, nx=-(m.y2-m.y1), ny=(m.x2-m.x1), nl=Math.hypot(nx,ny)||1;
+        const verso=((ME.borgo.x-px)*nx+(ME.borgo.y-py)*ny)>0?1:-1;
+        const f=(i+.5)/l.length, tx=m.x1+(m.x2-m.x1)*f, ty=m.y1+(m.y2-m.y1)*f;
+        daiOrdine(p,{t:'presidia',x:tx+nx/nl*24*verso,y:ty+ny/nl*24*verso,tieni:true});
+      }
+    }
     else if(verbo==='attacca-campo'){
       /* l'assalto: gli armati si piantano attorno al suo fuoco e ci
          restano, i contadini non si mandano in guerra */
@@ -11716,10 +11920,13 @@ function ordinaA(b){
   else if(verbo==='attacca') dire('All\'attacco');
   else if(verbo==='prendi') dire('Accerchiatela');
   else if(verbo==='costruisci') dire('Al cantiere');
+  else if(verbo==='muro') dire(b.m.prog<1?'Al cantiere delle mura':(b.m.vita<b.m.vmax?'Riparano e difendono':'Difendono il muro'));
   else if(verbo==='attacca-campo') dire(b.r&&b.r.preso?'Quel campo è già tuo':('All\'assalto del campo di '+(b.r?RIVALE(b.r).nome:'')));
   AUDIO.nota({x:px,y:py,onda:'triangle',hz:520,hz2:700,dur:.11,amp:.07,taglio:2600});
 }
 const nomeRes=r=>({grano:'Grano',legno:'Legno',ferro:'Ferro',sale:'Sale',pietra:'Pietra'})[r]||'Roba';
+function cxSel(){ const l=selPersone(); return l.length?l.reduce((s,p)=>s+p.x,0)/l.length:ME.borgo.x }
+function cySel(){ const l=selPersone(); return l.length?l.reduce((s,p)=>s+p.y,0)/l.length:ME.borgo.y }
 /** Cambia formazione e, se l'esercito sta tenendo, lo ri-schiera sul posto. */
 function mettiFormazione(F){
   ME.formaz=F;
@@ -11781,6 +11988,45 @@ function posaCantiere(x,y){
 }
 const costoTesto=c=>Object.keys(c).map(r=>c[r]+' '+r).join(', ');
 
+/* ── LE MURA, a due tocchi ───────────────────────────────────────
+   Il primo tocco pianta l'inizio, il secondo la fine: fra i due una
+   linea tratteggiata dice quanti tratti e quanto costa, prima di
+   spendere. La porta è un tocco solo, e si mette di traverso rispetto
+   al fuoco, come deve stare una porta. */
+function iniziaMuro(tipo){
+  modo={t:'muro',tipo,a:null};
+  dire(MURA[tipo].n+(tipo==='porta'?' — tocca dove metterla':' — tocca dove comincia'));
+  aggiornaBarra();
+}
+function posaMuro(x,y){
+  const tipo=modo.tipo, W_=MURA[tipo];
+  if(dist(x,y,ME.borgo.x,ME.borgo.y)>620){ dire('Troppo lontano dal fuoco'); return }
+  let x1,y1,x2,y2;
+  if(tipo==='porta'){
+    const an=Math.atan2(y-ME.borgo.y,x-ME.borgo.x)+Math.PI/2;
+    x1=x-Math.cos(an)*22; y1=y-Math.sin(an)*22; x2=x+Math.cos(an)*22; y2=y+Math.sin(an)*22;
+  } else {
+    if(!modo.a){ modo.a={x,y}; dire('Ora tocca dove finisce'); return }
+    x1=modo.a.x; y1=modo.a.y; x2=x; y2=y;
+    let L=Math.hypot(x2-x1,y2-y1);
+    if(L<20){ dire('Troppo corto'); return }
+    if(L>MURO_MAX){ x2=x1+(x2-x1)/L*MURO_MAX; y2=y1+(y2-y1)/L*MURO_MAX }
+  }
+  const m={mid:MURO_UID++, tipo, x1,y1,x2,y2, prog:0, vita:0, vmax:0};
+  const n=tipo==='porta'?1:trattiDi(m), c={};
+  for(const r in W_.costo) c[r]=W_.costo[r]*n;
+  if(!puoPagare(c)){ dire('Serve '+costoTesto(c)); MURO_UID--; return }
+  paga(c);
+  m.vmax=W_.vita*n; m.vita=m.vmax;
+  ME.mura.push(m);
+  let l=selPersone().filter(p=>p!==ME.capo&&p.mest==='contadino');
+  if(!l.length) l=operai().sort((a,b)=>dist(a.x,a.y,x1,y1)-dist(b.x,b.y,x1,y1)).slice(0,3);
+  for(const p of l) daiOrdine(p,{t:'costruisci',mid:m.mid});
+  dire(W_.n+': '+n+' tratt'+(n===1?'o':'i')+(l.length?' · '+l.length+' al lavoro':' · manda qualcuno'));
+  segnoOrdine((x1+x2)/2,(y1+y2)/2,'costruisci');
+  borgoSporco=true; modo=null; salva(true); aggiornaBarra();
+}
+
 function dire(t){
   const e=$('#say');
   e.textContent=t; e.classList.add('on');
@@ -11797,6 +12043,11 @@ function tocca(sx,sy,aggiungi,forzaOrdine){
   if(modo&&modo.t==='costruisci'){
     const w=(b.t==='terra')?b:{x:s2w(sx,sy).x,y:s2w(sx,sy).y};
     posaCantiere(w.x,w.y);
+    return;
+  }
+  if(modo&&modo.t==='muro'){
+    const w=s2w(sx,sy);
+    posaMuro(w.x,w.y);
     return;
   }
   /* La scheda di un edificio aperta, e un tocco sulla terra: è il punto
@@ -12045,6 +12296,14 @@ function mostraCostruzioni(){
       f:()=>{ if(!aperto){ dire(E.n+': serve il foro al livello '+E.foro); return }
         chiudiVassoio(); _vass=null; iniziaCostruzione(k) }});
   }
+  /* le difese in fondo: si costruiscono a tratti, e il costo è per tratto */
+  for(const k in MURA){
+    const W_=MURA[k], aperto=livForo()>=W_.foro;
+    voci.push({ic:W_.ic, n:W_.n, costo:aperto?(costoTesto(W_.costo)+(k==='porta'?'':' al tratto')):('Foro '+W_.foro),
+      caro:!aperto||!puoPagare(W_.costo),
+      f:()=>{ if(!aperto){ dire(W_.n+': serve il foro al livello '+W_.foro); return }
+        chiudiVassoio(); _vass=null; iniziaMuro(k) }});
+  }
   vassoio(voci,'<b>Costruisci</b> · foro al livello '+livForo());
 }
 
@@ -12214,6 +12473,8 @@ function aggiornaBarra(){
   selPulisci();
   if(modo&&modo.t==='costruisci'){
     sel.innerHTML='<b>'+EDIFICI[modo.tipo].n+'</b> <em>· tocca dove costruirla</em>';
+  } else if(modo&&modo.t==='muro'){
+    sel.innerHTML='<b>'+MURA[modo.tipo].n+'</b> <em>· '+(modo.tipo==='porta'?'tocca dove metterla':(modo.a?'tocca dove finisce':'tocca dove comincia'))+'</em>';
   } else if(!l.length){
     sel.innerHTML='<em>Tocca uno dei tuoi, o usa i tasti qui accanto</em>';
   } else {
@@ -12423,6 +12684,8 @@ function avvio(){
      pietra, e ogni edificio al primo livello con la coda vuota */
   if(ME.scorte.pietra===undefined) ME.scorte.pietra=0;
   if(!ME.foro) ME.foro=1;
+  ME.mura=ME.mura||[];
+  for(const m of ME.mura) MURO_UID=Math.max(MURO_UID,(m.mid|0)+1);
   /* le vite di prima erano su una scala dieci volte più piccola: chi
      arriva da lì si ritrova la sua gente sana nella stessa proporzione */
   for(const p of ME.gente){
@@ -12963,6 +13226,7 @@ window.__MIS={ct:()=>ct,ME:()=>ME,nemici:()=>nemici,POLV:()=>POLV,scia:()=>scia,
   giro,sciaD:()=>sciaD,ALFA:v=>{ALFA=v},POS:()=>({x:ME.capo.x,y:ME.capo.y}),
   SEL,selPersone,selMetti,ordinaA,cosaSotto,tocca,daiOrdine,aggiornaBarra,
   iniziaCostruzione,posaCantiere,armaUno,usaDono,centraSu,VIVI,
+  iniziaMuro,posaMuro,mettiFormazione,generaNemico,modo:()=>modo,
   D:{disegnaTerra,disegnaSuoloBorgo,disegnaAcqua,disegnaImpronte,nuvole,disegnaRespiro,
      disegnaCose,disegnaBorgo,disegnaComando,disegnaRoba,disegnaPolvere,disegnaFigure,
      disegnaVolo,disegnaNotte,disegnaBordi},
