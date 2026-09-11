@@ -804,6 +804,125 @@ function postiSchiera(n,cx,cy,dax,day){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   LE FORMAZIONI DI IMPERIVM
+   Quattro, con i nomi e il senso del gioco vero:
+     LINEA       · una fila sola, larga: tutti colpiscono, nessuno copre
+     FRONTE      · gli scudi davanti, i soldati dietro, gli arcieri in
+                   fondo, i cavalieri sulle ali: la formazione da battaglia
+     BLOCCO      · un quadrato stretto: meno veloce, molto più duro
+     CAVALLERIA  · i cavalieri al centro davanti, la fanteria ai lati:
+                   si sfonda e si travolge
+   Il bonus di Imperivm arriva quando l'esercito TIENE la posizione in
+   formazione: in King, più armatura e più colpo per chi è schierato e
+   fermo. Chi marcia non ha bonus: la formazione si guadagna restando.
+   ═══════════════════════════════════════════════════════════════ */
+const FORMAZ={
+  linea:     {n:'Linea',     ic:'➖', px:26, py:22, arm:2, dmg:.10, vel:1.0,  d:'tutti in prima fila'},
+  fronte:    {n:'Fronte',    ic:'🛡', px:26, py:24, arm:4, dmg:.15, vel:1.0,  d:'scudi avanti, archi dietro'},
+  blocco:    {n:'Blocco',    ic:'⬛', px:19, py:19, arm:7, dmg:.05, vel:.85,  d:'stretti e duri'},
+  cavalleria:{n:'Cavalleria',ic:'🐎', px:28, py:26, arm:2, dmg:.20, vel:1.0,  d:'i cavalli al centro'}
+};
+const ORD_FORMAZ=['fronte','linea','blocco','cavalleria'];
+function formazAtt(){ return FORMAZ[ME.formaz]?ME.formaz:'fronte' }
+/* Il rango che ogni mestiere prende nella formazione scelta. */
+function rangoDi(p,F){
+  const m=p===ME.capo?'eroe':p.mest;
+  if(m==='contadino'||m==='bambino') return 9;
+  if(F==='linea') return 0;
+  if(F==='cavalleria'){ if(m==='cavaliere') return 0; if(m==='arciere'||m==='eroe') return 2; return 1 }
+  if(m==='spadaccino'||m==='lanciere') return 0;
+  if(m==='guerriero'||m==='eroe') return 1;
+  if(m==='cavaliere') return 0;
+  return 2;                                            // arcieri in fondo
+}
+/* Lo schieramento: a ognuno il suo posto. L'avanti è la direzione del
+   cammino — da dove arrivano verso dove vanno — così la prima fila resta
+   la prima anche quando si gira. Dentro un rango, i più forti al centro. */
+function schiera(l,px,py,cx,cy){
+  const out=new Map();
+  if(!l.length) return out;
+  const F=formazAtt(), FF=FORMAZ[F];
+  let ax=px-cx, ay=py-cy; let L=Math.hypot(ax,ay);
+  if(L<1){ ax=0; ay=1; L=1 } ax/=L; ay/=L;
+  const sx=-ay, sy=ax;
+  if(F==='blocco'){
+    /* il quadrato: una griglia stretta, i duri sul bordo e il resto dentro */
+    const ord=l.slice().sort((a,b)=>rangoDi(a,'fronte')-rangoDi(b,'fronte'));
+    const col=Math.max(2,Math.ceil(Math.sqrt(ord.length)));
+    const rig=Math.ceil(ord.length/col);
+    ord.forEach((p,i)=>{
+      const r=Math.floor(i/col), c=i%col, nc=Math.min(col,ord.length-r*col);
+      const ox=(c-(nc-1)/2)*FF.px, oy=r*FF.py-(rig-1)*FF.py*.5;
+      out.set(p,{x:px+sx*ox-ax*oy, y:py+sy*ox-ay*oy});
+    });
+    return out;
+  }
+  const ranghi=new Map();
+  for(const p of l){ const r=rangoDi(p,F); if(!ranghi.has(r)) ranghi.set(r,[]); ranghi.get(r).push(p) }
+  const chiavi=Array.from(ranghi.keys()).sort((a,b)=>a-b);
+  let riga=0;
+  for(const r of chiavi){
+    let g=ranghi.get(r);
+    /* nel fronte i cavalieri non stanno in fila con gli scudi: vanno
+       sulle ali, metà a destra e metà a sinistra della prima riga */
+    let ali=[];
+    if(F==='fronte'&&r===0){ ali=g.filter(p=>p.mest==='cavaliere'); g=g.filter(p=>p.mest!=='cavaliere') }
+    // i più forti al centro: si dispongono alternando destra e sinistra
+    const forza=p=>p===ME.capo?9:(MESTIERI[p.mest]?MESTIERI[p.mest].vita:0);
+    g.sort((a,b)=>forza(b)-forza(a));
+    const posti=[];
+    for(let i=0;i<g.length;i++){ const k=Math.ceil(i/2)*(i%2?1:-1); posti.push(k) }
+    const n=g.length;
+    g.forEach((p,i)=>{
+      const ox=posti[i]*FF.px, oy=riga*FF.py;
+      out.set(p,{x:px+sx*ox-ax*oy, y:py+sy*ox-ay*oy});
+    });
+    ali.forEach((p,i)=>{
+      const lato=i%2?1:-1, k=Math.floor(i/2);
+      const ox=lato*((Math.ceil(n/2)+1+k)*FF.px+10), oy=riga*FF.py;
+      out.set(p,{x:px+sx*ox-ax*oy, y:py+sy*ox-ay*oy});
+    });
+    riga++;
+  }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   I LIVELLI DEI GUERRIERI
+   Come in Imperivm, chi combatte impara: ogni colpo a segno un po' di
+   esperienza, ogni nemico abbattuto molta, e il livello sale fino al
+   dieci. Ogni livello è un colpo più forte e una vita più lunga. Vicino
+   all'eroe si impara il doppio: è la "Leadership" degli eroi del gioco
+   vero, e fa dell'eroe il posto dove si forma un esercito.
+   ═══════════════════════════════════════════════════════════════ */
+const LIV_GUERRIERO=10;
+function livP(p){ return p.lv||1 }
+function sogliaXp(l){ return 8+l*6 }
+function daXp(p,q){
+  if(!p||p===ME.capo||p.mest==='contadino'||p.mest==='bambino') return;
+  const vicinoEroe=dist(p.x,p.y,ME.capo.x,ME.capo.y)<180;
+  p.xp=(p.xp||0)+q*(vicinoEroe?2:1);
+  while(livP(p)<LIV_GUERRIERO&&p.xp>=sogliaXp(livP(p))){
+    p.xp-=sogliaXp(livP(p)); p.lv=livP(p)+1;
+    const M_=MESTIERI[p.mest];
+    if(M_){ const vm=Math.round(M_.vita*(1+.05*(p.lv-1))); p.vita+=vm-p.vitaMax; p.vitaMax=vm }
+    nomina(p);
+    dire(p.nome+' sale al livello '+p.lv);
+    scintilla(p.x,p.y-16,'#ffe9bd');
+  }
+}
+/** Il moltiplicatore del colpo di chi colpisce: livello, formazione ferma, eroe vicino. */
+function forzaColpo(p){
+  if(!p||p===ME.capo) return 1;
+  let k=1+.06*(livP(p)-1);
+  if(p.ord&&p.ord.tieni) k*=1+FORMAZ[formazAtt()].dmg;
+  if(dist(p.x,p.y,ME.capo.x,ME.capo.y)<180) k*=1.10;
+  return k;
+}
+/** L'armatura in più di chi tiene la posizione in formazione. */
+function armFormaz(p){ return (p&&p.ord&&p.ord.tieni)?FORMAZ[formazAtt()].arm:0 }
+
+/* ═══════════════════════════════════════════════════════════════
    5 · LA CITTÀ
    Si costruisce tutto, e tutto cresce: come in Ikariam ogni edificio
    ha un LIVELLO, e alzarlo costa di più e rende di più. Al centro
@@ -1822,6 +1941,7 @@ function passo(dt){
       }
     }
 
+    if(p.ord&&p.ord.tieni) corri*=FORMAZ[formazAtt()].vel;   // il blocco si muove più piano
     muovi(p,bx,by,MESTIERI[p.mest].vel*corri,dt);
     /* lo slancio del cavaliere: si carica galoppando, si perde fermi */
     if(p.mest==='cavaliere'){
@@ -2325,7 +2445,10 @@ function ferisciPersona(p,d,tipo,chi){
      testuggine (il dono attivo dei Romani): la metà */
   const testu=(ME.donoAtt>0&&(CONDOTTIERO().pop|0)===2&&p.mest!=='contadino'&&p.mest!=='bambino')?.5:1;
   const mult=(p.invulno<0?2:1)*(DONO('scudo')?.75:1)*testu;
-  const e=dannoEff(d,tipo||'taglio',ARMATURA[p.mest]||[0,0],chi,classeDi(p));
+  /* l'armatura del mestiere, più quella della formazione se tiene, più
+     un punto ogni due livelli: il veterano sa dove prendere il colpo */
+  const a0=ARMATURA[p.mest]||[0,0], ex=armFormaz(p)+Math.floor((livP(p)-1)/2);
+  const e=dannoEff(d,tipo||'taglio',[a0[0]+ex,a0[1]+ex],chi,classeDi(p));
   p.vita-=e*mult;
   p.colpito=.2;
   if(p.vita<=0&&p.stato!=='ferito'){
@@ -2345,9 +2468,10 @@ function feriscilCapo(d,tipo,chi){
   }
 }
 function ferisciNemico(n,d,da,tipo){
-  const e=dannoEff(d,tipo||'taglio',ARM_NEMICO[n.t]||[0,0],da?classeDi(da):'eroe',classeDi(n));
+  const e=dannoEff(d*forzaColpo(da),tipo||'taglio',ARM_NEMICO[n.t]||[0,0],da?classeDi(da):'eroe',classeDi(n));
   if(da&&CONTRO[classeDi(da)]&&CONTRO[classeDi(da)][classeDi(n)]) diciTriangolo();
   n.vita-=e; n.colpito=.2;
+  if(da) daXp(da, n.vita<=0?(n.eroe?20:4):.3);
   /* dono 'paura': un lupo a mezza vita scappa invece di finire il lavoro */
   if(n.vita>0&&n.t==='lupo'&&!n.fuga&&DONO('paura')&&n.vita<=NEMICI.lupo.vita*.5) n.fuga=true;
   if(n.vita<=0){
@@ -3281,6 +3405,12 @@ function disegnaComando(){
       ct.moveTo(h.x-s,h.y-s); ct.lineTo(h.x,h.y); ct.lineTo(h.x+s,h.y-s);
       ct.strokeStyle=p===ME.capo?'rgba(255,226,150,.98)':'rgba(214,255,224,.95)';
       ct.lineWidth=2.2; ct.lineJoin='round'; ct.stroke();
+      /* il livello del veterano, accanto alla V: si vede chi ha fatto la guerra */
+      if(p!==ME.capo&&livP(p)>1){
+        ct.font='bold 10px system-ui,sans-serif'; ct.textAlign='left';
+        ct.fillStyle='rgba(8,6,4,.7)'; ct.fillText(livP(p),h.x+s+2.6,h.y-s+.6);
+        ct.fillStyle='#f0d070'; ct.fillText(livP(p),h.x+s+2,h.y-s);
+      }
       /* la vita, ma solo se manca qualcosa: una barra sopra la testa
          piena su venti persone sane è rumore */
       if(p.vita<p.vitaMax){
@@ -11536,10 +11666,12 @@ function ordinaA(b){
   /* Il posto di ognuno: uno schieramento, non un mucchio. L'avanti è
      la direzione da cui arrivano, così la prima fila resta la prima. */
   const cx=l.reduce((s,p)=>s+p.x,0)/l.length, cy=l.reduce((s,p)=>s+p.y,0)/l.length;
-  const posti=postiSchiera(l.length,px,py,cx,cy);
+  /* gli armati si schierano nella formazione scelta; i contadini, se
+     ci sono, vanno in fondo come da regola della formazione */
+  const posti=schiera(l,px,py,cx,cy);
   let fatti=0;
   for(let i=0;i<l.length;i++){
-    const p=l[i], q=posti[i]||{x:px,y:py};
+    const p=l[i], q=posti.get(p)||{x:px,y:py};
     if(p===ME.capo){
       if(verbo==='attacca') ME.capo.ord={t:'attacca',uid:b.n.uid};
       else ME.capo.ord={t:'vai',x:q.x,y:q.y};
@@ -11569,19 +11701,45 @@ function ordinaA(b){
         daiOrdine(p,{t:'presidia',x:px+Math.cos(an)*R,y:py+Math.sin(an)*R});
       } else { fatti--; }
     }
+    /* Un armato mandato in un punto ci va, si schiera e TIENE: è lo
+       "stand ground" di Imperivm, e da fermo in formazione prende il
+       bonus. Chi deve inseguire lo si manda su un nemico. */
+    else if(p.mest!=='contadino'&&p.mest!=='bambino') daiOrdine(p,{t:'presidia',x:q.x,y:q.y,tieni:true});
     else daiOrdine(p,{t:'vai',x:q.x,y:q.y});
     fatti++;
   }
   segnoOrdine(px,py,verbo);
   tocco(verbo==='attacca'?'medium':'light');
-  if(verbo==='raccogli') dire(nomeRes(res)+': al lavoro');
+  const armatiSel=l.filter(p=>p!==ME.capo&&p.mest!=='contadino'&&p.mest!=='bambino').length;
+  if(verbo==='vai'&&armatiSel>=2) dire('In formazione · '+FORMAZ[formazAtt()].n.toLowerCase()+' · tengono la posizione');
+  else if(verbo==='raccogli') dire(nomeRes(res)+': al lavoro');
   else if(verbo==='attacca') dire('All\'attacco');
   else if(verbo==='prendi') dire('Accerchiatela');
   else if(verbo==='costruisci') dire('Al cantiere');
   else if(verbo==='attacca-campo') dire(b.r&&b.r.preso?'Quel campo è già tuo':('All\'assalto del campo di '+(b.r?RIVALE(b.r).nome:'')));
   AUDIO.nota({x:px,y:py,onda:'triangle',hz:520,hz2:700,dur:.11,amp:.07,taglio:2600});
 }
-const nomeRes=r=>({grano:'Grano',legno:'Legno',ferro:'Ferro',sale:'Sale'})[r]||'Roba';
+const nomeRes=r=>({grano:'Grano',legno:'Legno',ferro:'Ferro',sale:'Sale',pietra:'Pietra'})[r]||'Roba';
+/** Cambia formazione e, se l'esercito sta tenendo, lo ri-schiera sul posto. */
+function mettiFormazione(F){
+  ME.formaz=F;
+  const l=selPersone().filter(p=>p===ME.capo||(p.mest!=='contadino'&&p.mest!=='bambino'));
+  if(l.length>=2){
+    const cx=l.reduce((s,p)=>s+p.x,0)/l.length, cy=l.reduce((s,p)=>s+p.y,0)/l.length;
+    /* il fronte guarda da dove vengono i nemici, se ce ne sono; se no
+       dove l'esercito già guarda */
+    let fx=cx, fy=cy+1;
+    let nd=1e9; for(const n of nemici){ const d=dist(n.x,n.y,cx,cy); if(d<nd){nd=d;fx=n.x;fy=n.y} }
+    const an=Math.atan2(fy-cy,fx-cx);
+    const posti=schiera(l,cx+Math.cos(an)*2,cy+Math.sin(an)*2,cx-Math.cos(an)*40,cy-Math.sin(an)*40);
+    for(const p of l){ const q=posti.get(p); if(!q) continue;
+      if(p===ME.capo) ME.capo.ord={t:'vai',x:q.x,y:q.y};
+      else daiOrdine(p,{t:'presidia',x:q.x,y:q.y,tieni:true}) }
+    segnoOrdine(cx,cy,'vai');
+  }
+  dire(FORMAZ[F].n+' · '+FORMAZ[F].d);
+  tocco('light'); salva();
+}
 /* Il segno dell'ordine: un anello che si stringe dove hai toccato. È
    l'unica risposta che il gioco può dare a un dito in mezzo secondo. */
 const SEGNI=[];
@@ -11902,8 +12060,10 @@ function mostraAddestra(e){
   _vass='addestra';
   EDIF_SEL=e.eid;
   const E=EDIFICI[e.tipo], L=livDi(e), l=[];
-  // 1 · salire di livello
-  if(e.su!==undefined){
+  if(!e.coda) e.coda=[];
+  // 1 · salire di livello (non per la rastrelliera fissa del borgo)
+  if(e.fisso){}
+  else if(e.su!==undefined){
     l.push({ic:'🏗', n:'Sale al '+(L+1)+'°', costo:Math.round(e.su*100)+'% · manda gente', su:true,
       f:()=>mandaAlCantiere(e.eid)});
   } else if(L<LIV_MAX){
@@ -12066,15 +12226,23 @@ function aggiornaBarra(){
   /* I comandi: solo quelli che hanno senso adesso. */
   const cs=[];
   const haOperai=l.some(p=>p!==ME.capo&&p.mest==='contadino');
+  const haArmati=l.some(p=>p!==ME.capo&&p.mest!=='contadino'&&p.mest!=='bambino');
+  /* Con degli armati in mano: le quattro formazioni di Imperivm, una
+     accesa. Toccarne una ri-schiera l'esercito sul posto. */
+  if(haArmati){
+    const F=formazAtt();
+    for(const k of ORD_FORMAZ) cs.push({ic:FORMAZ[k].ic,n:FORMAZ[k].n,on:k===F,f:()=>mettiFormazione(k)});
+  }
   if(haOperai||!l.length) cs.push({ic:'🏗',n:'Costruisci',on:!!(modo&&modo.t==='costruisci'),f:mostraCostruzioni});
-  cs.push({ic:'🔥',n:'Borgo',f:()=>{ centraSu(ME.borgo.x,ME.borgo.y) }});
+  if(!haArmati) cs.push({ic:'🔥',n:'Borgo',f:()=>{ centraSu(ME.borgo.x,ME.borgo.y) }});
   if(l.length){
-    cs.push({ic:'✋',n:'Fermi',f:()=>{ for(const p of l){ if(p===ME.capo)ME.capo.ord=null; else { fineOrdine(p); p.ord={t:'presidia',x:p.x,y:p.y} } } dire('Restano lì') }});
+    cs.push({ic:'✋',n:'Fermi',f:()=>{ for(const p of l){ if(p===ME.capo)ME.capo.ord=null; else { fineOrdine(p); p.ord={t:'presidia',x:p.x,y:p.y,tieni:p.mest!=='contadino'&&p.mest!=='bambino'} } } dire('Tengono la posizione') }});
     cs.push({ic:'🏡',n:'Al fuoco',f:()=>{ const posti=postiSchiera(l.length,ME.borgo.x,ME.borgo.y,l[0].x,l[0].y);
       l.forEach((p,i)=>{ const q=posti[i]||ME.borgo; if(p===ME.capo)ME.capo.ord={t:'vai',x:q.x,y:q.y}; else daiOrdine(p,{t:'vai',x:q.x,y:q.y}) });
       segnoOrdine(ME.borgo.x,ME.borgo.y,'vai'); dire('Tornano al fuoco') }});
   }
-  if(ME.rastrelliera.length&&(haOperai||!l.length)) cs.push({ic:'🗡',n:'Arma',f:()=>{ _vass='addestra'; mostraAddestra({tipo:'rastrell'}) }});
+  if(ME.rastrelliera.length&&(haOperai||!l.length)) cs.push({ic:'🗡',n:'Arma',f:()=>{ _vass='addestra';
+    mostraAddestra({tipo:'rastrell',eid:-2,liv:1,coda:[],prog:1,fisso:true,x:ME.borgo.x-64,y:ME.borgo.y-12}) }});
   cmd.innerHTML='';
   for(const c of cs){
     const b=document.createElement('button');
@@ -12217,7 +12385,10 @@ let GESTO=false;                 // il browser vieta la vibrazione prima del pri
 addEventListener('pointerdown',()=>{ GESTO=true },{capture:true,once:true});
 function tocco(tipo){
   tgEvento('web_app_trigger_haptic_feedback',{type:'impact',impact_style:tipo||'light'});
-  if(!GESTO) return;
+  /* il browser sa meglio di noi se c'è stato un gesto vero: se l'API c'è
+     si chiede a lui, altrimenti vale il nostro segnale */
+  const attivo=navigator.userActivation?navigator.userActivation.hasBeenActive:GESTO;
+  if(!attivo) return;
   try{ if(navigator.vibrate) navigator.vibrate(tipo==='medium'?14:9) }catch(e){}
 }
 
