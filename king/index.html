@@ -240,6 +240,23 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
   .pc{flex-basis:164px}
 }
 
+/* ── La caduta: un foglio solo, la cronaca, l'eredità, e il tasto per
+   ripartire. Scuro e sobrio: si è perso, non si festeggia. ── */
+#caduta{position:fixed;inset:0;z-index:25;display:none;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center,rgba(40,14,10,.86),rgba(6,4,3,.96));padding:20px}
+#caduta.on{display:flex}
+#caduta .cfoglio{max-width:420px;width:100%;text-align:center;color:#f3ece0}
+#caduta .ceye{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:#e0665a}
+#caduta h2{margin:0 0 18px;font-size:28px;font-weight:800;letter-spacing:-.6px;line-height:1.1}
+#cCronaca{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 18px}
+#cCronaca div{background:rgba(243,236,224,.06);border:1px solid rgba(243,236,224,.14);border-radius:10px;padding:10px 8px}
+#cCronaca b{display:block;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+#cCronaca small{font-size:10.5px;color:#b8c9d2;letter-spacing:.4px}
+#caduta .cered{font-size:13px;line-height:1.55;color:#d7dfe3;margin:0 0 20px}
+#caduta .cered b{color:#f0d070}
+#cRicomincia{appearance:none;border:0;border-radius:14px;padding:14px 22px;width:100%;cursor:pointer;
+  font:800 16px/1 inherit;color:#14100b;background:linear-gradient(180deg,#e0c364,#c8a94a)}
+
 #velo{position:fixed;inset:0;background:rgba(8,6,4,.86);z-index:20;display:none;
   align-items:center;justify-content:center;padding:20px}
 #velo.on{display:flex}
@@ -336,6 +353,15 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
     <p class="pnota">Anteprima: i TON qui sono di prova e i venti condottieri sono segnaposto.
        Nel gioco vero si comprano sulla blockchain TON e il portafoglio te li mostra qui.</p>
   </div>
+</div></div>
+
+<!-- La caduta del borgo. Si perde la partita, mai il condottiero. -->
+<div id="caduta"><div class="cfoglio">
+  <p class="ceye">Il Foro è caduto</p>
+  <h2 id="cTitolo">Il borgo è perduto</h2>
+  <div id="cCronaca"></div>
+  <p class="cered" id="cEredita"></p>
+  <button id="cRicomincia" type="button">Fonda un borgo nuovo</button>
 </div></div>
 
 <div id="velo"><div id="foglio">
@@ -640,6 +666,7 @@ function carica(){
 const NOSALVA=(k,v)=>(k==='px'||k==='py'||k==='sx'||k==='sy'||k==='acc'||k==='rank'||k==='polv'||k==='obb'||k==='caccia')?undefined:v;
 let salvaT=0, salvaPend=false;
 function salva(subito){
+  if(SALVA_SPENTO) return;
   const t=now();
   if(!subito&&t-salvaT<800){ salvaPend=true; return }
   salvaT=t; salvaPend=false;
@@ -1093,6 +1120,78 @@ function muroSulPasso(ax,ay,bx,by){
   }
   return null;
 }
+/* ── LA VITA DEGLI EDIFICI E DEL FORO ─────────────────────────────
+   In Imperivm una città si prende o si perde. Un edificio ha la vita
+   delle case del gioco vero, più grande a ogni livello; il Foro ha la
+   sua, e se va a zero il borgo è caduto. I nemici arrivano agli edifici
+   solo quando non trovano più uomini in piedi da colpire: la difesa
+   della città è l'esercito, e le mura sono il tempo per metterlo in campo. */
+function vitaEdif(e){ return (e.tipo==='torre'?2200:1400)*livDi(e) }
+function foroMax(){ return 3000*livForo() }
+function edifColpito(e,d){
+  if(e.vmax===undefined){ e.vmax=vitaEdif(e); e.vita=e.vmax }
+  e.vita-=d;
+  if(Math.random()<.3) scintilla(e.x,e.y-20,'#ff9a4a');
+  if(!e.avvisato){ e.avvisato=true; dire('Attaccano '+(EDIFICI[e.tipo]?EDIFICI[e.tipo].n.toLowerCase():'un edificio')+'!'); tocco('medium') }
+  if(e.vita<=0){
+    dire((EDIFICI[e.tipo]?EDIFICI[e.tipo].n:'Un edificio')+' è stata distrutta');
+    for(let i=0;i<8;i++) scintilla(e.x+(Math.random()-.5)*40,e.y-10-Math.random()*20,'#ff7a2a');
+    SCOSSA=Math.max(SCOSSA,3); AUDIO.tonfo(e.x,e.y,1.4);
+    ME.edifici=ME.edifici.filter(x=>x!==e); borgoSporco=true; salva(true);
+  }
+}
+function foroColpito(d){
+  if(ME.foroVita===undefined) ME.foroVita=foroMax();
+  ME.foroVita-=d;
+  if(!ME.foroAvv){ ME.foroAvv=true; dire('🔥 Attaccano il Foro! Se cade, il borgo è perduto'); tocco('medium') }
+  if(Math.random()<.4) scintilla(ME.borgo.x,ME.borgo.y-20,'#ff9a4a');
+  if(ME.foroVita<=0){ ME.foroVita=0; cadutaBorgo() }
+}
+/* ── LA CADUTA DEL BORGO ──────────────────────────────────────────
+   La partita finisce, il condottiero no: è un NFT, e un NFT non si perde
+   mai. Passa al villaggio nuovo un'EREDITÀ — il livello e le abilità
+   dell'eroe, un terzo delle scorte — così chi ricomincia non ricomincia
+   da zero, ma sa che la volta prima ha perso. */
+const K_EREDITA='king.eredita.v1';
+function cadutaBorgo(){
+  if(ME.caduto) return;
+  ME.caduto=true;
+  const cr=[
+    [ME.stat.giorni+1,'giorni'],[gentePiedi().length,'rimasti in piedi'],
+    [ME.stat.nati,'nati'],[ME.stat.morti,'morti'],
+    [(ME.rivali||[]).filter(r=>r.preso).length+' / 3','campi presi'],[eroe().lv,'livello dell\'eroe']];
+  $('#cCronaca').innerHTML=cr.map(c=>'<div><b>'+c[0]+'</b><small>'+c[1]+'</small></div>').join('');
+  $('#cTitolo').textContent=ME.borgo.nome+' è caduto';
+  const sc={}; for(const r in ME.scorte) sc[r]=Math.round((ME.scorte[r]||0)/3);
+  $('#cEredita').innerHTML=CONDOTTIERO().nome+' resta tuo. Al borgo nuovo porta <b>il livello '+eroe().lv+
+    '</b> con le sue abilità, e <b>un terzo delle scorte</b>.';
+  const ered={eroe:ME.eroe, scorte:sc, condottiero:ME.condottiero, borsa:ME.borsa, visto:ME.visto,
+    stat:{caduti:(ME.stat.caduti||0)+1}};
+  try{ localStorage.setItem(K_EREDITA,JSON.stringify(ered)) }catch(e){}
+  salva(true);
+  $('#caduta').classList.add('on');
+  AUDIO.tonfo(ME.borgo.x,ME.borgo.y,1.6);
+}
+function ricomincia(){
+  try{ localStorage.removeItem(K_MONDO); localStorage.removeItem(K_ME);
+    localStorage.removeItem(K_MONDO_VECCHIO); localStorage.removeItem(K_ME_VECCHIO) }catch(e){}
+  SALVA_SPENTO=true;             // niente salvataggi mentre la pagina si ricarica
+  location.reload();
+}
+/** All'avvio di un villaggio nuovo: se c'è un'eredità, la si prende. */
+function prendiEredita(){
+  let e=null; try{ e=JSON.parse(localStorage.getItem(K_EREDITA)||'null') }catch(x){}
+  if(!e) return;
+  try{ localStorage.removeItem(K_EREDITA) }catch(x){}
+  if(e.eroe) ME.eroe=e.eroe;
+  if(e.condottiero) ME.condottiero=e.condottiero;
+  if(e.borsa) ME.borsa=e.borsa;
+  if(e.visto) ME.visto=e.visto;
+  if(e.scorte) for(const r in e.scorte) ME.scorte[r]=(ME.scorte[r]||0)+e.scorte[r];
+  ME.stat.caduti=e.stat&&e.stat.caduti||1;
+  setTimeout(()=>dire('Un borgo nuovo · l\'eredità di quello caduto è qui'),1600);
+}
+let SALVA_SPENTO=false;
 function muroColpito(m,d){
   m.vita-=d;
   if(m.vita<=0){
@@ -1296,7 +1395,9 @@ const NEMICI={
   armato:  {n:'Soldato',  vel:108, vita:200, dmg:16, ric:.8,  r:11, vede:720, bottino:'gladio'},
   lanciaR: {n:'Lanciere', vel:104, vita:200, dmg:20, ric:.9,  r:11, vede:720, bottino:'lancia'},
   arcoR:   {n:'Arciere',  vel:112, vita:140, dmg:12, ric:1.5, r:10, vede:760, bottino:'arco', gitt:230},
-  cavalloR:{n:'Cavaliere',vel:180, vita:380, dmg:26, ric:.9,  r:13, vede:800, bottino:null}
+  cavalloR:{n:'Cavaliere',vel:180, vita:380, dmg:26, ric:.9,  r:13, vede:800, bottino:null},
+  /* l'ariete dei Ram di Imperivm: mille di vita, trecento contro i muri */
+  ariete:  {n:'Ariete',   vel:46,  vita:1000,dmg:300,ric:2.2, r:22, vede:0,   bottino:null, macchina:true}
 };
 let nemici=[], frecce=[], scintille=[];
 /* Un contatore a parte, negativo, solo per il disegno: serve un'identità
@@ -1394,6 +1495,11 @@ function mandaEsercito(r,k){
   for(let i=0;i<n;i++){
     const an=i/n*TAU, x=r.x+Math.cos(an)*50, y=r.y+Math.sin(an)*50;
     generaNemico(truppaRivale(r,i),x,y);
+    const e=nemici[nemici.length-1]; e.pop=C.pop|0; e.riv=k;
+  }
+  /* quando è forte, porta l'ariete: le mura non bastano più */
+  if(r.forza>=55){
+    generaNemico('ariete',r.x+30,r.y+30);
     const e=nemici[nemici.length-1]; e.pop=C.pop|0; e.riv=k;
   }
   /* il loro eroe guida gli eserciti grandi */
@@ -1978,7 +2084,7 @@ function passo(dt){
       else if(o.t==='costruisci'){
         const e=o.eid===-1?null:ME.edifici.find(e=>e.eid===o.eid);
         const foro=o.eid===-1;
-        const daFare=foro?(ME.foroSu!==undefined):(e&&(e.prog<1||e.su!==undefined));
+        const daFare=foro?(ME.foroSu!==undefined||(ME.foroVita<foroMax())):(e&&(e.prog<1||e.su!==undefined||(e.vmax&&e.vita<e.vmax)));
         if(!daFare) fineOrdine(p);
         else{
           /* Ci si mette attorno, ognuno sul suo spicchio, e si lavora.
@@ -1995,16 +2101,23 @@ function passo(dt){
             p.lavora=Math.max(p.lavora||0,.3);
             if(Math.random()<dt*3)scintilla(p.x,p.y-10,'#d9c08a');
             if(foro){
-              ME.foroSu=Math.min(1,ME.foroSu+v/(1+.8*livForo()));
-              if(ME.foroSu>=1){ ME.foro=livForo()+1; delete ME.foroSu;
-                dire('Il foro sale al livello '+ME.foro+' · la città può crescere'); tocco('medium'); salva(true) }
+              if(ME.foroSu===undefined){ ME.foroVita=Math.min(foroMax(),ME.foroVita+dt*foroMax()*.03) }
+              else{
+                ME.foroSu=Math.min(1,ME.foroSu+v/(1+.8*livForo()));
+                if(ME.foroSu>=1){ ME.foro=livForo()+1; delete ME.foroSu; ME.foroVita=foroMax();
+                  dire('Il foro sale al livello '+ME.foro+' · la città può crescere'); tocco('medium'); salva(true) }
+              }
             } else if(e.prog<1){
               e.prog=Math.min(1,e.prog+v);
-              if(e.prog>=1){ dire(EDIFICI[e.tipo].n+' finita'); borgoSporco=true; salva(true) }
-            } else {
+              if(e.prog>=1){ e.vmax=vitaEdif(e); e.vita=e.vmax; dire(EDIFICI[e.tipo].n+' finita'); borgoSporco=true; salva(true) }
+            } else if(e.su!==undefined){
               e.su=Math.min(1,e.su+v/(1+.5*livDi(e)));
-              if(e.su>=1){ e.liv=livDi(e)+1; delete e.su;
+              if(e.su>=1){ e.liv=livDi(e)+1; delete e.su; const vm=vitaEdif(e); e.vita=(e.vita||0)+vm-(e.vmax||0); e.vmax=vm;
                 dire(EDIFICI[e.tipo].n+' al livello '+e.liv); tocco('medium'); salva(true) }
+            } else {
+              /* riparare: una capanna ferita torna intera in cinquanta
+                 secondi con una persona, venticinque con due */
+              e.vita=Math.min(e.vmax,e.vita+dt*e.vmax*.02); e.avvisato=false;
             }
           }
         }
@@ -2153,14 +2266,26 @@ function passo(dt){
          contro il più vicino dei tuoi, armato o no, e se l'eroe è più
          vicino di tutti va contro l'eroe. È così che in Imperivm due
          eserciti si trovano e si prendono. */
-      const militare=n.t==='armato'||n.t==='lanciaR'||n.t==='arcoR'||n.t==='cavalloR';
-      if(militare){
+      const militare=n.t==='armato'||n.t==='lanciaR'||n.t==='arcoR'||n.t==='cavalloR'||!!n.eroe;
+      if(N.macchina){
+        /* l'ariete non guarda gli uomini: va dritto al borgo, e sfonda
+           il primo edificio che trova sulla strada */
+        b={x:ME.borgo.x,y:ME.borgo.y,borgo:true};
+      }
+      else if(militare){
         let md=dist(n.x,n.y,ME.capo.x,ME.capo.y);
         b={x:ME.capo.x,y:ME.capo.y,capo:true};
         for(let i=0;i<VIVI.length;i++){ const q=VIVI[i]; if(q.stato==='ferito')continue;
           const d=dist(n.x,n.y,q.x,q.y); if(d<md){md=d;b=q} }
         /* niente di vicino: marcia sul borgo */
         if(md>N.vede){ b={x:ME.borgo.x,y:ME.borgo.y,borgo:true} }
+      }
+      /* Al borgo senza nessuno da colpire: gli edifici, e poi il Foro. */
+      if(b&&b.borgo&&(militare||N.macchina)&&dist(n.x,n.y,ME.borgo.x,ME.borgo.y)<700){
+        let be=null, bd=520;
+        for(const e of ME.edifici){ const d=dist(n.x,n.y,e.x,e.y); if(d<bd){bd=d;be=e} }
+        if(be) b={x:be.x,y:be.y,edif:be,borgo:true};
+        else b={x:ME.borgo.x,y:ME.borgo.y,foro:true,borgo:true};
       }
       else if(n.t==='ladro'){ b=piuCarico()||piuEsposto() }
       else { b=piuEsposto()||VIVI[0] }
@@ -2176,7 +2301,15 @@ function passo(dt){
         if(n.ric<=0){ n.ric=N.ric; n.dir=Math.atan2(b.y-n.y,b.x-n.x);
           frecce.push({x:n.x,y:n.y-8,tx:b.x,ty:b.y,t:0,dmg:N.dmg,nem:true,tipo:'punta',cl:'tiro'}) }
       }
-      else if(!b.borgo&&d<N.r+11&&n.ric<=0){
+      else if(b.edif||b.foro){
+        /* contro un edificio o il Foro: ci si mette addosso e si colpisce */
+        const R=b.edif?scalaEdif(b.edif)*.7+N.r+6:48+N.r;
+        if(d<R){ bx=null; by=null;
+          if(n.ric<=0){ n.ric=N.ric; n.dir=Math.atan2(b.y-n.y,b.x-n.x);
+            const dm=N.macchina?N.dmg:N.dmg*.8;
+            if(b.edif) edifColpito(b.edif,dm); else foroColpito(dm) } }
+      }
+      else if(!b.borgo&&!N.macchina&&d<N.r+11&&n.ric<=0){
         n.ric=N.ric;
         if(n.t==='ladro'&&b.carico){ n.rubato=b.carico; b.carico=null; n.fuga=true;
           dire('Ti hanno strappato un sacco'); }
@@ -2194,7 +2327,7 @@ function passo(dt){
       n.x=ox; n.y=oy; n.vx*=-.2; n.vy*=-.2;
       if(n.ric<=0){ n.ric=N.ric;
         const q=suMuro(n.x,n.y,mu); n.dir=Math.atan2(q.y-n.y,q.x-n.x);
-        muroColpito(mu,N.dmg*(n.t==='lupo'?.25:(mu.tipo==='porta'?.8:.6)));
+        muroColpito(mu,N.dmg*(N.macchina?1:(n.t==='lupo'?.25:(mu.tipo==='porta'?.8:.6))));
         if(Math.random()<.4) scintilla(q.x,q.y-12,'#d9c08a');
       }
     }
@@ -2246,6 +2379,11 @@ function passo(dt){
         }
       }
     }
+  }
+
+  /* ── Il Foro si rimette in piedi da solo, piano, quando nessuno lo assedia ── */
+  if(ME.foroVita<foroMax()&&!nemici.some(n=>dist(n.x,n.y,ME.borgo.x,ME.borgo.y)<320)){
+    ME.foroVita=Math.min(foroMax(),ME.foroVita+dt*foroMax()*.006); ME.foroAvv=false;
   }
 
   /* ── Il tempio: vicino al tempio le ferite si chiudono il doppio ── */
@@ -2557,7 +2695,7 @@ const ARMATURA={            // [contro il taglio, contro la punta]
   contadino:[0,0], bambino:[0,0], guerriero:[6,6], lanciere:[12,12],
   arciere:[0,0], spadaccino:[18,18], cavaliere:[8,8]
 };
-const ARM_NEMICO={lupo:[0,0], ladro:[2,2], predone:[6,6], armato:[8,8], lanciaR:[12,12], arcoR:[0,0], cavalloR:[8,8]};
+const ARM_NEMICO={lupo:[0,0], ladro:[2,2], predone:[6,6], armato:[8,8], lanciaR:[12,12], arcoR:[0,0], cavalloR:[8,8], ariete:[10,60]};
 const ARM_EROE=[14,14];
 const TIPO_ARMA={falce:'taglio', randello:'taglio', gladio:'taglio', spada:'taglio',
   lancia:'punta', arco:'punta', lanciacav:'punta'};
@@ -3698,12 +3836,20 @@ function disegnaComando(){
   /* 5 · i cantieri: l'icona di cosa sta nascendo e a che punto è; lo
      stesso per chi sta salendo di livello, e per il foro */
   ct.textAlign='center';
+  /* la vita del Foro, quando è ferito: la cosa più importante di tutte */
+  if(ME.foroVita<foroMax()){
+    const q=w2s(ME.borgo.x,ME.borgo.y,quota(ME.borgo.x,ME.borgo.y)+52);
+    const f=ME.foroVita/foroMax();
+    barra(q.x,q.y,f,f<.35?'#e0665a':'#e0a44a');
+  }
   for(const e of ME.edifici){
-    if(e.prog>=1&&e.su===undefined&&!(e.coda&&e.coda.length)&&!(EDIF_SEL===e.eid)) continue;
+    const ferito=e.vmax&&e.vita<e.vmax;
+    if(e.prog>=1&&e.su===undefined&&!(e.coda&&e.coda.length)&&!(EDIF_SEL===e.eid)&&!ferito) continue;
     const q=w2s(e.x,e.y,quota(e.x,e.y)+scalaEdif(e)*.85);
     ct.font=(14*Math.max(.8,z*.5)|0)+'px serif';
     if(e.prog<1){ ct.fillText(ICONA_EDIF[e.tipo]||'🏗',q.x,q.y); barra(q.x,q.y+4,e.prog) }
     else if(e.su!==undefined){ ct.fillText('⬆️',q.x,q.y); barra(q.x,q.y+4,e.su,'#8fd9a5') }
+    else if(ferito){ const f=e.vita/e.vmax; barra(q.x,q.y+4,f,f<.35?'#e0665a':'#e0a44a') }
     /* la coda: un pallino per voce, il primo che si riempie */
     if(e.prog>=1&&e.coda&&e.coda.length){
       const n=e.coda.length, v=e.coda[0], U=UNITA[v.u];
@@ -7149,6 +7295,17 @@ function muraglia(M,seme){
 }
 /* ── LA PORTA. Due pilastri, l'architrave, e il battente di legno con le
    borchie: si apre per i tuoi, per gli altri è l'unico punto dove sfondare. */
+/* ── L'ARIETE. Una tettoia su quattro ruote, e sotto la trave col
+   rostro di ferro: quello che porta un rivale quando ha deciso di
+   entrare. Lento, duro, e la palizzata non gli regge. */
+function ariete(M,seme){
+  var s=[[-1,-1],[1,-1],[1,1],[-1,1]];
+  for(var i=0;i<4;i++) M.cono(s[i][0]*0.40,s[i][1]*0.26,0.10,0.10+0.001,0.11,0.11,8,C.legnoScuro,0,0);
+  for(i=0;i<4;i++) M.cono(s[i][0]*0.40,s[i][1]*0.20,0.10,0.62,0.024,0.020,4,C.legno,0,0);
+  M.tetto(0,0,0.62, 0.48,0.30,0.20, C.legnoCh, 0.04);
+  M.cono(-0.60,0,0.36,0.36+0.001,0.07,0.07,6,C.legno,0,0,[1.10,0]);      // la trave
+  M.cono(0.52,0,0.36,0.36+0.001,0.09,0.04,6,C.metallo,0,0,[0.16,0]);     // il rostro
+}
 function porta(M,seme){
   M.scatola(-0.42,0,0, 0.10,0.20,0.90, C.pietra, 0.94, C.sassoCh);
   M.scatola( 0.42,0,0, 0.10,0.20,0.90, C.pietra, 0.94, C.sassoCh);
@@ -7391,6 +7548,7 @@ var TIPI = [
   {n:'palizzata',f:palizzata,    alt:0.74, omb:0.00, semi:2},
   {n:'muraglia', f:muraglia,     alt:0.87, omb:0.00, semi:1},
   {n:'porta',    f:porta,        alt:1.00, omb:0.00, semi:1},
+  {n:'ariete',   f:ariete,       alt:0.82, omb:0.30, semi:1},
   {n:'tavolo',   f:tavolo,       alt:0.39, omb:0.32, semi:1},
   {n:'asta',     f:asta,         alt:1.10, omb:0.08, semi:1, ao:false},
   {n:'fuoco',    f:fuoco,        alt:0.74, omb:0.00, semi:3, ao:false},
@@ -8624,6 +8782,7 @@ const C3={
       this.persona(p,false);
     }
     for(const n of nemici){
+      if(n.t==='ariete') continue;             // l'ariete non ha un corpo: lo disegna la scena
       const x=ix(n), y=iy(n);
       if(!dentroVista(x,y,quota(x,y)+11,.22)) continue;
       if(n.t==='lupo') this.bestia(n,true);
@@ -9044,6 +9203,13 @@ const SC={
           ? 1.0+0.16*(Math.sin(performance.now()/140)*.5+.5) : 1.0;
         this.metti(t,e.x,e.y,z,dir,s,acceso,1,0).om=omB;
       }
+    }
+    /* GLI ARIETI dei rivali: si muovono, quindi si rimettono ogni volta */
+    for(const n of nemici){
+      if(n.t!=='ariete') continue;
+      const x=ix(n), y=iy(n), z=quota(x,y);
+      if(!dentroVista(x,y,z+20,.25)) continue;
+      this.metti(I.ariete,x,y,z,n.dir||0,34,n.colpito>0?1.3:1.0,1,0);
     }
     /* LE MURA: un tratto ogni quaranta passi, orientato lungo il segmento.
        Il muro cresce da un capo all'altro con la costruzione, e quando è
@@ -11922,7 +12088,7 @@ function ordinaA(b){
   else if(b.t==='nemico'){ px=b.n.x; py=b.n.y; verbo='attacca' }
   else if(b.t==='bestia'){ px=b.b.x; py=b.b.y; verbo='prendi' }
   else if(b.t==='miabestia'){ px=b.a.x; py=b.a.y; verbo='vai' }
-  else if(b.t==='edificio'){ px=b.e.x; py=b.e.y; verbo=(b.e.prog<1||b.e.su!==undefined)?'costruisci':'vai' }
+  else if(b.t==='edificio'){ px=b.e.x; py=b.e.y; verbo=(b.e.prog<1||b.e.su!==undefined||(b.e.vmax&&b.e.vita<b.e.vmax))?'costruisci':'vai' }
   else if(b.t==='fuoco'){ px=ME.borgo.x; py=ME.borgo.y; verbo='vai' }
   else if(b.t==='rivale'){ px=b.r.x; py=b.r.y; verbo='attacca-campo' }
   else if(b.t==='muro'){ const q=suMuro(cxSel(),cySel(),b.m); px=q.x; py=q.y; verbo='muro' }
@@ -12135,7 +12301,7 @@ function tocca(sx,sy,aggiungi,forzaOrdine){
   if(b.t==='fuoco'&&!SEL.size){ mostraForo(); return }
   /* Con dei contadini in mano, un tocco sul fuoco mentre il foro è in
      cantiere li manda a lavorarci. */
-  if(b.t==='fuoco'&&ME.foroSu!==undefined&&selPersone().some(p=>p.mest==='contadino')){
+  if(b.t==='fuoco'&&(ME.foroSu!==undefined||ME.foroVita<foroMax())&&selPersone().some(p=>p.mest==='contadino')){
     for(const p of selPersone()) if(p!==ME.capo&&p.mest==='contadino') daiOrdine(p,{t:'costruisci',eid:-1});
     segnoOrdine(ME.borgo.x,ME.borgo.y,'costruisci'); dire('Al foro'); return;
   }
@@ -12813,6 +12979,7 @@ function avvio(){
       const p=nuovaPersona(ME.borgo.x+Math.cos(an)*44,ME.borgo.y+Math.sin(an)*44,'falce');
       ME.gente.push(p);
     }
+    prendiEredita();             // il borgo di prima è caduto? la sua eredità passa qui
     ME.capo.vitaMax=vitaCapo(); ME.capo.vita=ME.capo.vitaMax;
   }
   for(const p of ME.gente){ UID=Math.max(UID,p.uid+1) }
@@ -12829,6 +12996,8 @@ function avvio(){
   if(!ME.foro) ME.foro=1;
   ME.mura=ME.mura||[];
   for(const m of ME.mura) MURO_UID=Math.max(MURO_UID,(m.mid|0)+1);
+  for(const e of ME.edifici) if(e.prog>=1&&e.vmax===undefined){ e.vmax=vitaEdif(e); e.vita=e.vmax }
+  if(ME.foroVita===undefined) ME.foroVita=foroMax();
   /* le vite di prima erano su una scala dieci volte più piccola: chi
      arriva da lì si ritrova la sua gente sana nella stessa proporzione */
   for(const p of ME.gente){
@@ -12897,6 +13066,8 @@ function avvio(){
   };
   legaMani();
   legaMappa();
+  $('#cRicomincia').onclick=ricomincia;
+  if(ME.caduto){ ME.caduto=false; cadutaBorgo() }   // chi chiude sulla caduta la ritrova
   $('#salva').onclick=apriCodice;
   $('#bChiudi').onclick=()=>$('#velo').classList.remove('on');
   $('#bCopia').onclick=()=>{
@@ -13371,6 +13542,7 @@ window.__MIS={ct:()=>ct,ME:()=>ME,nemici:()=>nemici,POLV:()=>POLV,scia:()=>scia,
   SEL,selPersone,selMetti,ordinaA,cosaSotto,tocca,daiOrdine,aggiornaBarra,
   iniziaCostruzione,posaCantiere,armaUno,usaDono,centraSu,VIVI,
   iniziaMuro,posaMuro,mettiFormazione,generaNemico,modo:()=>modo,
+  cadutaBorgo,foroColpito,edifColpito,foroMax,
   D:{disegnaTerra,disegnaSuoloBorgo,disegnaAcqua,disegnaImpronte,nuvole,disegnaRespiro,
      disegnaCose,disegnaBorgo,disegnaComando,disegnaRoba,disegnaPolvere,disegnaFigure,
      disegnaVolo,disegnaNotte,disegnaBordi},
