@@ -916,11 +916,65 @@ function forzaColpo(p){
   if(!p||p===ME.capo) return 1;
   let k=1+.06*(livP(p)-1);
   if(p.ord&&p.ord.tieni) k*=1+FORMAZ[formazAtt()].dmg;
-  if(dist(p.x,p.y,ME.capo.x,ME.capo.y)<180) k*=1.10;
+  if(sottoEroe(p)) k*=1.10+.06*abE('squadra');
   return k;
 }
-/** L'armatura in più di chi tiene la posizione in formazione. */
-function armFormaz(p){ return (p&&p.ord&&p.ord.tieni)?FORMAZ[formazAtt()].arm:0 }
+/** L'armatura in più di chi tiene la posizione in formazione, e di chi sta con l'eroe. */
+function armFormaz(p){ return ((p&&p.ord&&p.ord.tieni)?FORMAZ[formazAtt()].arm:0)+(sottoEroe(p)?abE('difesa'):0) }
+function sottoEroe(p){ return !!p&&p!==ME.capo&&dist(p.x,p.y,ME.capo.x,ME.capo.y)<180 }
+
+/* ═══════════════════════════════════════════════════════════════
+   L'EROE CHE CRESCE
+   Come gli eroi di Imperivm III: sale di livello con le battaglie — le
+   sue uccisioni, e quelle dei guerrieri che combattono accanto a lui —
+   e a ogni livello riceve un punto da mettere in un'abilità. Tre sono
+   sue: Attacco, Corazza e Tempra epici. Tre sono per chi gli sta vicino,
+   entro centottanta passi: Attacco di squadra, Difesa di squadra,
+   Marcia rapida. Cinque punti al massimo per abilità. È così che due
+   giocatori con lo stesso condottiero finiscono con due eroi diversi.
+   ═══════════════════════════════════════════════════════════════ */
+const ABIL={
+  forza:  {n:'Attacco epico',     ic:'⚔️', d:'+5 al colpo dell\'eroe'},
+  corazza:{n:'Corazza epica',     ic:'🛡️', d:'+2 all\'armatura dell\'eroe'},
+  tempra: {n:'Tempra epica',      ic:'❤️', d:'+100 alla vita dell\'eroe'},
+  squadra:{n:'Attacco di squadra',ic:'🗡️', d:'chi gli sta vicino colpisce il 6% in più'},
+  difesa: {n:'Difesa di squadra', ic:'🔰', d:'chi gli sta vicino ha 1 di armatura in più'},
+  marcia: {n:'Marcia rapida',     ic:'👣', d:'chi gli sta vicino va il 5% più veloce'}
+};
+const LIV_EROE=10, ABIL_MAX=5;
+function eroe(){ if(!ME.eroe) ME.eroe={lv:1,xp:0,punti:0,ab:{}}; return ME.eroe }
+function abE(k){ return (eroe().ab[k]|0) }
+function sogliaEroe(l){ return 30+l*25 }
+function xpEroe(q){
+  const E=eroe();
+  if(E.lv>=LIV_EROE) return;
+  E.xp+=q;
+  while(E.lv<LIV_EROE&&E.xp>=sogliaEroe(E.lv)){
+    E.xp-=sogliaEroe(E.lv); E.lv++; E.punti++;
+    dire('👑 '+CONDOTTIERO().nome+' sale al livello '+E.lv+' · un punto abilità');
+    tocco('medium'); scintilla(ME.capo.x,ME.capo.y-30,'#f0d070');
+    ME.capo.vitaMax=vitaCapo(); ME.capo.vita=Math.min(ME.capo.vitaMax,ME.capo.vita+100);
+  }
+}
+function spendiPunto(k){
+  const E=eroe();
+  if(E.punti<=0){ dire('Nessun punto da spendere'); return }
+  if(abE(k)>=ABIL_MAX){ dire(ABIL[k].n+' è già al massimo'); return }
+  E.punti--; E.ab[k]=abE(k)+1;
+  if(k==='tempra'){ ME.capo.vitaMax=vitaCapo(); ME.capo.vita+=100 }
+  dire(ABIL[k].n+' '+abE(k)+' · '+ABIL[k].d); tocco('light'); salva();
+}
+function mostraEroe(){
+  _vass='eroe';
+  const E=eroe(), l=[];
+  for(const k in ABIL){
+    const A=ABIL[k];
+    l.push({ic:A.ic, n:A.n+' '+abE(k)+'/'+ABIL_MAX, costo:A.d, caro:E.punti<=0||abE(k)>=ABIL_MAX, su:E.punti>0&&abE(k)<ABIL_MAX,
+      f:()=>{ spendiPunto(k); mostraEroe() }});
+  }
+  const pro=E.lv<LIV_EROE?(Math.floor(E.xp)+'/'+sogliaEroe(E.lv)+' al prossimo'):'al massimo';
+  vassoio(l,'<b>👑 '+CONDOTTIERO().nome+'</b> · livello '+E.lv+' · '+pro+' · <em>'+E.punti+' punt'+(E.punti===1?'o':'i')+' da spendere</em>');
+}
 
 /* ═══════════════════════════════════════════════════════════════
    5 · LA CITTÀ
@@ -1694,8 +1748,9 @@ function passo(dt){
   if(!(c.colpo>0)){
     const ar=CONDOTTIERO().arma|0;
     const gitt=ar===4?200:(ar===3?44:36);
-    /* il danno degli eroi di Imperivm: quaranta, cinquanta per colpo */
-    const dmg =ar===4?40:(ar===3?45:50);
+    /* il danno degli eroi di Imperivm: quaranta, cinquanta per colpo,
+       più l'Attacco epico */
+    const dmg =(ar===4?40:(ar===3?45:50))+5*abE('forza');
     const tipoE=(ar===4||ar===3)?'punta':'taglio';
     let ber=null, md=1e9;
     if(c.ord&&c.ord.t==='attacca'){
@@ -2014,6 +2069,7 @@ function passo(dt){
     }
 
     if(p.ord&&p.ord.tieni) corri*=FORMAZ[formazAtt()].vel;   // il blocco si muove più piano
+    if(sottoEroe(p)) corri*=1+.05*abE('marcia');             // la Marcia rapida dell'eroe
     muovi(p,bx,by,MESTIERI[p.mest].vel*corri,dt);
     /* lo slancio del cavaliere: si carica galoppando, si perde fermi */
     if(p.mest==='cavaliere'){
@@ -2149,8 +2205,9 @@ function passo(dt){
         if(!hit&&dist(ME.capo.x,ME.capo.y,f.tx,f.ty)<18) feriscilCapo(f.dmg,'punta','tiro');
       }
       else {
-        const da=f.da>0?ME.gente.find(p=>p.uid===f.da):null;
-        for(const n of nemici) if(dist(n.x,n.y,f.tx,f.ty)<16){ ferisciNemico(n,f.dmg,da||null,f.tipo||'punta'); break }
+        /* chi l'ha tirata: un tuo arciere (uid), l'eroe (-1, null), una torre (0, undefined) */
+        const da=f.da>0?(ME.gente.find(p=>p.uid===f.da)||undefined):(f.da===-1?null:undefined);
+        for(const n of nemici) if(dist(n.x,n.y,f.tx,f.ty)<16){ ferisciNemico(n,f.dmg,da,f.tipo||'punta'); break }
       }
     }
   }
@@ -2545,7 +2602,8 @@ function ferisciPersona(p,d,tipo,chi){
 function feriscilCapo(d,tipo,chi){
   const c=ME.capo;
   if(c.inv>0)return;
-  c.vita-=dannoEff(d,tipo||'taglio',ARM_EROE,chi,'eroe'); c.inv=.5; c.colpito=.25;
+  const ae=ARM_EROE[0]+2*abE('corazza');
+  c.vita-=dannoEff(d,tipo||'taglio',[ae,ae],chi,'eroe'); c.inv=.5; c.colpito=.25;
   if(c.vita<=0){
     c.vita=Math.max(1,Math.round(c.vitaMax*.4));
     c.x=ME.borgo.x; c.y=ME.borgo.y+40;
@@ -2558,6 +2616,9 @@ function ferisciNemico(n,d,da,tipo){
   if(da&&CONTRO[classeDi(da)]&&CONTRO[classeDi(da)][classeDi(n)]) diciTriangolo();
   n.vita-=e; n.colpito=.2;
   if(da) daXp(da, n.vita<=0?(n.eroe?20:4):.3);
+  /* l'eroe impara dai suoi colpi, e da chi abbatte un nemico accanto a lui */
+  if(da===null) xpEroe(n.vita<=0?(n.eroe?40:6):.4);
+  else if(n.vita<=0&&sottoEroe(da)) xpEroe(2);
   /* dono 'paura': un lupo a mezza vita scappa invece di finire il lavoro */
   if(n.vita>0&&n.t==='lupo'&&!n.fuga&&DONO('paura')&&n.vita<=NEMICI.lupo.vita*.5) n.fuga=true;
   if(n.vita<=0){
@@ -12490,6 +12551,11 @@ function aggiornaBarra(){
   const haArmati=l.some(p=>p!==ME.capo&&p.mest!=='contadino'&&p.mest!=='bambino');
   /* Con degli armati in mano: le quattro formazioni di Imperivm, una
      accesa. Toccarne una ri-schiera l'esercito sul posto. */
+  /* L'eroe in mano: la sua scheda, coi punti da spendere in evidenza */
+  if(SEL.has(EROE_UID)){
+    const pt=eroe().punti;
+    cs.push({ic:'👑',n:pt?('Abilità · '+pt):'Eroe '+eroe().lv,on:pt>0,f:mostraEroe});
+  }
   if(haArmati){
     const F=formazAtt();
     for(const k of ORD_FORMAZ) cs.push({ic:FORMAZ[k].ic,n:FORMAZ[k].n,on:k===F,f:()=>mettiFormazione(k)});
@@ -12891,7 +12957,7 @@ function DONO(t){ return CONDOTTIERO().tratto===t }
 /* La vita del capo dipende dall'eroe: e' l'unico numero suo che si salva. */
 /* L'eroe sulla scala di Imperivm: mille di vita come gli eroi a cavallo
    del gioco vero, milleduecentocinquanta col dono 'vita'. */
-function vitaCapo(){ return DONO('vita')?1250:1000 }
+function vitaCapo(){ return (DONO('vita')?1250:1000)+100*(ME&&ME.eroe?(ME.eroe.ab.tempra|0):0) }
 /* Quanto rende una risorsa con questo eroe alla guida. */
 function resaDono(res){
   if(res==='grano') return DONO('grano')?1.33:(DONO('terra')?1.2:1);
