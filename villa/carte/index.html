@@ -1,6 +1,89 @@
 <!doctype html><html lang="it"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>La Villa · Carte</title></head><body>
+<meta name="theme-color" content="#0d1b24">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%83%8F%3C/text%3E%3C/svg%3E">
+<title>La Villa · Carte</title>
+<style>
+:root{--mare:#0d1b24;--avorio:#f4ead2;--oro:#d8b262;--testo:#efe6d2;--tenue:#b9ab8e}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--mare);color:var(--testo);
+  font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background:radial-gradient(140% 90% at 50% -10%,#1d4a5c 0%,var(--mare) 62%)}
+header.barra{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;border-bottom:1px solid #ffffff14}
+.luogo{font-family:Georgia,"Times New Roman",serif;letter-spacing:.04em;color:var(--oro);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chi{display:flex;align-items:center;gap:8px;min-width:0}
+#nomeG{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+.tondo{min-width:44px;min-height:44px;border-radius:22px;border:1px solid #ffffff22;background:#ffffff0d}
+#schermoSala{flex:1;overflow:auto;padding:16px;display:flex;justify-content:center}
+.sala{width:100%;max-width:960px}
+h1{font-family:Georgia,serif;font-weight:normal;margin:6px 0 2px;font-size:clamp(26px,5vw,36px);color:var(--avorio)}
+.tag{color:var(--tenue);margin:0 0 16px}
+.griglia{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.scheda-tavolo{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:16px;
+  border-radius:14px;border:1px solid #d8b26255;background:linear-gradient(160deg,#27583d,#153626);box-shadow:0 6px 18px #0006}
+.scheda-tavolo:hover,.scheda-tavolo:focus-visible{border-color:var(--oro);outline:none}
+.gioco{font-family:Georgia,serif;font-size:22px;color:var(--avorio)}
+.formula,.livello{color:var(--tenue);font-size:13px}
+.siediti{margin-top:10px;align-self:stretch;text-align:center;padding:11px;border-radius:10px;background:var(--oro);color:#2a1a10;font-weight:600}
+.stat{margin-top:18px;color:var(--tenue);font-size:13px}
+#schermoTavolo{flex:1;display:flex;flex-direction:column;min-height:0}
+.testaTavolo{display:flex;align-items:center;gap:10px;padding:4px 8px}
+.testaTavolo .titolo{flex:1;font-family:Georgia,serif;color:var(--avorio);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#impronta{font-size:12px;color:var(--tenue);font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
+.contenitoreTela{flex:1;position:relative;min-height:0;margin:0 6px 6px}
+#tela{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block;user-select:none;-webkit-user-select:none}
+#velo{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.finestra{background:#16242c;border:1px solid #d8b26255;border-radius:18px 18px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+  width:100%;max-width:520px;max-height:92vh;overflow:auto;box-shadow:0 -10px 40px #0008}
+@media (min-width:700px) and (min-height:500px){#velo{align-items:center}.finestra{border-radius:18px}}
+@media (max-height:480px){
+  #app:has(#schermoTavolo:not([hidden])) header.barra{display:none}
+  .testaTavolo{padding:2px 8px}
+  .finestra{max-height:100vh;border-radius:14px 14px 0 0}
+}
+.finestra h2{font-family:Georgia,serif;font-weight:normal;margin:0 0 8px;color:var(--oro)}
+.finestra h2.perso{color:#e7a397}
+.finestra p{margin:6px 0}
+.azioni{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.azioni button{flex:1;min-height:44px;border-radius:10px;border:1px solid #ffffff2a;background:#ffffff10;padding:0 14px}
+.azioni button.primario{background:var(--oro);color:#2a1a10;border-color:var(--oro);font-weight:600}
+input{font:inherit;width:100%;min-height:44px;padding:0 12px;border-radius:10px;border:1px solid #ffffff33;background:#0d1b24;color:var(--testo)}
+table.conti{width:100%;border-collapse:collapse;margin-top:6px}
+.conti th,.conti td{padding:6px 4px;border-bottom:1px solid #ffffff14;text-align:center}
+.conti td:first-child,.conti th:first-child{text-align:left;color:var(--tenue)}
+.conti small{color:var(--tenue)}
+.conti tr.tot td{font-weight:600}
+.punteggio{font-size:22px}
+.nota{color:var(--tenue);font-size:13px}
+.verifica{margin-top:12px}
+.verifica summary{cursor:pointer;min-height:32px}
+.verifica code{display:block;word-break:break-all;background:#0d1b24;padding:8px;border-radius:8px;font-size:12px;user-select:all}
+.copia{min-height:44px;margin-top:6px;border-radius:10px;border:1px solid #ffffff2a;background:#ffffff10;padding:0 12px}
+</style></head><body>
+<div id="app">
+  <header class="barra">
+    <span class="luogo">La Villa · Piano terra</span>
+    <span class="chi"><span id="nomeG"></span><button id="audio" class="tondo" aria-label="Suoni">🔊</button></span>
+  </header>
+  <main id="schermoSala"><div class="sala">
+    <h1 id="nomeSala"></h1><p class="tag" id="tagSala"></p>
+    <div id="tavoli" class="griglia"></div>
+    <p class="stat" id="stat"></p>
+  </div></main>
+  <section id="schermoTavolo" hidden>
+    <div class="testaTavolo">
+      <button id="esci" class="tondo" aria-label="Lascia il tavolo">←</button>
+      <span class="titolo" id="titoloTavolo"></span><span id="impronta"></span>
+    </div>
+    <div class="contenitoreTela"><canvas id="tela"></canvas></div>
+  </section>
+</div>
+<div id="velo" hidden><div class="finestra" id="finestra" role="dialog" aria-modal="true"></div></div>
 <script>globalThis.INGRESSO="carte";
 // ---- motore/base.js
 (function(V){'use strict';
@@ -43,6 +126,868 @@ V.mescola=function(arr,seme){ const r=V.rng(V.sha256(String(seme))), a=arr.slice
   for(let i=a.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 
 V.clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+})(globalThis.V=globalThis.V||{});
+
+// ---- motore/salvataggio.js
+(function(V){'use strict';
+// Salvataggi della Villa: il giocatore è uno solo, ogni zona ha la sua chiave.
+// Se il browser blocca il salvataggio si continua in memoria.
+V.archivio=function(storage){
+  let s=storage;
+  if(s===undefined){ try{ s=globalThis.localStorage||null; }catch(e){ s=null; } }
+  const memoria={};
+  const leggi=k=>{
+    let t=null;
+    try{ t=s?s.getItem(k):null; }catch(e){ t=null; }
+    if(t==null) t=memoria[k]??null;
+    if(t==null) return null;
+    try{ return JSON.parse(t); }catch(e){ return null; }
+  };
+  const scrivi=(k,v)=>{
+    const t=JSON.stringify(v); memoria[k]=t;
+    try{ if(s) s.setItem(k,t); }catch(e){ /* resta in memoria */ }
+  };
+  return {
+    giocatore:()=>leggi('villa.giocatore.v1')||{nome:'',aspetto:0},
+    salvaGiocatore:g=>scrivi('villa.giocatore.v1',g),
+    zona:id=>leggi('villa.'+id+'.v1')||{},
+    salvaZona:(id,dati)=>scrivi('villa.'+id+'.v1',dati)
+  };
+};
+})(globalThis.V=globalThis.V||{});
+
+// ---- motore/suoni.js
+(function(V){'use strict';
+// Suoni sintetizzati con WebAudio (nessun file audio) e vibrazione.
+let ac=null, muto=false;
+V.audio={
+  attiva(){ try{
+    if(!ac){ const C=globalThis.AudioContext||globalThis.webkitAudioContext; if(C) ac=new C(); }
+    if(ac&&ac.state==='suspended') ac.resume();
+  }catch(e){} },
+  muto(m){ if(m!==undefined) muto=!!m; return muto; }
+};
+
+function tono(f,dur,tipo,vol,ritardo){
+  const t=ac.currentTime+ritardo, o=ac.createOscillator(), g=ac.createGain();
+  o.type=tipo; o.frequency.setValueAtTime(f,t);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t+dur+0.02);
+}
+function fruscio(dur,vol,ritardo,freq){
+  const t=ac.currentTime+ritardo, n=Math.floor(ac.sampleRate*dur);
+  const b=ac.createBuffer(1,n,ac.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+  const s=ac.createBufferSource(), f=ac.createBiquadFilter(), g=ac.createGain();
+  s.buffer=b; f.type='bandpass'; f.frequency.value=freq; g.gain.value=vol;
+  s.connect(f).connect(g).connect(ac.destination); s.start(t);
+}
+const SUONI={
+  carta:()=>fruscio(.09,.35,0,3000),
+  presa:()=>{ fruscio(.06,.3,0,1800); fruscio(.06,.3,.07,1500); },
+  scopa:()=>[523,659,784,1047].forEach((f,i)=>tono(f,.18,'triangle',.18,i*.08)),
+  tic:()=>tono(1400,.05,'square',.04,0),
+  clic:()=>tono(900,.04,'sine',.07,0),
+  vittoria:()=>[523,659,784,1047,1319].forEach((f,i)=>tono(f,.25,'triangle',.16,i*.11)),
+  sconfitta:()=>[392,349,311,262].forEach((f,i)=>tono(f,.3,'sine',.14,i*.14))
+};
+V.suono=function(nome){
+  if(muto||!ac||ac.state!=='running') return;
+  try{ if(SUONI[nome]) SUONI[nome](); }catch(e){}
+};
+V.vibra=function(tipo){
+  try{
+    const h=globalThis.Telegram&&globalThis.Telegram.WebApp&&globalThis.Telegram.WebApp.HapticFeedback;
+    if(h){ if(tipo==='successo') h.notificationOccurred('success'); else h.impactOccurred(tipo==='forte'?'heavy':'light'); return; }
+    if(globalThis.navigator&&navigator.vibrate) navigator.vibrate(tipo==='forte'?[30,40,60]:tipo==='successo'?[20,30,20]:12);
+  }catch(e){}
+};
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/mazzo.js
+(function(V){'use strict';
+// Carte napoletane: id = valore + seme, es. '7D'. 8 fante, 9 cavallo, 10 re.
+V.SEMI=['D','C','S','B'];   // denari, coppe, spade, bastoni
+V.NOMI_SEMI={D:'denari',C:'coppe',S:'spade',B:'bastoni'};
+V.carta={ valore:id=>parseInt(id,10), seme:id=>id.slice(-1) };
+V.mazzoNapoletano=()=>V.SEMI.flatMap(s=>[1,2,3,4,5,6,7,8,9,10].map(v=>v+s));
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/disegno-carte.js
+(function(V){'use strict';
+// Carte napoletane disegnate a tracciati: nessuna immagine esterna.
+const COL={D:'#b8860b',C:'#b3342b',S:'#2c5b8a',B:'#3e7a36'};
+const FIG={8:'FANTE',9:'CAVALLO',10:'RE'};
+const LETTERA={8:'F',9:'C',10:'R'};
+
+V.tondo=function(c,x,y,w,h,r){
+  c.beginPath(); c.moveTo(x+r,y);
+  c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+};
+
+function simbolo(c,seme,x,y,r){
+  c.save(); c.translate(x,y);
+  c.lineWidth=Math.max(1,r*0.09); c.strokeStyle='#3a2a14'; c.fillStyle=COL[seme];
+  if(seme==='D'){
+    c.beginPath(); c.arc(0,0,r,0,Math.PI*2); c.fill(); c.stroke();
+    c.strokeStyle='#f7e3a1';
+    c.beginPath(); c.arc(0,0,r*0.62,0,Math.PI*2); c.stroke();
+    c.beginPath();
+    for(let i=0;i<8;i++){ const a=i*Math.PI/4; c.moveTo(0,0); c.lineTo(Math.cos(a)*r*0.45,Math.sin(a)*r*0.45); }
+    c.stroke();
+  } else if(seme==='C'){
+    c.beginPath(); c.moveTo(-r*0.8,-r*0.75); c.lineTo(r*0.8,-r*0.75);
+    c.quadraticCurveTo(r*0.75,r*0.1,r*0.12,r*0.25); c.lineTo(r*0.12,r*0.6); c.lineTo(r*0.5,r*0.9);
+    c.lineTo(-r*0.5,r*0.9); c.lineTo(-r*0.12,r*0.6); c.lineTo(-r*0.12,r*0.25);
+    c.quadraticCurveTo(-r*0.75,r*0.1,-r*0.8,-r*0.75); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle='#f7e3a1'; c.fillRect(-r*0.66,-r*0.7,r*1.32,r*0.13);
+  } else if(seme==='S'){
+    c.rotate(-0.5);
+    c.beginPath(); c.moveTo(0,-r*1.05); c.lineTo(r*0.16,-r*0.8); c.lineTo(r*0.16,r*0.42);
+    c.lineTo(-r*0.16,r*0.42); c.lineTo(-r*0.16,-r*0.8); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle='#b8860b'; c.fillRect(-r*0.55,r*0.4,r*1.1,r*0.16); c.strokeRect(-r*0.55,r*0.4,r*1.1,r*0.16);
+    c.fillStyle='#6b3f1d'; c.fillRect(-r*0.1,r*0.56,r*0.2,r*0.44);
+  } else {
+    c.rotate(0.5);
+    c.beginPath(); c.moveTo(-r*0.14,r); c.lineTo(-r*0.3,-r*0.8);
+    c.quadraticCurveTo(0,-r*1.15,r*0.3,-r*0.8); c.lineTo(r*0.14,r); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle='#244a20';
+    for(const [kx,ky] of [[-0.24,-0.35],[0.22,0.05],[-0.18,0.45]]){ c.beginPath(); c.arc(kx*r,ky*r,r*0.1,0,Math.PI*2); c.fill(); }
+  }
+  c.restore();
+}
+
+// id null = dorso. luce: 0 nessuna, 1 prendibile, 2 presa scelta.
+V.disegnaCarta=function(c,id,x,y,w,h,op){
+  const r=(op&&op.r)||0, luce=(op&&op.luce)||0, rad=w*0.1;
+  c.save(); c.translate(x,y); c.rotate(r);
+  c.fillStyle='rgba(0,0,0,.28)'; V.tondo(c,-w/2+w*0.03,-h/2+w*0.05,w,h,rad); c.fill();
+  if(luce){ c.shadowColor=luce===2?'#ffe08a':'#ffcf5a'; c.shadowBlur=luce===2?24:12; }
+  V.tondo(c,-w/2,-h/2,w,h,rad);
+  if(id){
+    c.fillStyle='#f6efdc'; c.fill(); c.shadowColor='transparent'; c.shadowBlur=0;
+    c.lineWidth=luce?3:1; c.strokeStyle=luce?'#e0a82e':'#8a7a58'; c.stroke();
+    const v=V.carta.valore(id), s=V.carta.seme(id), fig=FIG[v], et=LETTERA[v]||String(v);
+    c.fillStyle=COL[s]; c.font=`700 ${Math.round(h*0.17)}px Georgia,serif`;
+    c.textAlign='left'; c.textBaseline='top';
+    c.fillText(et,-w/2+w*0.09,-h/2+h*0.05);
+    c.save(); c.rotate(Math.PI); c.fillText(et,-w/2+w*0.09,-h/2+h*0.05); c.restore();
+    if(fig){
+      c.textAlign='center'; c.textBaseline='middle';
+      c.font=`600 ${Math.round(Math.min(h*0.085,w*0.13))}px Georgia,serif`; c.fillText(fig,0,-h*0.1);
+      simbolo(c,s,0,h*0.16,w*0.2);
+    } else simbolo(c,s,0,h*0.02,w*0.26);
+  } else {
+    c.fillStyle='#6b1e24'; c.fill(); c.shadowColor='transparent'; c.shadowBlur=0;
+    c.lineWidth=1; c.strokeStyle='#2a0c0e'; c.stroke();
+    V.tondo(c,-w/2+w*0.08,-h/2+w*0.08,w-w*0.16,h-w*0.16,rad*0.6);
+    c.strokeStyle='#d8b262aa'; c.stroke();
+    c.save(); c.clip(); c.globalAlpha=0.3; c.beginPath();
+    const passo=w*0.2;
+    for(let k=-h;k<w+h;k+=passo){ c.moveTo(-w/2+k,-h/2); c.lineTo(-w/2+k-h,h/2); c.moveTo(-w/2+k-h,-h/2); c.lineTo(-w/2+k,h/2); }
+    c.stroke(); c.restore();
+  }
+  c.restore();
+};
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/scopa.js
+(function(V){'use strict';
+// Regole della Scopa: funzioni pure, lo stato non si modifica mai sul posto.
+const PRIMIERA={7:21,6:18,1:16,5:15,4:14,3:13,2:12,8:10,9:10,10:10};
+const val=id=>V.carta.valore(id);
+const squadra=(st,posto)=>st.n===4?posto%2:posto;
+const nSquadre=st=>st.n===4?2:st.n;
+const stesse=(a,b)=>a.length===b.length&&a.every(x=>b.includes(x));
+
+function somme(carte,obiettivo){
+  const out=[];
+  const rec=(i,acc,s)=>{
+    if(s===obiettivo){ if(acc.length>=2) out.push(acc.slice()); return; }
+    for(let j=i;j<carte.length;j++){ const v=val(carte[j]);
+      if(s+v<=obiettivo){ acc.push(carte[j]); rec(j+1,acc,s+v); acc.pop(); } }
+  };
+  rec(0,[],0); return out;
+}
+
+// Se in tavola c'è una carta dello stesso valore si prende quella, altrimenti una somma.
+function prese(tavola,carta){
+  const singole=tavola.filter(t=>val(t)===val(carta));
+  return singole.length?singole.map(t=>[t]):somme(tavola,val(carta));
+}
+
+function distribuisci(st){ for(let k=0;k<3;k++) for(let p=0;p<st.n;p++) st.mani[p].push(st.mazzo.shift()); }
+
+function smazza(st){
+  st.mazzo=V.mescola(V.mazzoNapoletano(),st.seme+':'+st.smazzata);
+  st.tavola=st.mazzo.splice(0,4);
+  st.mani=Array.from({length:st.n},()=>[]); distribuisci(st);
+  st.prese=Array.from({length:nSquadre(st)},()=>[]);
+  st.scope=new Array(nSquadre(st)).fill(0);
+  st.ultimaPresa=null; st.turno=(st.mazziere+1)%st.n;
+}
+
+function valorePrimiera(carte){
+  let tot=0;
+  for(const s of V.SEMI){
+    const delSeme=carte.filter(c=>V.carta.seme(c)===s);
+    if(!delSeme.length) return 0;
+    tot+=Math.max(...delSeme.map(c=>PRIMIERA[val(c)]));
+  }
+  return tot;
+}
+
+function contaSmazzata(pr,scope){
+  const ns=pr.length, zero=()=>new Array(ns).fill(0);
+  const unico=arr=>{ const m=Math.max(...arr), w=arr.flatMap((x,i)=>x===m?[i]:[]); return w.length===1?w[0]:-1; };
+  const valori={ carte:pr.map(p=>p.length),
+    denari:pr.map(p=>p.filter(c=>V.carta.seme(c)==='D').length),
+    primiera:pr.map(valorePrimiera) };
+  const r={carte:zero(),denari:zero(),settebello:zero(),primiera:zero(),scope:scope.slice(),totale:zero(),valori};
+  let w=unico(valori.carte); if(w>=0) r.carte[w]=1;
+  w=unico(valori.denari); if(w>=0) r.denari[w]=1;
+  pr.forEach((p,i)=>{ if(p.includes('7D')) r.settebello[i]=1; });
+  w=unico(valori.primiera); if(w>=0&&valori.primiera[w]>0) r.primiera[w]=1;
+  for(let i=0;i<ns;i++) r.totale[i]=r.carte[i]+r.denari[i]+r.settebello[i]+r.primiera[i]+r.scope[i];
+  return r;
+}
+
+function chiudiSmazzata(st){
+  if(st.ultimaPresa!==null) st.prese[st.ultimaPresa].push(...st.tavola);
+  st.tavola=[];
+  const d=contaSmazzata(st.prese,st.scope);
+  d.totale.forEach((x,i)=>{ st.punti[i]+=x; });
+  d.smazzata=st.smazzata; st.ultimaSmazzata=d;
+  const max=Math.max(...st.punti), primi=st.punti.flatMap((x,i)=>x===max?[i]:[]);
+  if(max>=st.obiettivo&&primi.length===1){ st.finita=true; st.vincitore=primi[0]; }
+  else { st.smazzata++; st.mazziere=(st.mazziere+1)%st.n; smazza(st); }
+}
+
+function nuovaPartita(seme,{giocatori=2,obiettivo=11}={}){
+  if(giocatori!==2&&giocatori!==4) throw new Error('la scopa si gioca in 2 o in 4');
+  const st={gioco:'scopa',n:giocatori,obiettivo,seme:String(seme),smazzata:0,mazziere:0,
+    punti:new Array(giocatori===4?2:giocatori).fill(0),ultimaMossa:null,ultimaSmazzata:null,
+    finita:false,vincitore:null,abbandono:null};
+  smazza(st); return st;
+}
+
+function mosseLegali(st,posto){
+  if(st.finita||st.turno!==posto) return [];
+  return st.mani[posto].flatMap(c=>{
+    const o=prese(st.tavola,c);
+    return o.length?o.map(p=>({carta:c,presa:p})):[{carta:c,presa:[]}];
+  });
+}
+
+function applica(st0,m){
+  if(st0.finita) throw new Error('partita finita');
+  const st=structuredClone(st0), p=st.turno, mano=st.mani[p], i=mano.indexOf(m.carta);
+  if(i<0) throw new Error('carta non in mano');
+  const presa=m.presa||[], legali=prese(st.tavola,m.carta);
+  if(legali.length?!legali.some(o=>stesse(o,presa)):presa.length) throw new Error('presa non valida');
+  mano.splice(i,1);
+  const sq=squadra(st,p);
+  st.ultimaMossa={posto:p,carta:m.carta,presa:presa.slice(),scopa:false,smazzata:st.smazzata};
+  if(presa.length){
+    st.tavola=st.tavola.filter(t=>!presa.includes(t));
+    st.prese[sq].push(m.carta,...presa); st.ultimaPresa=sq;
+    const ultimaCarta=st.mazzo.length===0&&st.mani.every(h=>h.length===0);
+    if(st.tavola.length===0&&!ultimaCarta){ st.scope[sq]++; st.ultimaMossa.scopa=true; }
+  } else st.tavola.push(m.carta);
+  st.turno=(p+1)%st.n;
+  if(st.mani.every(h=>h.length===0)){ if(st.mazzo.length) distribuisci(st); else chiudiSmazzata(st); }
+  return st;
+}
+
+// Abbandono (tre tempi scaduti): vince la squadra avversaria.
+function abbandona(st0,posto){
+  const st=structuredClone(st0), sq=squadra(st,posto);
+  st.finita=true; st.abbandono=posto;
+  st.vincitore=st.n===4?1-sq:1-posto;
+  return st;
+}
+
+// Quando scade il tempo: la carta di valore più basso.
+function mossaDiRiserva(st,posto){
+  return mosseLegali(st,posto).sort((a,b)=>val(a.carta)-val(b.carta))[0]||null;
+}
+
+V.giochi=V.giochi||{};
+V.giochi.scopa={id:'scopa',nome:'Scopa',giocatori:[2,4],nuovaPartita,mosseLegali,applica,abbandona,
+  finita:st=>st.finita,punteggio:st=>st.punti,squadra,prese,contaSmazzata,valorePrimiera,mossaDiRiserva};
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/bot-scopa.js
+(function(V){'use strict';
+// Bot della Scopa. Usa solo ciò che vedrebbe un giocatore al suo posto:
+// la propria mano, la tavola e le carte già prese da tutti.
+const S=V.giochi.scopa, val=id=>V.carta.valore(id);
+
+const carteViste=(st,posto)=>[...st.prese.flat(),...st.tavola,...st.mani[posto]];
+
+function valuta(st,m,livello,viste){
+  const tutte=[m.carta,...m.presa]; let v=0;
+  if(m.presa.length){
+    v+=tutte.length;
+    v+=tutte.filter(c=>V.carta.seme(c)==='D').length*1.5;
+    if(tutte.includes('7D')) v+=10;
+    v+=tutte.filter(c=>val(c)===7).length*3;
+    if(m.presa.length===st.tavola.length) v+=15;          // scopa (o quasi, all'ultima carta)
+  } else {
+    if(val(m.carta)===7) v-=4;
+    if(m.carta==='7D') v-=12;
+    if(V.carta.seme(m.carta)==='D') v-=1;
+  }
+  // Rischio di lasciare una scopa facile all'avversario.
+  const resto=m.presa.length?st.tavola.filter(t=>!m.presa.includes(t)):[...st.tavola,m.carta];
+  const somma=resto.reduce((a,c)=>a+val(c),0);
+  if(resto.length&&somma<=10){
+    let rischio=8;
+    if(viste){ const uscite=viste.filter(c=>val(c)===somma).length; rischio*=Math.max(0,4-uscite)/4; }
+    v-=rischio*(livello/10);
+  }
+  return v;
+}
+
+function bot(st,posto,livello=5,rng=Math.random){
+  const mosse=S.mosseLegali(st,posto);
+  if(!mosse.length) return null;
+  if(livello<=1) return mosse[Math.floor(rng()*mosse.length)];
+  const viste=livello>=6?carteViste(st,posto):null;
+  let migliore=mosse[0], punti=-Infinity;
+  for(const m of mosse){
+    const v=valuta(st,m,livello,viste)+(rng()-0.5)*(10-livello)*1.2;
+    if(v>punti){ punti=v; migliore=m; }
+  }
+  return migliore;
+}
+
+S.bot=bot; S.carteViste=carteViste;
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/tavolo.js
+(function(V){'use strict';
+// Il tavolo da carte: disegno, gesti, orologio, turni dei bot.
+// Il giocatore umano siede sempre al posto 0, in basso.
+const ORA=()=>performance.now();
+const LATI={2:['giu','su'],4:['giu','destra','su','sinistra']};
+
+// Come appare il tavolo mentre la carta giocata è ancora sopra la presa.
+function vistaPrima(prev,m){
+  const v=structuredClone(prev), p=prev.turno;
+  v.mani[p]=v.mani[p].filter(c=>c!==m.carta);
+  if(!m.presa.length) v.tavola.push(m.carta);
+  return v;
+}
+// Come appare a fine smazzata: prese nei mucchi, avanzi a chi ha preso per ultimo.
+function vistaFinale(prev,m,S){
+  const v=vistaPrima(prev,m), sq=S.squadra(prev,prev.turno);
+  let ultima=prev.ultimaPresa;
+  if(m.presa.length){ v.tavola=v.tavola.filter(c=>!m.presa.includes(c)); v.prese[sq].push(m.carta,...m.presa); ultima=sq; }
+  if(ultima!==null){ v.prese[ultima].push(...v.tavola); v.tavola=[]; }
+  return v;
+}
+
+class Tavolo{
+  constructor(tela,op){
+    this.tela=tela; this.ctx=tela.getContext('2d'); this.op=op; this.S=V.giochi[op.gioco];
+    this.seme=op.seme; this.impronta=V.sha256(op.seme);
+    this.st=this.S.nuovaPartita(op.seme,{giocatori:op.giocatori});
+    this.rng=V.rng(V.sha256(op.seme+':bot'));
+    this.lati=LATI[this.st.n];
+    this.pos=Object.create(null); this.coda=[]; this.vista=null; this.evidenza=null;
+    this.drag=null; this.scelta=null; this.scritte=[]; this.scaduti=0; this.scopeMie=0;
+    this.pausa=false; this.finito=false; this.chiuso=false; this.ultimoTic=-1;
+    this.scadenza=0; this.botAl=0; this.nascostoDa=0; this.t=ORA();
+    this.misura();
+    const m=this.xyMazzo();
+    for(const id of V.mazzoNapoletano()) this.pos[id]={x:m.x,y:m.y,r:0,s:m.s,su:false,z:0};
+
+    this.hGiu=e=>this.premi(e); this.hMuovi=e=>this.sposta(e); this.hSu=e=>this.rilascia(e);
+    tela.addEventListener('pointerdown',this.hGiu);
+    globalThis.addEventListener('pointermove',this.hMuovi);
+    globalThis.addEventListener('pointerup',this.hSu);
+    globalThis.addEventListener('pointercancel',this.hSu);
+    this.ro=new ResizeObserver(()=>this.misura()); this.ro.observe(tela.parentElement||tela);
+    this.hVis=()=>{
+      if(document.hidden){ this.nascostoDa=ORA(); return; }
+      if(!this.nascostoDa) return;
+      const d=ORA()-this.nascostoDa; this.nascostoDa=0;
+      this.scadenza+=d; this.botAl+=d; for(const c of this.coda) c.fino+=d;
+    };
+    document.addEventListener('visibilitychange',this.hVis);
+
+    this.iniziaTurno();
+    this.ciclo=t=>{ if(this.chiuso) return; this.fotogramma(t); this.raf=requestAnimationFrame(this.ciclo); };
+    this.raf=requestAnimationFrame(this.ciclo);
+  }
+
+  chiudi(){
+    this.chiuso=true; this.finito=true; cancelAnimationFrame(this.raf);
+    this.tela.removeEventListener('pointerdown',this.hGiu);
+    globalThis.removeEventListener('pointermove',this.hMuovi);
+    globalThis.removeEventListener('pointerup',this.hSu);
+    globalThis.removeEventListener('pointercancel',this.hSu);
+    document.removeEventListener('visibilitychange',this.hVis);
+    this.ro.disconnect();
+  }
+
+  // ---- misure e posizioni ------------------------------------------------
+  misura(){
+    const r=this.tela.getBoundingClientRect(), dpr=Math.min(globalThis.devicePixelRatio||1,2.5);
+    this.W=Math.max(1,r.width); this.H=Math.max(1,r.height); this.dpr=dpr;
+    this.tela.width=Math.round(this.W*dpr); this.tela.height=Math.round(this.H*dpr);
+    const largo=this.W>this.H*1.15;
+    // basso: telefono in orizzontale, poca altezza. La mano sporge dal bordo inferiore.
+    this.basso=largo&&this.H<470;
+    if(this.basso) this.cw=Math.min(this.W/9,(this.H*0.36)/1.62);
+    else this.cw=Math.min(this.W/(largo?9:5.2),132,this.H/(largo?5.2:6.6));
+    this.ch=this.cw*1.62; this.pad=10;
+  }
+  xyMazzo(){ return this.basso?{x:this.pad+this.cw*0.42+4,y:this.pad+34+this.ch*0.3,s:0.6}:{x:this.pad+this.cw*0.42+4,y:this.pad+40+this.ch*0.36,s:0.7}; }
+  xyMucchio(sq){
+    const mio=sq===this.S.squadra(this.st,0), s=this.basso?0.6:0.7;
+    return {x:this.W-this.pad-this.cw*0.42-4,y:mio?this.H-this.pad-this.ch*s*0.55:this.pad+(this.basso?34:40)+this.ch*s*0.5,s};
+  }
+  sTop(){ return this.basso?0.45:0.55; }
+  yManoSu(){ return this.pad+(this.basso?2:30)+this.ch*this.sTop()/2; }
+  yManoGiu(){ return this.basso?this.H-this.pad-this.ch/2+this.ch*0.2:this.H-this.pad-this.ch/2-6; }
+  cimaMano(){ return this.yManoGiu()-this.ch*0.55; }
+  centro(){
+    if(!this.basso) return {x:this.W/2,y:this.H*0.47};
+    const alto=this.pad+2+this.ch*this.sTop(), basso=this.yManoGiu()-this.ch/2;
+    return {x:this.W/2,y:(alto+basso)/2};
+  }
+
+  disponi(){
+    const st=this.vista||this.st, out=[], cw=this.cw, ch=this.ch, c=this.centro();
+    const mz=this.xyMazzo();
+    st.mazzo.forEach((id,i)=>{ const k=st.mazzo.length-1-i;
+      out.push({id,x:mz.x-Math.min(k,10)*0.6,y:mz.y-Math.min(k,10)*0.6,r:0,s:mz.s,su:false,z:10+k,basso:k>4}); });
+    st.prese.forEach((pila,sq)=>{ const m=this.xyMucchio(sq);
+      pila.forEach((id,i)=>out.push({id,x:m.x+((i*37)%7-3),y:m.y-Math.min(i,16)*0.5,r:(((i*53)%11)-5)*0.03,
+        s:m.s,su:false,z:100+i,basso:i<pila.length-5})); });
+
+    const lato=st.n===4?ch*this.sTop()+this.pad*2:(this.basso?cw+this.pad*2:this.pad*2), disp=this.W-lato*2, k=st.tavola.length;
+    let s=1, colW=cw*1.1, rowH=ch*1.05;
+    let cols=Math.max(2,Math.floor(disp/colW)), rows=Math.max(1,Math.ceil(k/cols));
+    const alt=this.basso?(this.yManoGiu()-this.ch/2)-(this.pad+2+this.ch*this.sTop())-8:this.H*0.4;
+    if(rows*rowH>alt){ s=Math.max(0.55,alt/(rows*rowH)); colW*=s; rowH*=s;
+      cols=Math.max(2,Math.floor(disp/colW)); rows=Math.max(1,Math.ceil(k/cols)); }
+    this.slot={};
+    st.tavola.forEach((id,i)=>{
+      const row=Math.floor(i/cols), inRow=Math.min(cols,k-row*cols), col=i-row*cols;
+      const x=c.x+(col-(inRow-1)/2)*colW, y=c.y+(row-(rows-1)/2)*rowH;
+      this.slot[id]={x,y,s}; out.push({id,x,y,r:0,s,su:true,z:300+i});
+    });
+
+    st.mani.forEach((mano,p)=>{
+      const lt=this.lati[p], n=mano.length;
+      mano.forEach((id,i)=>{ const o=i-(n-1)/2; let q;
+        if(lt==='giu'){
+          const sp=Math.min(cw*1.05,(this.W-2*this.pad)/Math.max(n,1)), alza=this.scelta===id?ch*0.16:0;
+          q={x:this.W/2+o*sp,y:this.yManoGiu()-alza+Math.abs(o)*4,r:o*0.06,s:1,su:true,z:600+i};
+        } else if(lt==='su') q={x:this.W/2+o*cw*0.42,y:this.yManoSu(),r:Math.PI+o*0.05,s:this.sTop(),su:false,z:500+i};
+        else if(lt==='sinistra') q={x:this.pad+ch*this.sTop()/2,y:c.y+o*cw*0.42,r:Math.PI/2,s:this.sTop(),su:false,z:500+i};
+        else q={x:this.W-this.pad-ch*this.sTop()/2,y:c.y+o*cw*0.42,r:-Math.PI/2,s:this.sTop(),su:false,z:500+i};
+        q.id=id; out.push(q);
+      });
+    });
+
+    if(this.evidenza){ const e=this.evidenza, sl=this.slot[e.su];
+      if(sl) out.push({id:e.carta,x:sl.x+cw*0.24*sl.s,y:sl.y+ch*0.12*sl.s,r:0.08,s:sl.s,su:true,z:900}); }
+    return out;
+  }
+
+  // ---- ciclo -------------------------------------------------------------
+  fotogramma(t){
+    const dt=Math.min(0.05,Math.max(0,(t-this.t)/1000)); this.t=t;
+    const bersagli=this.disponi(), k=1-Math.exp(-dt*13);
+    for(const b of bersagli){
+      let p=this.pos[b.id]; if(!p) p=this.pos[b.id]={...b};
+      b.mosso=Math.abs(p.x-b.x)+Math.abs(p.y-b.y)>1.5;
+      if(this.drag&&this.drag.id===b.id&&this.drag.mosso){
+        p.x=this.drag.x; p.y=this.drag.y-this.ch*0.12; p.r=0; p.s=1.08; p.su=true; p.z=1000; b.mosso=true; continue;
+      }
+      p.x+=(b.x-p.x)*k; p.y+=(b.y-p.y)*k; p.r+=(b.r-p.r)*k; p.s+=(b.s-p.s)*k; p.su=b.su; p.z=b.z;
+    }
+    while(this.coda.length&&t>=this.coda[0].fino&&!this.pausa){ this.coda.shift().fn(); }
+    if(!this.coda.length&&!this.pausa&&!this.finito) this.logica(t);
+    this.disegna(bersagli,t);
+  }
+
+  dopo(ms,fn){ this.coda.push({fino:ORA()+ms,fn}); this.coda.sort((a,b)=>a.fino-b.fino); }
+  scritta(testo,ms,grande){ const t=ORA(); this.scritte.push({testo,da:t,fino:t+ms,grande:!!grande}); }
+
+  logica(t){
+    const st=this.st;
+    if(st.finita) return this.termina();
+    if(st.turno===0){
+      const resta=this.scadenza-t, sec=Math.ceil(resta/1000);
+      if(sec<=3&&sec>0&&sec!==this.ultimoTic){ this.ultimoTic=sec; V.suono('tic'); }
+      if(resta<=0) this.tempoScaduto();
+    } else if(t>=this.botAl){
+      const p=st.turno;
+      this.gioca(this.S.bot(st,p,this.op.livelli[p]||5,this.rng));
+    }
+  }
+
+  iniziaTurno(){
+    const t=ORA(); this.ultimoTic=-1;
+    if(this.st.finita) return;
+    if(this.st.turno===0) this.scadenza=t+this.op.secondi*1000;
+    else this.botAl=t+650+this.rng()*500;
+  }
+
+  tempoScaduto(){
+    this.scaduti++; this.scelta=null; this.drag=null; V.vibra('forte');
+    if(this.scaduti>=3){
+      this.scritta('Tre volte senza giocare: partita persa',2200);
+      this.st=this.S.abbandona(this.st,0); return this.termina();
+    }
+    this.scritta(`Tempo scaduto (${this.scaduti}/3)`,1500);
+    this.gioca(this.S.mossaDiRiserva(this.st,0));
+  }
+
+  gioca(m){
+    const S=this.S, prev=this.st, p=prev.turno, next=S.applica(prev,m);
+    this.st=next; this.scelta=null;
+    V.suono('carta'); if(p===0) V.vibra('leggera');
+    const chiusa=next.finita||next.smazzata!==prev.smazzata;
+    if(next.ultimaMossa&&next.ultimaMossa.scopa){
+      this.scritta('SCOPA!',1300,true); V.suono('scopa'); V.vibra('forte');
+      if(p===0) this.scopeMie++;
+    }
+    if(!m.presa.length&&!chiusa){ this.vista=null; this.iniziaTurno(); return; }
+    this.vista=vistaPrima(prev,m);
+    this.evidenza=m.presa.length?{carta:m.carta,su:m.presa[0]}:null;
+    this.dopo(m.presa.length?700:450,()=>{
+      this.evidenza=null;
+      if(m.presa.length) V.suono('presa');
+      if(!chiusa){ this.vista=null; this.iniziaTurno(); return; }
+      this.vista=vistaFinale(prev,m,S);
+      this.dopo(850,()=>{
+        if(next.finita) return this.termina();
+        this.pausa=true;
+        const continua=()=>{ if(this.chiuso) return; this.pausa=false; this.vista=null; this.iniziaTurno(); };
+        if(this.op.alSmazzata) this.op.alSmazzata(next.ultimaSmazzata,next,continua); else continua();
+      });
+    });
+  }
+
+  termina(){
+    if(this.finito) return;
+    this.finito=true; this.drag=null; this.scelta=null;
+    const st=this.st, vinto=st.vincitore===this.S.squadra(st,0);
+    V.suono(vinto?'vittoria':'sconfitta'); if(vinto) V.vibra('successo');
+    setTimeout(()=>{ if(!this.chiuso&&this.op.alFine) this.op.alFine({vinto,st,seme:this.seme,
+      impronta:this.impronta,abbandono:st.abbandono!=null,scopeMie:this.scopeMie}); },700);
+  }
+
+  abbandona(){
+    if(this.finito) return;
+    this.coda=[]; this.pausa=false; this.st=this.S.abbandona(this.st,0); this.termina();
+  }
+
+  // ---- gesti -------------------------------------------------------------
+  punto(e){ const r=this.tela.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+  mioTurno(){ return !this.finito&&!this.pausa&&!this.coda.length&&!this.st.finita&&this.st.turno===0; }
+  sotto(ids,x,y){
+    let meglio=null, z=-1;
+    for(const id of ids){ const p=this.pos[id]; if(!p) continue;
+      if(Math.abs(x-p.x)<=this.cw*p.s/2&&Math.abs(y-p.y)<=this.ch*p.s/2&&p.z>z){ meglio=id; z=p.z; } }
+    return meglio;
+  }
+  premi(e){
+    V.audio.attiva();
+    if(!this.mioTurno()) return;
+    const {x,y}=this.punto(e), id=this.sotto(this.st.mani[0],x,y);
+    if(id){
+      this.drag={id,x,y,sx:x,sy:y,mosso:false,pid:e.pointerId};
+      try{ this.tela.setPointerCapture(e.pointerId); }catch(_){}
+      e.preventDefault(); return;
+    }
+    if(this.scelta){ const sopra=this.sotto(this.st.tavola,x,y);
+      if(sopra||y<this.cimaMano()) this.giocaVerso(this.scelta,x,y); else this.scelta=null; }
+  }
+  sposta(e){
+    const d=this.drag; if(!d||e.pointerId!==d.pid) return;
+    const {x,y}=this.punto(e); d.x=x; d.y=y;
+    if(Math.hypot(x-d.sx,y-d.sy)>10) d.mosso=true;
+  }
+  rilascia(e){
+    const d=this.drag; if(!d||e.pointerId!==d.pid) return;
+    this.drag=null;
+    if(!this.mioTurno()) return;
+    const {x,y}=this.punto(e);
+    if(!d.mosso){
+      if(this.scelta===d.id) this.giocaVerso(d.id,null,null);
+      else { this.scelta=d.id; V.suono('clic'); }
+      return;
+    }
+    if(y>this.cimaMano()){ this.scelta=null; return; }
+    this.giocaVerso(d.id,x,y);
+  }
+  // Lasciata su una carta del tavolo: la presa più piccola che la contiene.
+  // Lasciata altrove: la calata se è permessa, altrimenti la prima presa obbligata.
+  mossaVerso(id,x,y){
+    const mosse=this.S.mosseLegali(this.st,0).filter(m=>m.carta===id);
+    if(!mosse.length) return null;
+    if(x!=null){ const t=this.sotto(this.st.tavola,x,y);
+      if(t){ const c=mosse.filter(m=>m.presa.includes(t)).sort((a,b)=>a.presa.length-b.presa.length); if(c.length) return c[0]; } }
+    return mosse.find(m=>!m.presa.length)||mosse[0];
+  }
+  giocaVerso(id,x,y){ const m=this.mossaVerso(id,x,y); if(m) this.gioca(m); }
+
+  // ---- disegno -----------------------------------------------------------
+  disegna(bersagli,t){
+    const c=this.ctx, W=this.W, H=this.H;
+    c.setTransform(this.dpr,0,0,this.dpr,0,0); c.clearRect(0,0,W,H);
+    const g=c.createRadialGradient(W/2,H*0.45,20,W/2,H*0.45,Math.max(W,H)*0.75);
+    g.addColorStop(0,'#2f7a52'); g.addColorStop(1,'#10321f');
+    c.fillStyle=g; V.tondo(c,3,3,W-6,H-6,22); c.fill();
+    c.strokeStyle='#d8b26266'; c.lineWidth=2; c.stroke();
+
+    const luce=new Set(), forte=new Set(), attiva=this.drag?this.drag.id:this.scelta;
+    if(attiva&&this.mioTurno()){
+      this.S.mosseLegali(this.st,0).filter(m=>m.carta===attiva).forEach(m=>m.presa.forEach(id=>luce.add(id)));
+      if(this.drag&&this.drag.mosso){ const m=this.mossaVerso(attiva,this.drag.x,this.drag.y); if(m) m.presa.forEach(id=>forte.add(id)); }
+    }
+    const visibili=bersagli.filter(b=>!b.basso||b.mosso).map(b=>b.id).sort((a,b)=>this.pos[a].z-this.pos[b].z);
+    for(const id of visibili){ const p=this.pos[id];
+      V.disegnaCarta(c,p.su?id:null,p.x,p.y,this.cw*p.s,this.ch*p.s,{r:p.r,luce:forte.has(id)?2:luce.has(id)?1:0}); }
+
+    const st=this.vista||this.st, mz=this.xyMazzo();
+    if(st.mazzo.length) this.pillola(String(st.mazzo.length),mz.x,mz.y+this.ch*0.36+12,'center',false);
+    this.etichette(t);
+    this.disegnaScritte(t);
+  }
+
+  pillola(testo,x,y,allinea,oro){
+    const c=this.ctx; c.font='600 13px system-ui,sans-serif';
+    const w=c.measureText(testo).width+16, h=24;
+    const x0=allinea==='center'?x-w/2:allinea==='right'?x-w:x;
+    c.fillStyle='#0b1a12cc'; V.tondo(c,x0,y-h/2,w,h,12); c.fill();
+    if(oro){ c.strokeStyle='#e0b75a'; c.lineWidth=2; c.stroke(); }
+    c.fillStyle='#f4ead2'; c.textAlign='left'; c.textBaseline='middle'; c.fillText(testo,x0+8,y+1);
+    return {x0,w};
+  }
+
+  etichette(t){
+    const c=this.ctx, st=this.st, nomi=this.op.nomi, cen=this.centro(), cw=this.cw, ch=this.ch;
+    const pt=st.punti, pun=st.n===4?`Noi ${pt[0]} · Loro ${pt[1]}`:`${corto(nomi[0],10)} ${pt[0]} · ${corto(nomi[1],10)} ${pt[1]}`;
+    this.pillola(`${pun}  /${st.obiettivo}`,this.pad,this.pad+12,'left',false);
+    const attivo=!this.finito&&!this.pausa&&!this.coda.length&&!st.finita;
+    st.mani.forEach((_,p)=>{
+      const lt=this.lati[p], turno=attivo&&st.turno===p;
+      let x,y,al='center';
+      if(lt==='giu'){ if(this.basso){ x=this.W/2-cw*1.6-12; y=this.yManoGiu()-ch*0.12; al='right'; } else { x=this.W/2; y=this.yManoGiu()-ch/2-ch*0.16-18; } }
+      else if(lt==='su'){ if(this.basso){ x=this.W/2+cw*0.42+ch*this.sTop()/2+12; y=this.yManoSu(); al='left'; } else { x=this.W/2; y=this.yManoSu()+ch*this.sTop()/2+14; } }
+      else if(lt==='sinistra'){ x=this.pad; y=cen.y+(this.basso?cw*0.75+16:-cw*0.75-16); al='left'; }
+      else { x=this.W-this.pad; y=cen.y+(this.basso?cw*0.75+16:-cw*0.75-16); al='right'; }
+      const nome=(p===0?'Tu':corto(nomi[p],12))+(st.n===4&&p===2?' (compagno)':'');
+      const spazio=turno?'     ':'';
+      const box=this.pillola(spazio+nome,x,y,al,turno);
+      if(!turno) return;
+      const cx=box.x0+14, cy=y;
+      if(p===0){
+        const f=V.clamp((this.scadenza-t)/(this.op.secondi*1000),0,1);
+        c.beginPath(); c.arc(cx,cy,7,-Math.PI/2,-Math.PI/2+Math.PI*2*f);
+        c.strokeStyle=f<0.3?'#ff6b5a':'#e0b75a'; c.lineWidth=3; c.stroke();
+      } else {
+        for(let i=0;i<3;i++){ const a=0.3+0.7*Math.max(0,Math.sin(t/180-i*0.9));
+          c.fillStyle=`rgba(224,183,90,${a})`; c.beginPath(); c.arc(cx-5+i*5,cy,2,0,Math.PI*2); c.fill(); }
+      }
+    });
+    if(this.mioTurno()&&!this.drag&&!this.scelta&&this.scaduti===0&&st.smazzata===0&&st.mani[0].length===3&&st.mazzo.length>=30){
+      if(this.basso) this.pillola('Trascina una carta',this.W/2-cw*1.6-12,this.yManoGiu()-ch*0.12-30,'right',false);
+      else this.pillola('Trascina una carta sul tavolo',this.W/2,this.yManoGiu()-ch/2-ch*0.16-48,'center',false);
+    }
+  }
+
+  disegnaScritte(t){
+    const c=this.ctx;
+    this.scritte=this.scritte.filter(s=>t<s.fino);
+    for(const s of this.scritte){
+      const f=(t-s.da)/(s.fino-s.da), alfa=f>0.75?(1-f)/0.25:1;
+      c.save(); c.globalAlpha=Math.max(0,alfa);
+      if(s.grande){
+        const sc=1+0.35*(1-Math.min(1,f*5));
+        c.translate(this.W/2,this.H*0.42); c.scale(sc,sc);
+        c.font=`700 ${Math.round(this.cw*0.75)}px Georgia,serif`; c.textAlign='center'; c.textBaseline='middle';
+        c.lineWidth=6; c.strokeStyle='#2a1a10'; c.strokeText(s.testo,0,0);
+        c.fillStyle='#ffd66b'; c.fillText(s.testo,0,0);
+      } else this.pillola(s.testo,this.W/2,this.H*0.3,'center',true);
+      c.restore();
+    }
+  }
+}
+function corto(s,n){ s=String(s||''); return s.length>n?s.slice(0,n-1)+'…':s; }
+
+V.Tavolo=Tavolo;
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/zona.js
+(function(V){'use strict';
+// Il piano terra: per ora solo il Salotto del Bar con i tavoli di Scopa.
+// Nei tavoli a 4 gli avversari sono i posti 1 e 3, il compagno il posto 2.
+V.zone=V.zone||{};
+V.zone['piano-terra']={
+  id:'piano-terra', nome:'Piano terra', salvataggio:'carte',
+  sale:[{
+    id:'bar', nome:'Salotto del Bar',
+    tag:'Divani di velluto e vetrate sul mare · si gioca per il gusto di giocare',
+    tavoli:[
+      {id:'bar-1',gioco:'scopa',giocatori:2,livelli:[3],secondi:20,avversari:['Nonna Pina']},
+      {id:'bar-2',gioco:'scopa',giocatori:2,livelli:[7],secondi:20,avversari:['Il Marchese']},
+      {id:'bar-3',gioco:'scopa',giocatori:4,livelli:[5,5,5],secondi:20,avversari:['Zio Tonino','Rosetta','Il Dottore']}
+    ]
+  }]
+};
+})(globalThis.V=globalThis.V||{});
+
+// ---- motore/avvio.js
+(function(V){'use strict';
+// Avvio dell'ingresso: nome del giocatore, sala, tavoli, finestre di fine smazzata e di fine partita.
+if(typeof document==='undefined') return;
+const $=id=>document.getElementById(id);
+const A=V.archivio();
+const ZONA=V.zone['piano-terra'], SALA=ZONA.sale[0];
+let tavolo=null, def=null;
+
+const tg=globalThis.Telegram&&globalThis.Telegram.WebApp;
+if(tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
+
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const statistiche=()=>Object.assign({giocate:0,vinte:0,scope:0},A.zona(ZONA.salvataggio));
+function nuovoSeme(){ const b=new Uint8Array(16); crypto.getRandomValues(b); return Array.from(b,x=>x.toString(16).padStart(2,'0')).join(''); }
+
+// ---- finestre ------------------------------------------------------------
+// azioni: [{testo, primario, valida(), fn()}]; la finestra si chiude prima di fn.
+function finestra(html,azioni){
+  const f=$('finestra'); f.innerHTML=html+'<div class="azioni"></div>';
+  const box=f.querySelector('.azioni');
+  for(const a of azioni){
+    const b=document.createElement('button'); b.textContent=a.testo; if(a.primario) b.className='primario';
+    b.onclick=()=>{ if(a.valida&&!a.valida()) return; V.suono('clic'); chiudiFinestra(); if(a.fn) a.fn(); };
+    box.appendChild(b);
+  }
+  $('velo').hidden=false;
+  const primo=box.querySelector('button.primario')||box.querySelector('button'); if(primo) primo.focus();
+}
+function chiudiFinestra(){ $('velo').hidden=true; $('finestra').innerHTML=''; }
+
+$('finestra').addEventListener('click',e=>{
+  const b=e.target.closest('[data-copia]'); if(!b) return;
+  const testo=b.getAttribute('data-copia');
+  const fatto=()=>{ b.textContent='Copiato ✓'; setTimeout(()=>{ b.textContent='Copia il seme'; },1500); };
+  const ripiego=()=>{ const el=$('semeRivelato'); if(!el) return; const r=document.createRange(); r.selectNodeContents(el);
+    const s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent='Selezionato: premi Ctrl+C'; };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(testo).then(fatto,ripiego); else ripiego();
+});
+
+function chiediNome(poi){
+  let nome='';
+  finestra(`<h2>Benvenuto nella Villa</h2><p>Come ti chiamano al tavolo?</p>
+    <input id="campoNome" maxlength="16" autocomplete="nickname" value="${esc(A.giocatore().nome)}">`,
+    [{testo:'Entra',primario:true,
+      valida:()=>{ nome=$('campoNome').value.trim().slice(0,16); if(!nome){ $('campoNome').focus(); return false; } return true; },
+      fn:()=>{ A.salvaGiocatore(Object.assign(A.giocatore(),{nome})); aggiornaTesta(); if(poi) poi(); }}]);
+  const campo=$('campoNome'); campo.focus();
+  campo.addEventListener('keydown',e=>{ if(e.key==='Enter') $('finestra').querySelector('.azioni button').click(); });
+}
+
+// ---- schermate -----------------------------------------------------------
+function aggiornaTesta(){
+  const g=A.giocatore();
+  $('nomeG').textContent=g.nome||'';
+  $('audio').textContent=g.muto?'🔇':'🔊';
+  V.audio.muto(!!g.muto);
+}
+
+function mostraSala(){
+  $('nomeSala').textContent=SALA.nome; $('tagSala').textContent=SALA.tag;
+  const box=$('tavoli'); box.innerHTML='';
+  for(const t of SALA.tavoli){
+    const G=V.giochi[t.gioco], coppia=t.giocatori===4;
+    const el=document.createElement('button'); el.className='scheda-tavolo';
+    el.innerHTML=`<span class="gioco">${esc(G.nome)}</span>
+      <span class="formula">${coppia?'a 4, in coppia':'a 2'} · ${t.secondi} s a mossa</span>
+      <span class="chi">${coppia?`Con ${esc(t.avversari[1])}, contro ${esc(t.avversari[0])} e ${esc(t.avversari[2])}`:`Contro ${esc(t.avversari[0])}`}</span>
+      <span class="livello">Livello ${t.livelli[0]}</span>
+      <span class="siediti">Siediti</span>`;
+    el.onclick=()=>{ V.audio.attiva(); V.suono('clic'); siediti(t); };
+    box.appendChild(el);
+  }
+  const s=statistiche();
+  $('stat').textContent=`Partite ${s.giocate} · vinte ${s.vinte} · scope fatte ${s.scope}`;
+  $('schermoTavolo').hidden=true; $('schermoSala').hidden=false;
+}
+
+function siediti(t){
+  if(!A.giocatore().nome) return chiediNome(()=>siediti(t));
+  def=t;
+  $('schermoSala').hidden=true; $('schermoTavolo').hidden=false;
+  $('titoloTavolo').textContent=`${V.giochi[t.gioco].nome} · ${SALA.nome}`;
+  if(tavolo) tavolo.chiudi();
+  const seme=nuovoSeme(), impronta=V.sha256(seme);
+  $('impronta').textContent='🔒 '+impronta.slice(0,8);
+  $('impronta').title='Mazzo sigillato. Impronta: '+impronta;
+  tavolo=new V.Tavolo($('tela'),{gioco:t.gioco,giocatori:t.giocatori,livelli:[0,...t.livelli],
+    secondi:t.secondi,nomi:[A.giocatore().nome,...t.avversari],seme,alSmazzata,alFine});
+}
+
+function lasciaTavolo(){
+  if(!tavolo||tavolo.finito){ if(tavolo) tavolo.chiudi(); tavolo=null; return mostraSala(); }
+  finestra('<h2>Lasci il tavolo?</h2><p>La partita conta come persa.</p>',
+    [{testo:'Resto',primario:true},{testo:'Lascio',fn:()=>tavolo&&tavolo.abbandona()}]);
+}
+
+// ---- conti ---------------------------------------------------------------
+function etichette(st){ return st.n===4?['Noi','Loro']:['Tu',def.avversari[0]]; }
+function tabella(r,st){
+  const et=etichette(st);
+  const righe=[['Carte',r.carte,r.valori.carte],['Denari',r.denari,r.valori.denari],['Settebello',r.settebello],
+    ['Primiera',r.primiera,r.valori.primiera],['Scope',r.scope]];
+  return `<table class="conti"><tr><th></th>${et.map(e=>`<th>${esc(e)}</th>`).join('')}</tr>
+    ${righe.map(([n,p,v])=>`<tr><td>${n}</td>${p.map((x,i)=>`<td>${x?`<b>+${x}</b>`:'·'}${v?` <small>(${v[i]})</small>`:''}</td>`).join('')}</tr>`).join('')}
+    <tr class="tot"><td>Smazzata</td>${r.totale.map(x=>`<td>+${x}</td>`).join('')}</tr>
+    <tr class="tot"><td>Partita</td>${st.punti.map(x=>`<td>${x}</td>`).join('')}</tr></table>`;
+}
+function alSmazzata(r,st,continua){
+  finestra(`<h2>Fine smazzata</h2>${tabella(r,st)}<p class="nota">Si vince arrivando a ${st.obiettivo} punti.</p>`,
+    [{testo:'Continua',primario:true,fn:continua}]);
+}
+function alFine(e){
+  const st=e.st, s=statistiche();
+  s.giocate++; if(e.vinto) s.vinte++; s.scope+=e.scopeMie;
+  A.salvaZona(ZONA.salvataggio,s);
+  const ok=V.sha256(e.seme)===e.impronta;
+  finestra(`<h2 class="${e.vinto?'vinto':'perso'}">${e.vinto?'Hai vinto!':'Hai perso'}</h2>
+    <p class="punteggio">${etichette(st).map((n,i)=>`${esc(n)} ${st.punti[i]}`).join(' – ')}</p>
+    ${e.abbandono?'<p class="nota">Partita chiusa per abbandono.</p>':''}
+    ${st.ultimaSmazzata&&!e.abbandono?tabella(st.ultimaSmazzata,st):''}
+    <details class="verifica"><summary>Verifica la mescolata ${ok?'✔':'✖'}</summary>
+      <p>Prima della partita il mazzo era sigillato con questa impronta:</p><code>${e.impronta}</code>
+      <p>Il seme, rivelato adesso:</p><code id="semeRivelato">${e.seme}</code>
+      <button class="copia" data-copia="${e.seme}">Copia il seme</button>
+      <p class="nota">SHA-256 del seme ${ok?'corrisponde':'NON corrisponde'} all'impronta. La smazzata numero n si mescola con il seme seguito da «:n».</p>
+    </details>`,
+    [{testo:'Rivincita',primario:true,fn:()=>siediti(def)},
+     {testo:'Torna al '+SALA.nome.replace(/^Salotto del /,''),fn:()=>{ if(tavolo) tavolo.chiudi(); tavolo=null; mostraSala(); }}]);
+}
+
+// Maniglia per i collaudi automatici nel browser (sola lettura del tavolo in corso).
+globalThis.__villa={ tavolo:()=>tavolo };
+
+// ---- partenza ------------------------------------------------------------
+$('audio').onclick=()=>{ V.audio.attiva(); const g=A.giocatore(); g.muto=!g.muto; A.salvaGiocatore(g); aggiornaTesta(); V.suono('clic'); };
+$('esci').onclick=()=>{ V.suono('clic'); lasciaTavolo(); };
+aggiornaTesta();
+mostraSala();
+if(!A.giocatore().nome) chiediNome();
 })(globalThis.V=globalThis.V||{});
 
 </script></body></html>

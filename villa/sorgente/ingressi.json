@@ -2,6 +2,17 @@
   "carte": {
     "uscita": "villa/carte/index.html",
     "titolo": "La Villa · Carte",
-    "file": ["motore/base.js"]
+    "file": [
+      "motore/base.js",
+      "motore/salvataggio.js",
+      "motore/suoni.js",
+      "zone/piano-terra/mazzo.js",
+      "zone/piano-terra/disegno-carte.js",
+      "zone/piano-terra/scopa.js",
+      "zone/piano-terra/bot-scopa.js",
+      "zone/piano-terra/tavolo.js",
+      "zone/piano-terra/zona.js",
+      "motore/avvio.js"
+    ]
   }
 }

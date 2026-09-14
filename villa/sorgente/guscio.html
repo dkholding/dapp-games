@@ -1,6 +1,89 @@
 <!doctype html><html lang="it"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title><!--TITOLO--></title></head><body>
+<meta name="theme-color" content="#0d1b24">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%83%8F%3C/text%3E%3C/svg%3E">
+<title><!--TITOLO--></title>
+<style>
+:root{--mare:#0d1b24;--avorio:#f4ead2;--oro:#d8b262;--testo:#efe6d2;--tenue:#b9ab8e}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--mare);color:var(--testo);
+  font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background:radial-gradient(140% 90% at 50% -10%,#1d4a5c 0%,var(--mare) 62%)}
+header.barra{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;border-bottom:1px solid #ffffff14}
+.luogo{font-family:Georgia,"Times New Roman",serif;letter-spacing:.04em;color:var(--oro);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chi{display:flex;align-items:center;gap:8px;min-width:0}
+#nomeG{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+.tondo{min-width:44px;min-height:44px;border-radius:22px;border:1px solid #ffffff22;background:#ffffff0d}
+#schermoSala{flex:1;overflow:auto;padding:16px;display:flex;justify-content:center}
+.sala{width:100%;max-width:960px}
+h1{font-family:Georgia,serif;font-weight:normal;margin:6px 0 2px;font-size:clamp(26px,5vw,36px);color:var(--avorio)}
+.tag{color:var(--tenue);margin:0 0 16px}
+.griglia{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.scheda-tavolo{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:16px;
+  border-radius:14px;border:1px solid #d8b26255;background:linear-gradient(160deg,#27583d,#153626);box-shadow:0 6px 18px #0006}
+.scheda-tavolo:hover,.scheda-tavolo:focus-visible{border-color:var(--oro);outline:none}
+.gioco{font-family:Georgia,serif;font-size:22px;color:var(--avorio)}
+.formula,.livello{color:var(--tenue);font-size:13px}
+.siediti{margin-top:10px;align-self:stretch;text-align:center;padding:11px;border-radius:10px;background:var(--oro);color:#2a1a10;font-weight:600}
+.stat{margin-top:18px;color:var(--tenue);font-size:13px}
+#schermoTavolo{flex:1;display:flex;flex-direction:column;min-height:0}
+.testaTavolo{display:flex;align-items:center;gap:10px;padding:4px 8px}
+.testaTavolo .titolo{flex:1;font-family:Georgia,serif;color:var(--avorio);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#impronta{font-size:12px;color:var(--tenue);font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
+.contenitoreTela{flex:1;position:relative;min-height:0;margin:0 6px 6px}
+#tela{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block;user-select:none;-webkit-user-select:none}
+#velo{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.finestra{background:#16242c;border:1px solid #d8b26255;border-radius:18px 18px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+  width:100%;max-width:520px;max-height:92vh;overflow:auto;box-shadow:0 -10px 40px #0008}
+@media (min-width:700px) and (min-height:500px){#velo{align-items:center}.finestra{border-radius:18px}}
+@media (max-height:480px){
+  #app:has(#schermoTavolo:not([hidden])) header.barra{display:none}
+  .testaTavolo{padding:2px 8px}
+  .finestra{max-height:100vh;border-radius:14px 14px 0 0}
+}
+.finestra h2{font-family:Georgia,serif;font-weight:normal;margin:0 0 8px;color:var(--oro)}
+.finestra h2.perso{color:#e7a397}
+.finestra p{margin:6px 0}
+.azioni{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.azioni button{flex:1;min-height:44px;border-radius:10px;border:1px solid #ffffff2a;background:#ffffff10;padding:0 14px}
+.azioni button.primario{background:var(--oro);color:#2a1a10;border-color:var(--oro);font-weight:600}
+input{font:inherit;width:100%;min-height:44px;padding:0 12px;border-radius:10px;border:1px solid #ffffff33;background:#0d1b24;color:var(--testo)}
+table.conti{width:100%;border-collapse:collapse;margin-top:6px}
+.conti th,.conti td{padding:6px 4px;border-bottom:1px solid #ffffff14;text-align:center}
+.conti td:first-child,.conti th:first-child{text-align:left;color:var(--tenue)}
+.conti small{color:var(--tenue)}
+.conti tr.tot td{font-weight:600}
+.punteggio{font-size:22px}
+.nota{color:var(--tenue);font-size:13px}
+.verifica{margin-top:12px}
+.verifica summary{cursor:pointer;min-height:32px}
+.verifica code{display:block;word-break:break-all;background:#0d1b24;padding:8px;border-radius:8px;font-size:12px;user-select:all}
+.copia{min-height:44px;margin-top:6px;border-radius:10px;border:1px solid #ffffff2a;background:#ffffff10;padding:0 12px}
+</style></head><body>
+<div id="app">
+  <header class="barra">
+    <span class="luogo">La Villa · Piano terra</span>
+    <span class="chi"><span id="nomeG"></span><button id="audio" class="tondo" aria-label="Suoni">🔊</button></span>
+  </header>
+  <main id="schermoSala"><div class="sala">
+    <h1 id="nomeSala"></h1><p class="tag" id="tagSala"></p>
+    <div id="tavoli" class="griglia"></div>
+    <p class="stat" id="stat"></p>
+  </div></main>
+  <section id="schermoTavolo" hidden>
+    <div class="testaTavolo">
+      <button id="esci" class="tondo" aria-label="Lascia il tavolo">←</button>
+      <span class="titolo" id="titoloTavolo"></span><span id="impronta"></span>
+    </div>
+    <div class="contenitoreTela"><canvas id="tela"></canvas></div>
+  </section>
+</div>
+<div id="velo" hidden><div class="finestra" id="finestra" role="dialog" aria-modal="true"></div></div>
 <script>globalThis.INGRESSO=/*INGRESSO*/;
 /*CODICE*/
 </script></body></html>

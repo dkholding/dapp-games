@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import vm from 'node:vm';
 
 const VILLA = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -14,4 +15,16 @@ test('impacchetta produce villa/carte/index.html autonomo', () => {
   assert.match(html, /INGRESSO="carte"/);
   assert.doesNotMatch(html, /\/\*CODICE\*\/|<!--TITOLO-->|\/\*INGRESSO\*\//);
   assert.doesNotMatch(html, /<script[^>]+src=|<link[^>]+href=["']?https?:/i);
+  assert.doesNotMatch(html, /fetch\(|XMLHttpRequest|WebSocket\(/);
+});
+
+test("il codice dell'ingresso si carica tutto insieme", () => {
+  execFileSync(process.execPath, [join(VILLA, 'impacchetta.mjs')]);
+  const html = readFileSync(join(VILLA, 'carte', 'index.html'), 'utf8');
+  const js = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
+  delete globalThis.V;
+  vm.runInThisContext(js, { filename: 'carte/index.html' });
+  assert.equal(typeof globalThis.V.Tavolo, 'function');
+  assert.equal(typeof globalThis.V.giochi.scopa.bot, 'function');
+  assert.equal(globalThis.V.zone['piano-terra'].sale[0].tavoli.length, 3);
 });
