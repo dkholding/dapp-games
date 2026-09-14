@@ -1,0 +1,7 @@
+{
+  "carte": {
+    "uscita": "villa/carte/index.html",
+    "titolo": "La Villa · Carte",
+    "file": ["motore/base.js"]
+  }
+}
