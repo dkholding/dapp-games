@@ -2923,6 +2923,7 @@ function boot(){
   tickMarket();
   resize();
   go('play');
+  renderTop();   // senza questo il saldo in testa restava "0 / Wallet" fino al primo acquisto
   if(first)setTimeout(()=>toast('Benvenuto: 1.500 ◈, una skin e l\'abilità Viper'),600);
 }
 boot();
