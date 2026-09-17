@@ -2,8 +2,8 @@
 // Avvio di un ingresso della Villa: mondo da girare, tavoli, tornei, negozio, portineria.
 if(typeof document==='undefined') return;
 const $=id=>document.getElementById(id);
-const ZONE_INGRESSO={carte:['piano-terra']};
-const zoneIngresso=ZONE_INGRESSO[globalThis.INGRESSO]||['piano-terra'];
+const ZONE_INGRESSO={carte:['piano-terra'],villa:['giardino','piano-terra','veranda']};
+const zoneIngresso=(ZONE_INGRESSO[globalThis.INGRESSO]||['piano-terra']).filter(z=>V.zone[z]);
 const A=V.archivio();
 let zona=V.zone[zoneIngresso[0]], eco=null, mondo=null, tavolo=null, seduta=null, spostamentoOra=0;
 const adesso=()=>Date.now()+spostamentoOra;
@@ -16,7 +16,8 @@ const nf=n=>Math.round(n).toLocaleString('it-IT');
 const oggi=()=>{ const d=new Date(adesso()); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const ore=ms=>{ const d=new Date(ms); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
 function nuovoSeme(){ const b=new Uint8Array(16); crypto.getRandomValues(b); return Array.from(b,x=>x.toString(16).padStart(2,'0')).join(''); }
-const moneta=()=>zona.economia.moneta;
+const moneta=()=>(zona.economia||V.zone['piano-terra'].economia).moneta;
+const nuovaEconomia=z=>z.economia?new V.Economia(A,z.salvataggio,z.economia):null;
 const soldi=n=>`${nf(n)} ${moneta().simbolo}`;
 const nomeGioco=id=>(V.giochi[id]&&V.giochi[id].nome)||({briscola:'Briscola',tressette:'Tressette',scala40:'Scala 40',burraco:'Burraco'})[id]||id;
 
@@ -59,6 +60,7 @@ function aggiornaTesta(){
   const g=A.giocatore();
   $('nomeG').textContent=g.nome||'';
   $('audio').textContent=g.muto?'🔇':'🔊'; V.audio.muto(!!g.muto);
+  $('soldi').hidden=$('livello').hidden=!eco;
   if(eco){ $('soldi').textContent=soldi(eco.saldo()); const av=eco.avanzamento(); $('livello').textContent='Liv. '+av.livello; $('livello').title=`${av.xp} / ${av.a} esperienza`; }
   const dorso=eco&&eco.equipaggiato(); V.aspettoCarte=dorso?{dorso:dorso.dorso,filo:dorso.filo}:null;
 }
@@ -87,10 +89,12 @@ function descriviTavolo(def){
   const formula=def.giocatori===4?'in coppia':'a 2';
   return `${nomeGioco(def.gioco)} ${formula} · ${tipo}${def.tipo==='buio'?'':' · livello '+def.livelli[0]}`;
 }
-function avviaMondo(){
+function avviaMondo(partenza){
   const g=A.giocatore();
-  mondo=new V.Mondo($('telaMondo'),{mappa:zona.mappa,zone:zoneIngresso,nome:g.nome,colore:V.COLORI_ABITO[g.aspetto||0],
-    livello:()=>eco.livello(),
+  $('azioneVicino').hidden=true;
+  mondo=new V.Mondo($('telaMondo'),{mappa:zona.mappa,zone:zoneIngresso,nome:g.nome,colore:V.COLORI_ABITO[g.aspetto||0],partenza,
+    livello:()=>eco?eco.livello():1,
+    alPorta:cambiaZona,
     alVicino:vic=>{
       for(const k of zona.mappa.tavoli) k.etichetta=null;
       const box=$('azioneVicino');
@@ -116,7 +120,20 @@ function avviaMondo(){
         c.fillStyle=k.tipo==='buio'?'#ddd':'#2a1a10'; c.font='700 12px system-ui'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(k.tipo==='buio'?'?':'◉',k.x,k.y+1); }
     }
   });
-  const st=mondo.stanzaIn(mondo.p.x,mondo.p.y); if(st) $('luogo').textContent=st.nome;
+  const st=mondo.stanzaIn(mondo.p.x,mondo.p.y); $('luogo').textContent=st?st.nome:zona.nome;
+}
+// Passaggio da una zona all'altra della villa, con una breve dissolvenza.
+function cambiaZona(p){
+  const dest=V.zone[p.verso];
+  if(!dest){ avviso(p.nome+': in allestimento'); if(mondo) mondo.riprendi(); return; }
+  const d=$('dissolvenza'); d.classList.add('attiva'); V.suono('carta');
+  setTimeout(()=>{
+    if(mondo) mondo.chiudi();
+    zona=dest; eco=nuovaEconomia(zona);
+    avviaMondo(p.arrivo); aggiornaTesta();
+    if(eco){ const r=eco.regalo(oggi()); if(r) avviso(`Regalo del giorno: +${soldi(r)}`); }
+    setTimeout(()=>d.classList.remove('attiva'),60);
+  },380);
 }
 $('azioneVicino').querySelector('button').onclick=()=>{ V.audio.attiva(); if(mondo&&mondo.vicino) mondo.attiva(mondo.vicino); };
 
@@ -284,7 +301,7 @@ function giocaTorneo(id){
 }
 // Rimborso dei tornei non giocati; avviso quando uno inizia.
 function controllaTornei(){
-  if(!eco) return;
+  if(!eco||!zona.tornei) return;
   for(const [id,isc] of Object.entries(eco.d.tornei.iscritti)){
     if(isc.stato==='iscritto'&&adesso()>=isc.inizio&&adesso()<isc.inizio+15*60*1000&&!isc.avvisato){
       isc.avvisato=true; eco.salva(); avviso(`Il torneo di ${nomeGioco(isc.gioco)} è iniziato: vai al Tavolo d'Onore`,6000);
@@ -298,7 +315,7 @@ function controllaTornei(){
 setInterval(controllaTornei,5000);
 
 // ---- negozio e portineria ------------------------------------------------
-function apriArredo(azione){ if(azione==='tornei') pannelloTornei(); else if(azione==='negozio') pannelloNegozio(); else pannelloProfilo(); }
+function apriArredo(azione){ if(azione==='tornei'&&eco) pannelloTornei(); else if(azione==='negozio'&&eco) pannelloNegozio(); else pannelloProfilo(); }
 function pannelloNegozio(){
   const righe=eco.catalogo().map(o=>{
     const ha=eco.possiede(o.id), usa=eco.d.nft.equip===o.id;
@@ -314,7 +331,9 @@ function pannelloNegozio(){
     }});
 }
 function pannelloProfilo(){
-  const g=A.giocatore(), av=eco.avanzamento(), d=eco.d;
+  const g=A.giocatore();
+  if(!eco) return pannelloProfiloVilla(g);
+  const av=eco.avanzamento(), d=eco.d;
   const giochi=Object.entries(d.perGioco).map(([k,v])=>`<tr><td>${esc(nomeGioco(k))}</td><td>${v.giocate}</td><td>${v.vinte}</td></tr>`).join('');
   const mov=d.movimenti.slice(0,8).map(m=>`<li><span class="${m.n>0?'piu':'meno'}">${m.n>0?'+':''}${nf(m.n)}</span> ${esc(m.causale)}</li>`).join('');
   finestra(`<h2>Portineria</h2>
@@ -330,17 +349,38 @@ function pannelloProfilo(){
     <p class="nota">Di prova: serve solo come identità, nessuna transazione.</p>
     ${mov?`<h3>Ultimi movimenti</h3><ul class="movimenti">${mov}</ul>`:''}`,
     [{testo:'Cambia nome',fn:()=>chiediNome()},{testo:'Chiudi',primario:true}],
-    {alClic:e=>{
-      const c=e.target.closest('[data-colore]'), w=e.target.closest('[data-wallet]');
-      if(c){ const gg=A.giocatore(); gg.aspetto=+c.dataset.colore; A.salvaGiocatore(gg); if(mondo) mondo.p.colore=V.COLORI_ABITO[gg.aspetto]; V.suono('clic'); pannelloProfilo(); }
-      if(w){ const cs='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-', b=new Uint8Array(46); crypto.getRandomValues(b);
-        const gg=A.giocatore(); gg.wallet='EQ'+Array.from(b,x=>cs[x%cs.length]).join(''); A.salvaGiocatore(gg); V.suono('clic'); pannelloProfilo(); }
-    }});
+    {alClic:clicProfilo});
+}
+
+// Portineria del giardino: il giocatore e il riepilogo di ogni zona (le monete restano separate).
+function pannelloProfiloVilla(g){
+  const righe=zoneIngresso.map(id=>V.zone[id]).filter(z=>z.economia).map(z=>{
+    const e=nuovaEconomia(z), m=z.economia.moneta;
+    return `<tr><td>${esc(z.nome)}</td><td>${nf(e.saldo())} ${m.simbolo} ${esc(m.nome)}</td><td>Liv. ${e.livello()}</td><td>${e.d.giocate}</td></tr>`; }).join('');
+  finestra(`<h2>Portineria</h2><p>Benvenuto, <b>${esc(g.nome)}</b>.</p>
+    <p>Colore dell'abito:</p><div class="scelte">${V.COLORI_ABITO.map((c,i)=>`<button class="colore ${i===(g.aspetto||0)?'scelto':''}" data-colore="${i}" style="background:${c}" aria-label="Colore ${i+1}"></button>`).join('')}</div>
+    ${righe?`<h3>Le tue zone</h3><table class="conti"><tr><th>Zona</th><th>Monete</th><th>Livello</th><th>Partite</th></tr>${righe}</table><p class="nota">Ogni zona ha le sue monete e i suoi oggetti: non passano da una all'altra.</p>`:''}
+    <h3>Wallet TON</h3>
+    ${g.wallet?`<code id="indirizzoWallet">${esc(g.wallet)}</code><button class="copia" data-copia="${esc(g.wallet)}" data-sorgente="indirizzoWallet">Copia l'indirizzo</button>`
+      :'<p><button data-wallet="1">Collega un wallet di prova</button></p>'}
+    <p class="nota">Di prova: serve solo come identità, nessuna transazione.</p>`,
+    [{testo:'Cambia nome',fn:()=>chiediNome()},{testo:'Chiudi',primario:true}],
+    {alClic:clicProfilo});
+}
+function clicProfilo(e){
+  const c=e.target.closest('[data-colore]'), w=e.target.closest('[data-wallet]');
+  if(c){ const gg=A.giocatore(); gg.aspetto=+c.dataset.colore; A.salvaGiocatore(gg); if(mondo) mondo.p.colore=V.COLORI_ABITO[gg.aspetto]; V.suono('clic'); pannelloProfilo(); }
+  if(w){ const cs='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-', b=new Uint8Array(46); crypto.getRandomValues(b);
+    const gg=A.giocatore(); gg.wallet='EQ'+Array.from(b,x=>cs[x%cs.length]).join(''); A.salvaGiocatore(gg); V.suono('clic'); pannelloProfilo(); }
 }
 
 // ---- menu ----------------------------------------------------------------
 $('menu').onclick=()=>{ V.audio.attiva(); V.suono('clic');
-  finestra('<h2>La Villa</h2>',[{testo:'Portineria',fn:pannelloProfilo},{testo:'Bacheca dei tornei',fn:pannelloTornei},{testo:'Negozio',fn:pannelloNegozio},{testo:'Chiudi',primario:true}]); };
+  const voci=[{testo:'Portineria',fn:pannelloProfilo}];
+  if(eco&&zona.tornei) voci.push({testo:'Bacheca dei tornei',fn:pannelloTornei});
+  if(eco) voci.push({testo:'Negozio',fn:pannelloNegozio});
+  voci.push({testo:'Chiudi',primario:true});
+  finestra(`<h2>La Villa · ${esc(zona.nome)}</h2>`,voci); };
 $('audio').onclick=()=>{ V.audio.attiva(); const g=A.giocatore(); g.muto=!g.muto; A.salvaGiocatore(g); aggiornaTesta(); V.suono('clic'); };
 $('esci').onclick=()=>{ V.suono('clic'); lasciaTavolo(); };
 
@@ -348,12 +388,12 @@ $('esci').onclick=()=>{ V.suono('clic'); lasciaTavolo(); };
 globalThis.__villa={ tavolo:()=>tavolo, mondo:()=>mondo, economia:()=>eco, spostaOra:ms=>{ spostamentoOra+=ms; controllaTornei(); } };
 
 // ---- partenza ------------------------------------------------------------
-eco=new V.Economia(A,zona.salvataggio,zona.economia);
+eco=nuovaEconomia(zona);
 // Chi aveva giocato alla prima versione: tiene le statistiche.
-if(eco.d.giocate&&!eco.d.perGioco.scopa){ eco.d.perGioco.scopa={giocate:eco.d.giocate,vinte:eco.d.vinte}; eco.salva(); }
+if(eco&&eco.d.giocate&&!eco.d.perGioco.scopa&&zona.id==='piano-terra'){ eco.d.perGioco.scopa={giocate:eco.d.giocate,vinte:eco.d.vinte}; eco.salva(); }
 aggiornaTesta();
 avviaMondo();
-const regalo=eco.regalo(oggi());
+const regalo=eco?eco.regalo(oggi()):0;
 if(!A.giocatore().nome) chiediNome(()=>{ if(regalo) avviso(`Regalo del giorno: +${soldi(regalo)}`); });
 else if(regalo) avviso(`Regalo del giorno: +${soldi(regalo)}`);
 aggiornaTesta();

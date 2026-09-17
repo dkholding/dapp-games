@@ -98,6 +98,8 @@ table.conti{width:100%;border-collapse:collapse;margin-top:6px}
 .piu{color:#9fe0a0}.meno{color:#f0a090}
 .soldi{font-size:18px;font-weight:600;margin:6px 0}
 .azioni button:disabled{opacity:.45}
+#dissolvenza{position:fixed;inset:0;background:#05090c;opacity:0;pointer-events:none;transition:opacity .35s;z-index:30}
+#dissolvenza.attiva{opacity:1}
 </style></head><body>
 <div id="app">
   <header class="barra">
@@ -125,6 +127,7 @@ table.conti{width:100%;border-collapse:collapse;margin-top:6px}
 </div>
 <div id="velo" hidden><div class="finestra" id="finestra" role="dialog" aria-modal="true"></div></div>
 <div id="avviso" hidden role="status"></div>
+<div id="dissolvenza"></div>
 <script>globalThis.INGRESSO=/*INGRESSO*/;
 /*CODICE*/
 </script></body></html>

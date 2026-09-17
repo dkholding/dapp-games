@@ -28,5 +28,36 @@
       "zone/piano-terra/zona.js",
       "motore/avvio.js"
     ]
+  },
+  "villa": {
+    "uscita": "villa/index.html",
+    "titolo": "La Villa",
+    "file": [
+      "motore/base.js",
+      "motore/salvataggio.js",
+      "motore/suoni.js",
+      "motore/geometria.js",
+      "motore/economia.js",
+      "motore/mondo.js",
+      "zone/piano-terra/mazzo.js",
+      "zone/piano-terra/disegno-carte.js",
+      "zone/piano-terra/scopa.js",
+      "zone/piano-terra/bot-scopa.js",
+      "zone/piano-terra/briscola.js",
+      "zone/piano-terra/tressette.js",
+      "zone/piano-terra/bot-prese.js",
+      "zone/piano-terra/mazzo-francese.js",
+      "zone/piano-terra/disegno-francesi.js",
+      "zone/piano-terra/combinazioni.js",
+      "zone/piano-terra/scala40.js",
+      "zone/piano-terra/burraco.js",
+      "zone/piano-terra/bot-combinazioni.js",
+      "zone/piano-terra/tavolo.js",
+      "zone/piano-terra/tavolo-mano.js",
+      "zone/piano-terra/tavolo-combinazioni.js",
+      "zone/piano-terra/zona.js",
+      "zone/giardino/zona.js",
+      "motore/avvio.js"
+    ]
   }
 }
