@@ -62,11 +62,13 @@ V.disegnaCarta=function(c,id,x,y,w,h,op){
       c.font=`600 ${Math.round(Math.min(h*0.085,w*0.13))}px Georgia,serif`; c.fillText(fig,0,-h*0.1);
       simbolo(c,s,0,h*0.16,w*0.2);
     } else simbolo(c,s,0,h*0.02,w*0.26);
+    if(op&&op.spenta){ V.tondo(c,-w/2,-h/2,w,h,rad); c.fillStyle='rgba(20,30,25,.45)'; c.fill(); }
   } else {
-    c.fillStyle='#6b1e24'; c.fill(); c.shadowColor='transparent'; c.shadowBlur=0;
+    const asp=V.aspettoCarte;
+    c.fillStyle=asp?asp.dorso:'#6b1e24'; c.fill(); c.shadowColor='transparent'; c.shadowBlur=0;
     c.lineWidth=1; c.strokeStyle='#2a0c0e'; c.stroke();
     V.tondo(c,-w/2+w*0.08,-h/2+w*0.08,w-w*0.16,h-w*0.16,rad*0.6);
-    c.strokeStyle='#d8b262aa'; c.stroke();
+    c.strokeStyle=asp?asp.filo:'#d8b262aa'; c.stroke();
     c.save(); c.clip(); c.globalAlpha=0.3; c.beginPath();
     const passo=w*0.2;
     for(let k=-h;k<w+h;k+=passo){ c.moveTo(-w/2+k,-h/2); c.lineTo(-w/2+k-h,h/2); c.moveTo(-w/2+k-h,-h/2); c.lineTo(-w/2+k,h/2); }

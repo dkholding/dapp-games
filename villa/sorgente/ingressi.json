@@ -17,6 +17,7 @@
       "zone/piano-terra/tressette.js",
       "zone/piano-terra/bot-prese.js",
       "zone/piano-terra/tavolo.js",
+      "zone/piano-terra/tavolo-mano.js",
       "zone/piano-terra/zona.js",
       "motore/avvio.js"
     ]

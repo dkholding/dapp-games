@@ -192,7 +192,9 @@ function tabella(G,st){
 }
 function alSmazzata(r,st,continua){
   const G=V.giochi[st.gioco];
-  finestra(`<h2 data-obbligatoria>Fine smazzata</h2>${tabella(G,st)}${st.obiettivo?`<p class="nota">Si vince a ${esc(st.obiettivo)} punti.</p>`:''}`,
+  const nota=st.gioco==='briscola'?(r.pareggio?'60 a 60: nessuno segna, si rigioca.':`Vince la partita chi vince ${st.obiettivo===1?'la smazzata':st.obiettivo+' smazzate'}.`)
+    :st.gioco==='scala40'?`Esce chi supera ${esc(st.obiettivo)} punti di penalità.`:st.obiettivo?`Si vince a ${esc(st.obiettivo)} punti.`:'';
+  finestra(`<h2 data-obbligatoria>Fine smazzata</h2>${tabella(G,st)}<p class="nota">${nota}</p>`,
     [{testo:'Continua',primario:true,fn:continua}]);
 }
 

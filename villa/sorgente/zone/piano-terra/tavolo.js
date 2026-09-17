@@ -24,7 +24,7 @@ class Tavolo{
   constructor(tela,op){
     this.tela=tela; this.ctx=tela.getContext('2d'); this.op=op; this.S=V.giochi[op.gioco];
     this.seme=op.seme; this.impronta=V.sha256(op.seme);
-    this.st=this.S.nuovaPartita(op.seme,{giocatori:op.giocatori});
+    this.st=this.S.nuovaPartita(op.seme,this.opzioniPartita(op));
     this.rng=V.rng(V.sha256(op.seme+':bot'));
     this.lati=LATI[this.st.n];
     this.pos=Object.create(null); this.coda=[]; this.vista=null; this.evidenza=null;
@@ -33,7 +33,7 @@ class Tavolo{
     this.scadenza=0; this.botAl=0; this.nascostoDa=0; this.t=ORA();
     this.misura();
     const m=this.xyMazzo();
-    for(const id of V.mazzoNapoletano()) this.pos[id]={x:m.x,y:m.y,r:0,s:m.s,su:false,z:0};
+    for(const id of this.tutteLeCarte()) this.pos[id]={x:m.x,y:m.y,r:0,s:m.s,su:false,z:0};
 
     this.hGiu=e=>this.premi(e); this.hMuovi=e=>this.sposta(e); this.hSu=e=>this.rilascia(e);
     tela.addEventListener('pointerdown',this.hGiu);
@@ -54,6 +54,9 @@ class Tavolo{
     this.raf=requestAnimationFrame(this.ciclo);
     this.battito=setInterval(()=>{ if(!this.chiuso&&ORA()-(this.ultimoFotogramma||0)>220){ this.ultimoFotogramma=ORA(); this.fotogramma(ORA()); } },120);
   }
+
+  opzioniPartita(op){ return {giocatori:op.giocatori,breve:!!op.breve}; }
+  tutteLeCarte(){ return V.mazzoNapoletano(); }
 
   chiudi(){
     this.chiuso=true; this.finito=true; cancelAnimationFrame(this.raf); clearInterval(this.battito);
@@ -93,13 +96,22 @@ class Tavolo{
   }
 
   disponi(){
-    const st=this.vista||this.st, out=[], cw=this.cw, ch=this.ch, c=this.centro();
+    const st=this.vista||this.st, out=[];
+    this.disponiMazzo(st,out); this.disponiPrese(st,out); this.disponiCentro(st,out); this.disponiMani(st,out);
+    return out;
+  }
+  disponiMazzo(st,out){
     const mz=this.xyMazzo();
     st.mazzo.forEach((id,i)=>{ const k=st.mazzo.length-1-i;
       out.push({id,x:mz.x-Math.min(k,10)*0.6,y:mz.y-Math.min(k,10)*0.6,r:0,s:mz.s,su:false,z:10+k,basso:k>4}); });
+  }
+  disponiPrese(st,out){
     st.prese.forEach((pila,sq)=>{ const m=this.xyMucchio(sq);
       pila.forEach((id,i)=>out.push({id,x:m.x+((i*37)%7-3),y:m.y-Math.min(i,16)*0.5,r:(((i*53)%11)-5)*0.03,
         s:m.s,su:false,z:100+i,basso:i<pila.length-5})); });
+  }
+  disponiCentro(st,out){
+    const cw=this.cw, ch=this.ch, c=this.centro();
 
     const lato=st.n===4?ch*this.sTop()+this.pad*2:(this.basso?cw+this.pad*2:this.pad*2), disp=this.W-lato*2, k=st.tavola.length;
     let s=1, colW=cw*1.1, rowH=ch*1.05;
@@ -113,23 +125,25 @@ class Tavolo{
       const x=c.x+(col-(inRow-1)/2)*colW, y=c.y+(row-(rows-1)/2)*rowH;
       this.slot[id]={x,y,s}; out.push({id,x,y,r:0,s,su:true,z:300+i});
     });
-
+    if(this.evidenza){ const e=this.evidenza, sl=this.slot[e.su];
+      if(sl) out.push({id:e.carta,x:sl.x+cw*0.24*sl.s,y:sl.y+ch*0.12*sl.s,r:0.08,s:sl.s,su:true,z:900}); }
+  }
+  // Carte coperte che per un attimo si mostrano (es. le pescate del Tressette a due).
+  scoperta(id){ return this.scoperte&&this.scoperte[id]>ORA(); }
+  disponiMani(st,out){
+    const cw=this.cw, ch=this.ch, c=this.centro();
     st.mani.forEach((mano,p)=>{
       const lt=this.lati[p], n=mano.length;
       mano.forEach((id,i)=>{ const o=i-(n-1)/2; let q;
         if(lt==='giu'){
-          const sp=Math.min(cw*1.05,(this.W-2*this.pad)/Math.max(n,1)), alza=this.scelta===id?ch*0.16:0;
+          const sp=Math.min(cw*1.05,(this.W-2*this.pad-cw*1.1)/Math.max(n-1,1)), alza=this.scelta===id?ch*0.16:0;
           q={x:this.W/2+o*sp,y:this.yManoGiu()-alza+Math.abs(o)*4,r:o*0.06,s:1,su:true,z:600+i};
         } else if(lt==='su') q={x:this.W/2+o*cw*0.42,y:this.yManoSu(),r:Math.PI+o*0.05,s:this.sTop(),su:false,z:500+i};
         else if(lt==='sinistra') q={x:this.pad+ch*this.sTop()/2,y:c.y+o*cw*0.42,r:Math.PI/2,s:this.sTop(),su:false,z:500+i};
         else q={x:this.W-this.pad-ch*this.sTop()/2,y:c.y+o*cw*0.42,r:-Math.PI/2,s:this.sTop(),su:false,z:500+i};
-        q.id=id; out.push(q);
+        q.id=id; if(!q.su&&this.scoperta(id)){ q.su=true; q.r=lt==='su'?0:q.r; } out.push(q);
       });
     });
-
-    if(this.evidenza){ const e=this.evidenza, sl=this.slot[e.su];
-      if(sl) out.push({id:e.carta,x:sl.x+cw*0.24*sl.s,y:sl.y+ch*0.12*sl.s,r:0.08,s:sl.s,su:true,z:900}); }
-    return out;
   }
 
   // ---- ciclo -------------------------------------------------------------
@@ -185,7 +199,7 @@ class Tavolo{
   gioca(m){
     const S=this.S, prev=this.st, p=prev.turno, next=S.applica(prev,m);
     this.st=next; this.scelta=null;
-    V.suono('carta'); if(p===0) V.vibra('leggera');
+    V.suono('carta'); if(p===0){ V.vibra('leggera'); this.mosseFatte=true; }
     const chiusa=next.finita||next.smazzata!==prev.smazzata;
     if(next.ultimaMossa&&next.ultimaMossa.scopa){
       this.scritta('SCOPA!',1300,true); V.suono('scopa'); V.vibra('forte');
@@ -240,7 +254,7 @@ class Tavolo{
       try{ this.tela.setPointerCapture(e.pointerId); }catch(_){}
       e.preventDefault(); return;
     }
-    if(this.scelta){ const sopra=this.sotto(this.st.tavola,x,y);
+    if(this.scelta){ const sopra=this.sotto(this.st.tavola||[],x,y);
       if(sopra||y<this.cimaMano()) this.giocaVerso(this.scelta,x,y); else this.scelta=null; }
   }
   sposta(e){
@@ -281,20 +295,32 @@ class Tavolo{
     c.fillStyle=g; V.tondo(c,3,3,W-6,H-6,22); c.fill();
     c.strokeStyle='#d8b26266'; c.lineWidth=2; c.stroke();
 
-    const luce=new Set(), forte=new Set(), attiva=this.drag?this.drag.id:this.scelta;
-    if(attiva&&this.mioTurno()){
-      this.S.mosseLegali(this.st,0).filter(m=>m.carta===attiva).forEach(m=>m.presa.forEach(id=>luce.add(id)));
-      if(this.drag&&this.drag.mosso){ const m=this.mossaVerso(attiva,this.drag.x,this.drag.y); if(m) m.presa.forEach(id=>forte.add(id)); }
-    }
+    const {luce,forte}=this.luci();
     const visibili=bersagli.filter(b=>!b.basso||b.mosso).map(b=>b.id).sort((a,b)=>this.pos[a].z-this.pos[b].z);
+    const ok=this.giocabili(), mano=new Set(this.st.mani[0]);
     for(const id of visibili){ const p=this.pos[id];
-      V.disegnaCarta(c,p.su?id:null,p.x,p.y,this.cw*p.s,this.ch*p.s,{r:p.r,luce:forte.has(id)?2:luce.has(id)?1:0}); }
+      V.disegnaCarta(c,p.su?id:null,p.x,p.y,this.cw*p.s,this.ch*p.s,{r:p.r,luce:forte.has(id)?2:luce.has(id)?1:0,
+        spenta:!!(ok&&mano.has(id)&&!ok.has(id))}); }
+    this.disegnaExtra(c,t);
 
     const st=this.vista||this.st, mz=this.xyMazzo();
     if(st.mazzo.length) this.pillola(String(st.mazzo.length),mz.x,mz.y+this.ch*0.36+12,'center',false);
     this.etichette(t);
     this.disegnaScritte(t);
   }
+  disegnaExtra(){}
+  puntiInGioco(){ return this.st.punti; }
+
+  luci(){
+    const luce=new Set(), forte=new Set(), attiva=this.drag?this.drag.id:this.scelta;
+    if(attiva&&this.mioTurno()){
+      this.S.mosseLegali(this.st,0).filter(m=>m.carta===attiva).forEach(m=>m.presa.forEach(id=>luce.add(id)));
+      if(this.drag&&this.drag.mosso){ const m=this.mossaVerso(attiva,this.drag.x,this.drag.y); if(m) m.presa.forEach(id=>forte.add(id)); }
+    }
+    return {luce,forte};
+  }
+  // Mani non giocabili (obbligo di rispondere): si scuriscono.
+  giocabili(){ if(!this.mioTurno()) return null; return new Set(this.S.mosseLegali(this.st,0).map(m=>m.carta)); }
 
   pillola(testo,x,y,allinea,oro){
     const c=this.ctx; c.font='600 13px system-ui,sans-serif';
@@ -308,7 +334,7 @@ class Tavolo{
 
   etichette(t){
     const c=this.ctx, st=this.st, nomi=this.op.nomi, cen=this.centro(), cw=this.cw, ch=this.ch;
-    const pt=st.punti, pun=st.n===4?`Noi ${pt[0]} · Loro ${pt[1]}`:`${corto(nomi[0],10)} ${pt[0]} · ${corto(nomi[1],10)} ${pt[1]}`;
+    const pt=this.puntiInGioco(), pun=st.n===4?`Noi ${pt[0]} · Loro ${pt[1]}`:`${corto(nomi[0],10)} ${pt[0]} · ${corto(nomi[1],10)} ${pt[1]}`;
     this.pillola(`${pun}  /${st.obiettivo}`,this.pad,this.pad+12,'left',false);
     const attivo=!this.finito&&!this.pausa&&!this.coda.length&&!st.finita;
     st.mani.forEach((_,p)=>{
@@ -332,7 +358,7 @@ class Tavolo{
           c.fillStyle=`rgba(224,183,90,${a})`; c.beginPath(); c.arc(cx-5+i*5,cy,2,0,Math.PI*2); c.fill(); }
       }
     });
-    if(this.mioTurno()&&!this.drag&&!this.scelta&&this.scaduti===0&&st.smazzata===0&&st.mani[0].length===3&&st.mazzo.length>=30){
+    if(this.mioTurno()&&!this.drag&&!this.scelta&&!this.mosseFatte){
       if(this.basso) this.pillola('Trascina una carta',this.W/2-cw*1.6-12,this.yManoGiu()-ch*0.12-30,'right',false);
       else this.pillola('Trascina una carta sul tavolo',this.W/2,this.yManoGiu()-ch/2-ch*0.16-48,'center',false);
     }
