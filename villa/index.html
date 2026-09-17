@@ -67,6 +67,8 @@ table.conti{width:100%;border-collapse:collapse;margin-top:6px}
 .copia{min-height:44px;margin-top:6px;border-radius:10px;border:1px solid #ffffff2a;background:#ffffff10;padding:0 12px}
 .pillola{font-size:13px;padding:4px 10px;border-radius:12px;background:#ffffff12;border:1px solid #ffffff1f;white-space:nowrap}
 #soldi{color:var(--oro);font-weight:600}
+#ducati{color:#c9b8ff;font-weight:600}
+@media (max-width:420px){#livello{display:none}}
 #schermoMondo{flex:1;display:flex;flex-direction:column;min-height:0}
 #schermoMondo .contenitoreTela{margin:0}
 #telaMondo{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block;user-select:none;-webkit-user-select:none}
@@ -105,7 +107,7 @@ table.conti{width:100%;border-collapse:collapse;margin-top:6px}
   <header class="barra">
     <span class="luogo" id="luogo">La Villa</span>
     <span class="chi">
-      <span id="soldi" class="pillola"></span><span id="livello" class="pillola"></span>
+      <span id="ducati" class="pillola"></span><span id="soldi" class="pillola"></span><span id="livello" class="pillola"></span>
       <span id="nomeG"></span>
       <button id="audio" class="tondo" aria-label="Suoni">🔊</button>
       <button id="menu" class="tondo" aria-label="Menu">☰</button>
@@ -408,6 +410,16 @@ V.Economia=class{
   }
   equipaggia(id){ if(id!==null&&!this.possiede(id)) return false; this.d.nft.equip=id; this.salva(); return true; }
   equipaggiato(){ return this.conf.catalogo.find(x=>x.id===this.d.nft.equip)||null; }
+  // Consumabili (da bere): si pagano e restano "in mano" per qualche minuto.
+  consuma(id,ora){
+    const b=(this.conf.bevande||[]).find(x=>x.id===id);
+    if(!b||!this.paga(b.prezzo,b.nome)) return false;
+    this.d.bevanda={id,fino:ora+b.minuti*60000}; this.salva(); return true;
+  }
+  bevanda(ora){
+    const x=this.d.bevanda; if(!x||x.fino<=ora) return null;
+    return (this.conf.bevande||[]).find(b=>b.id===x.id)||null;
+  }
 };
 
 // Tornei a orario: uno ogni mezz'ora (:00 e :30), il gioco ruota.
@@ -495,7 +507,7 @@ V.Mondo=class{
     this.vicino=null; this.stanza=null; this.scritta=null;
     this.costruisci();
     const p=op.partenza||this.m.partenza;
-    this.p={x:p.x,y:p.y,dir:0,passo:0,colore:op.colore||V.COLORI_ABITO[0]};
+    this.p={x:p.x,y:p.y,dir:0,passo:0,colore:op.colore||V.COLORI_ABITO[0],dettaglio:op.dettaglio||null};
     this.avventori=this.creaAvventori(this.m.avventori||7);
     this.misura();
 
@@ -849,12 +861,15 @@ V.Mondo=class{
     c.save(); c.translate(g.x,g.y); c.rotate(g.dir||0);
     c.fillStyle=g.colore; c.beginPath(); c.ellipse(0,oscilla*0.3,RAGGIO*0.8,RAGGIO,0,0,7); c.fill();
     c.fillStyle='rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(-3,0,RAGGIO*0.5,RAGGIO*0.8,0,0,7); c.fill();
+    if(g.dettaglio){ c.fillStyle=g.dettaglio; c.fillRect(-2,-RAGGIO*0.75,4,RAGGIO*1.5); }
     c.fillStyle=g.pelle||PELLE[0]; c.beginPath(); c.arc(4,0,RAGGIO*0.55,0,7); c.fill();
     c.restore();
     if(g.proprio){
       c.strokeStyle='#ffd66b'; c.lineWidth=2.5; c.beginPath(); c.arc(g.x,g.y,RAGGIO+5,0,7); c.stroke();
       const nome=this.op.nome||''; if(nome){ c.font='700 13px system-ui,sans-serif'; c.textAlign='center'; c.textBaseline='middle';
         c.lineWidth=4; c.strokeStyle='rgba(0,0,0,.6)'; c.strokeText(nome,g.x,g.y-RAGGIO-14); c.fillStyle='#fff'; c.fillText(nome,g.x,g.y-RAGGIO-14); }
+      const b=this.op.bevanda&&this.op.bevanda();
+      if(b){ c.font='18px system-ui,sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(b.icona,g.x+RAGGIO+6,g.y-4+Math.sin(t/300)*1.5); }
     }
   }
 
@@ -869,6 +884,31 @@ V.Mondo=class{
         c.strokeText(this.scritta.testo,this.W/2,42); c.fillStyle='#ffe3a0'; c.fillText(this.scritta.testo,this.W/2,42);
         if(this.scritta.sotto){ c.font='14px system-ui,sans-serif'; c.lineWidth=4; c.strokeText(this.scritta.sotto,this.W/2,72); c.fillStyle='#f4ead2'; c.fillText(this.scritta.sotto,this.W/2,72); }
         c.restore(); } }
+  }
+};
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/villa.js
+(function(V){'use strict';
+// Economia generale della Villa, DI PROVA: i Ducati si spendono solo dentro la villa
+// (da bere al bancone, abiti in portineria). Non si cambiano con le monete dei giochi.
+V.VILLA={
+  salvataggio:'generale',
+  economia:{
+    moneta:{nome:'Ducati',simbolo:'◆',iniziale:100,regalo:50},
+    trattenuta:0,
+    perPartita:5,
+    catalogo:[
+      {id:'abito-lino',tipo:'abito',nome:'Completo di lino',prezzo:80,colore:'#e8dcc0',dettaglio:'#8a6a3a'},
+      {id:'abito-sera',tipo:'abito',nome:'Abito da sera',prezzo:150,colore:'#1b1b22',dettaglio:'#d8b262'},
+      {id:'abito-capitano',tipo:'abito',nome:'Divisa del Capitano',prezzo:300,colore:'#f4f4f4',dettaglio:'#1f3a8a'}
+    ],
+    bevande:[
+      {id:'caffe',nome:'Caffè',prezzo:5,icona:'☕',minuti:10},
+      {id:'limoncello',nome:'Limoncello',prezzo:12,icona:'🍋',minuti:15},
+      {id:'spritz',nome:'Spritz',prezzo:20,icona:'🍹',minuti:20},
+      {id:'champagne',nome:'Champagne',prezzo:60,icona:'🥂',minuti:30}
+    ]
   }
 };
 })(globalThis.V=globalThis.V||{});
@@ -3178,7 +3218,7 @@ V.zone['piano-terra']={
     ],
     cancelli:[{x:X2-8,y:1320,w:16,h:120,livelloMin:5,nome:"Sala d'Onore"}],
     arredi:[
-      {tipo:'bancone',x:40,y:1100,w:70,h:560},
+      {tipo:'bancone',x:40,y:1100,w:70,h:560,azione:'bar',nome:'Bancone del Bar · da bere coi Ducati'},
       {tipo:'divano',x:160,y:1680-40,w:160,h:36,colore:'#6b1e2b'},
       {tipo:'pianta',x:830,y:1080,w:50,h:50},{tipo:'pianta',x:20,y:460,w:50,h:50},{tipo:'pianta',x:830,y:960,w:50,h:50},
       {tipo:'tappeto',x:1080,y:1180,w:340,h:420,colore:'#5a1f2b',pavimento:true,solido:false},
@@ -3279,6 +3319,13 @@ V.zone.giardino={
 };
 })(globalThis.V=globalThis.V||{});
 
+// ---- zone/veranda/zona.js
+(function(V){'use strict';
+// La veranda è Scacchi Arena così com'è: la porta della villa la apre, con le sue monete e i suoi NFT.
+V.zone=V.zone||{};
+V.zone.veranda={ id:'veranda', nome:'Veranda', esterna:'../scacchi-arena.html?da=villa' };
+})(globalThis.V=globalThis.V||{});
+
 // ---- motore/avvio.js
 (function(V){'use strict';
 // Avvio di un ingresso della Villa: mondo da girare, tavoli, tornei, negozio, portineria.
@@ -3289,6 +3336,10 @@ const zoneIngresso=(ZONE_INGRESSO[globalThis.INGRESSO]||['piano-terra']).filter(
 const A=V.archivio();
 let zona=V.zone[zoneIngresso[0]], eco=null, mondo=null, tavolo=null, seduta=null, spostamentoOra=0;
 const adesso=()=>Date.now()+spostamentoOra;
+// Economia generale della villa: Ducati, solo per le cose della villa.
+const villa=new V.Economia(A,V.VILLA.salvataggio,V.VILLA.economia);
+const ducati=n=>`${nf(n)} ${V.VILLA.economia.moneta.simbolo}`;
+const abito=()=>{ const a=villa.equipaggiato(); return a?{colore:a.colore,dettaglio:a.dettaglio}:null; };
 
 const tg=globalThis.Telegram&&globalThis.Telegram.WebApp;
 if(tg){ try{ tg.ready(); tg.expand(); }catch(e){} }
@@ -3342,6 +3393,7 @@ function aggiornaTesta(){
   const g=A.giocatore();
   $('nomeG').textContent=g.nome||'';
   $('audio').textContent=g.muto?'🔇':'🔊'; V.audio.muto(!!g.muto);
+  $('ducati').textContent=ducati(villa.saldo()); $('ducati').title='Ducati della villa: da bere e abiti';
   $('soldi').hidden=$('livello').hidden=!eco;
   if(eco){ $('soldi').textContent=soldi(eco.saldo()); const av=eco.avanzamento(); $('livello').textContent='Liv. '+av.livello; $('livello').title=`${av.xp} / ${av.a} esperienza`; }
   const dorso=eco&&eco.equipaggiato(); V.aspettoCarte=dorso?{dorso:dorso.dorso,filo:dorso.filo}:null;
@@ -3374,7 +3426,9 @@ function descriviTavolo(def){
 function avviaMondo(partenza){
   const g=A.giocatore();
   $('azioneVicino').hidden=true;
-  mondo=new V.Mondo($('telaMondo'),{mappa:zona.mappa,zone:zoneIngresso,nome:g.nome,colore:V.COLORI_ABITO[g.aspetto||0],partenza,
+  const ab=abito();
+  mondo=new V.Mondo($('telaMondo'),{mappa:zona.mappa,zone:zoneIngresso,nome:g.nome,colore:ab?ab.colore:V.COLORI_ABITO[g.aspetto||0],partenza,
+    dettaglio:ab&&ab.dettaglio, bevanda:()=>villa.bevanda(adesso()),
     livello:()=>eco?eco.livello():1,
     alPorta:cambiaZona,
     alVicino:vic=>{
@@ -3409,6 +3463,7 @@ function cambiaZona(p){
   const dest=V.zone[p.verso];
   if(!dest){ avviso(p.nome+': in allestimento'); if(mondo) mondo.riprendi(); return; }
   const d=$('dissolvenza'); d.classList.add('attiva'); V.suono('carta');
+  if(dest.esterna){ setTimeout(()=>{ location.href=dest.esterna; },380); return; }
   setTimeout(()=>{
     if(mondo) mondo.chiudi();
     zona=dest; eco=nuovaEconomia(zona);
@@ -3500,6 +3555,7 @@ function alSmazzata(r,st,continua){
 function alFine(e){
   const st=e.st, G=V.giochi[st.gioco], s=seduta; if(!s) return;
   const esito=eco.registraPartita({gioco:st.gioco,vinto:e.vinto,scope:e.scopeMie||0,patta:!!e.patta});
+  const premioVilla=e.abbandono?0:villa.incassa(V.VILLA.economia.perPartita,'Partita giocata');
   let righeSoldi='';
   if(s.posta){
     if(e.vinto){ const v=eco.vincitaPerGiocatore(s.posta,s.def.giocatori); eco.incassa(v,`Vincita · ${nomeGioco(st.gioco)}`); righeSoldi=`<p class="soldi piu">+${soldi(v)}</p>`; }
@@ -3525,7 +3581,8 @@ function alFine(e){
   }
   const ok=V.sha256(e.seme)===e.impronta;
   const svelato=s.buio?`<p class="nota">Il tuo avversario era <b>${esc(s.nomi[0])}</b>, livello ${s.def.livelli[0]}.</p>`:'';
-  const livello=esito.salito?`<p class="soldi piu">Sei salito al livello ${esito.livello}!${esito.livello===5?" Si apre la Sala d'Onore.":''}</p>`:`<p class="nota">+${esito.xp} esperienza</p>`;
+  const extraVilla=premioVilla?`<p class="nota">+${ducati(premioVilla)} della villa</p>`:'';
+  const livello=extraVilla+(esito.salito?`<p class="soldi piu">Sei salito al livello ${esito.livello}!${esito.livello===5?" Si apre la Sala d'Onore.":''}</p>`:`<p class="nota">+${esito.xp} esperienza</p>`);
   const titolo=e.patta?'Patta':e.vinto?'Hai vinto!':'Hai perso';
   const et=st.n===4?['Noi','Loro']:['Tu',...s.nomi.slice(0,st.n-1)];
   finestra(`<h2 data-obbligatoria class="${e.vinto?'vinto':'perso'}">${titolo}</h2>
@@ -3597,7 +3654,30 @@ function controllaTornei(){
 setInterval(controllaTornei,5000);
 
 // ---- negozio e portineria ------------------------------------------------
-function apriArredo(azione){ if(azione==='tornei'&&eco) pannelloTornei(); else if(azione==='negozio'&&eco) pannelloNegozio(); else pannelloProfilo(); }
+function apriArredo(azione){
+  if(azione==='tornei'&&eco) pannelloTornei(); else if(azione==='negozio'&&eco) pannelloNegozio();
+  else if(azione==='bar') pannelloBar(); else pannelloProfilo();
+}
+// Bancone del Bar: da bere coi Ducati. Solo piacere, nessun vantaggio al tavolo.
+function pannelloBar(){
+  const ora=adesso(), in_mano=villa.bevanda(ora);
+  const righe=V.VILLA.economia.bevande.map(b=>`<div class="riga-torneo"><div class="cresci"><b>${b.icona} ${esc(b.nome)}</b><br><small>resta in mano ${b.minuti} minuti</small></div>
+    <button data-bevi="${b.id}" ${villa.saldo()<b.prezzo?'disabled':''}>${ducati(b.prezzo)}</button></div>`).join('');
+  finestra(`<h2>Al bancone</h2><p class="nota">Con i Ducati della villa. ${in_mano?`Hai in mano: ${in_mano.icona} ${esc(in_mano.nome)}.`:'Offre la casa... quasi.'}</p>${righe}`,
+    [{testo:'Chiudi',primario:true}],
+    {alClic:e=>{ const b=e.target.closest('[data-bevi]'); if(!b||b.disabled) return;
+      if(villa.consuma(b.dataset.bevi,adesso())){ V.suono('presa'); V.vibra('leggera'); aggiornaTesta(); pannelloBar(); } }});
+}
+// Abiti della villa: si comprano coi Ducati, cambiano l'aspetto del personaggio.
+function sezioneAbiti(){
+  const equip=villa.d.nft.equip;
+  return `<h3>Abiti della villa</h3>`+V.VILLA.economia.catalogo.map(o=>{
+    const ha=villa.possiede(o.id), usa=equip===o.id;
+    const b=usa?'<button data-abito="">Togli</button>':ha?`<button data-abito="${o.id}">Indossa</button>`:`<button data-compra-abito="${o.id}" ${villa.saldo()<o.prezzo?'disabled':''}>${ducati(o.prezzo)}</button>`;
+    return `<div class="riga-torneo"><div class="campione" style="background:${o.colore};border-color:${o.dettaglio};width:34px;height:34px;border-radius:17px"></div><div class="cresci"><b>${esc(o.nome)}</b>${usa?'<br><small>indossato</small>':''}</div>${b}</div>`;
+  }).join('')+'<p class="nota">NFT di prova della villa.</p>';
+}
+function aggiornaAspetto(){ if(!mondo) return; const ab=abito(), g=A.giocatore(); mondo.p.colore=ab?ab.colore:V.COLORI_ABITO[g.aspetto||0]; mondo.p.dettaglio=ab&&ab.dettaglio; }
 function pannelloNegozio(){
   const righe=eco.catalogo().map(o=>{
     const ha=eco.possiede(o.id), usa=eco.d.nft.equip===o.id;
@@ -3619,7 +3699,7 @@ function pannelloProfilo(){
   const giochi=Object.entries(d.perGioco).map(([k,v])=>`<tr><td>${esc(nomeGioco(k))}</td><td>${v.giocate}</td><td>${v.vinte}</td></tr>`).join('');
   const mov=d.movimenti.slice(0,8).map(m=>`<li><span class="${m.n>0?'piu':'meno'}">${m.n>0?'+':''}${nf(m.n)}</span> ${esc(m.causale)}</li>`).join('');
   finestra(`<h2>Portineria</h2>
-    <p><b>${esc(g.nome)}</b> · livello ${av.livello}</p>
+    <p><b>${esc(g.nome)}</b> · livello ${av.livello} · ${ducati(villa.saldo())}</p>
     <div class="barra-xp"><span style="width:${Math.round(av.frazione*100)}%"></span></div>
     <p class="nota">${av.xp} esperienza · prossimo livello a ${av.a}</p>
     <p>Colore dell'abito:</p><div class="scelte">${V.COLORI_ABITO.map((c,i)=>`<button class="colore ${i===(g.aspetto||0)?'scelto':''}" data-colore="${i}" style="background:${c}" aria-label="Colore ${i+1}"></button>`).join('')}</div>
@@ -3629,6 +3709,7 @@ function pannelloProfilo(){
     ${g.wallet?`<code id="indirizzoWallet">${esc(g.wallet)}</code><button class="copia" data-copia="${esc(g.wallet)}" data-sorgente="indirizzoWallet">Copia l'indirizzo</button>`
       :'<p><button data-wallet="1">Collega un wallet di prova</button></p>'}
     <p class="nota">Di prova: serve solo come identità, nessuna transazione.</p>
+    ${sezioneAbiti()}
     ${mov?`<h3>Ultimi movimenti</h3><ul class="movimenti">${mov}</ul>`:''}`,
     [{testo:'Cambia nome',fn:()=>chiediNome()},{testo:'Chiudi',primario:true}],
     {alClic:clicProfilo});
@@ -3639,19 +3720,22 @@ function pannelloProfiloVilla(g){
   const righe=zoneIngresso.map(id=>V.zone[id]).filter(z=>z.economia).map(z=>{
     const e=nuovaEconomia(z), m=z.economia.moneta;
     return `<tr><td>${esc(z.nome)}</td><td>${nf(e.saldo())} ${m.simbolo} ${esc(m.nome)}</td><td>Liv. ${e.livello()}</td><td>${e.d.giocate}</td></tr>`; }).join('');
-  finestra(`<h2>Portineria</h2><p>Benvenuto, <b>${esc(g.nome)}</b>.</p>
+  finestra(`<h2>Portineria</h2><p>Benvenuto, <b>${esc(g.nome)}</b> · ${ducati(villa.saldo())}</p>
     <p>Colore dell'abito:</p><div class="scelte">${V.COLORI_ABITO.map((c,i)=>`<button class="colore ${i===(g.aspetto||0)?'scelto':''}" data-colore="${i}" style="background:${c}" aria-label="Colore ${i+1}"></button>`).join('')}</div>
     ${righe?`<h3>Le tue zone</h3><table class="conti"><tr><th>Zona</th><th>Monete</th><th>Livello</th><th>Partite</th></tr>${righe}</table><p class="nota">Ogni zona ha le sue monete e i suoi oggetti: non passano da una all'altra.</p>`:''}
     <h3>Wallet TON</h3>
     ${g.wallet?`<code id="indirizzoWallet">${esc(g.wallet)}</code><button class="copia" data-copia="${esc(g.wallet)}" data-sorgente="indirizzoWallet">Copia l'indirizzo</button>`
       :'<p><button data-wallet="1">Collega un wallet di prova</button></p>'}
-    <p class="nota">Di prova: serve solo come identità, nessuna transazione.</p>`,
+    <p class="nota">Di prova: serve solo come identità, nessuna transazione.</p>${sezioneAbiti()}`,
     [{testo:'Cambia nome',fn:()=>chiediNome()},{testo:'Chiudi',primario:true}],
     {alClic:clicProfilo});
 }
 function clicProfilo(e){
   const c=e.target.closest('[data-colore]'), w=e.target.closest('[data-wallet]');
-  if(c){ const gg=A.giocatore(); gg.aspetto=+c.dataset.colore; A.salvaGiocatore(gg); if(mondo) mondo.p.colore=V.COLORI_ABITO[gg.aspetto]; V.suono('clic'); pannelloProfilo(); }
+  const ca=e.target.closest('[data-compra-abito]'), ia=e.target.closest('[data-abito]');
+  if(ca&&!ca.disabled){ if(villa.compra(ca.dataset.compraAbito)){ V.suono('vittoria'); aggiornaAspetto(); aggiornaTesta(); } pannelloProfilo(); return; }
+  if(ia){ villa.equipaggia(ia.dataset.abito||null); V.suono('clic'); aggiornaAspetto(); pannelloProfilo(); return; }
+  if(c){ const gg=A.giocatore(); gg.aspetto=+c.dataset.colore; A.salvaGiocatore(gg); if(villa.d.nft.equip) villa.equipaggia(null); aggiornaAspetto(); V.suono('clic'); pannelloProfilo(); }
   if(w){ const cs='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-', b=new Uint8Array(46); crypto.getRandomValues(b);
     const gg=A.giocatore(); gg.wallet='EQ'+Array.from(b,x=>cs[x%cs.length]).join(''); A.salvaGiocatore(gg); V.suono('clic'); pannelloProfilo(); }
 }
@@ -3667,17 +3751,20 @@ $('audio').onclick=()=>{ V.audio.attiva(); const g=A.giocatore(); g.muto=!g.muto
 $('esci').onclick=()=>{ V.suono('clic'); lasciaTavolo(); };
 
 // Maniglia per i collaudi automatici nel browser.
-globalThis.__villa={ tavolo:()=>tavolo, mondo:()=>mondo, economia:()=>eco, spostaOra:ms=>{ spostamentoOra+=ms; controllaTornei(); } };
+globalThis.__villa={ tavolo:()=>tavolo, mondo:()=>mondo, economia:()=>eco, villa:()=>villa, spostaOra:ms=>{ spostamentoOra+=ms; controllaTornei(); } };
 
 // ---- partenza ------------------------------------------------------------
 eco=nuovaEconomia(zona);
 // Chi aveva giocato alla prima versione: tiene le statistiche.
 if(eco&&eco.d.giocate&&!eco.d.perGioco.scopa&&zona.id==='piano-terra'){ eco.d.perGioco.scopa={giocate:eco.d.giocate,vinte:eco.d.vinte}; eco.salva(); }
 aggiornaTesta();
-avviaMondo();
-const regalo=eco?eco.regalo(oggi()):0;
-if(!A.giocatore().nome) chiediNome(()=>{ if(regalo) avviso(`Regalo del giorno: +${soldi(regalo)}`); });
-else if(regalo) avviso(`Regalo del giorno: +${soldi(regalo)}`);
+// Chi torna dalla veranda (Scacchi Arena) riappare sul sentiero della scogliera.
+const daVeranda=new URLSearchParams(location.search).get('da')==='veranda'&&zona.id==='giardino';
+avviaMondo(daVeranda?{x:2290,y:330}:undefined);
+const regalo=eco?eco.regalo(oggi()):0, regaloVilla=villa.regalo(oggi());
+const testoRegalo=[regaloVilla&&`+${ducati(regaloVilla)}`,regalo&&`+${soldi(regalo)}`].filter(Boolean).join(' · ');
+if(!A.giocatore().nome) chiediNome(()=>{ if(testoRegalo) avviso(`Regalo del giorno: ${testoRegalo}`); });
+else if(testoRegalo) avviso(`Regalo del giorno: ${testoRegalo}`);
 aggiornaTesta();
 })(globalThis.V=globalThis.V||{});
 

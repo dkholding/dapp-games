@@ -9,6 +9,7 @@
       "motore/geometria.js",
       "motore/economia.js",
       "motore/mondo.js",
+      "zone/villa.js",
       "zone/piano-terra/mazzo.js",
       "zone/piano-terra/disegno-carte.js",
       "zone/piano-terra/scopa.js",
@@ -39,6 +40,7 @@
       "motore/geometria.js",
       "motore/economia.js",
       "motore/mondo.js",
+      "zone/villa.js",
       "zone/piano-terra/mazzo.js",
       "zone/piano-terra/disegno-carte.js",
       "zone/piano-terra/scopa.js",
@@ -57,6 +59,7 @@
       "zone/piano-terra/tavolo-combinazioni.js",
       "zone/piano-terra/zona.js",
       "zone/giardino/zona.js",
+      "zone/veranda/zona.js",
       "motore/avvio.js"
     ]
   }

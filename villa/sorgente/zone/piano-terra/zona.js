@@ -50,7 +50,7 @@ V.zone['piano-terra']={
     ],
     cancelli:[{x:X2-8,y:1320,w:16,h:120,livelloMin:5,nome:"Sala d'Onore"}],
     arredi:[
-      {tipo:'bancone',x:40,y:1100,w:70,h:560},
+      {tipo:'bancone',x:40,y:1100,w:70,h:560,azione:'bar',nome:'Bancone del Bar · da bere coi Ducati'},
       {tipo:'divano',x:160,y:1680-40,w:160,h:36,colore:'#6b1e2b'},
       {tipo:'pianta',x:830,y:1080,w:50,h:50},{tipo:'pianta',x:20,y:460,w:50,h:50},{tipo:'pianta',x:830,y:960,w:50,h:50},
       {tipo:'tappeto',x:1080,y:1180,w:340,h:420,colore:'#5a1f2b',pavimento:true,solido:false},

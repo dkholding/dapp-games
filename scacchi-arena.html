@@ -4753,5 +4753,21 @@ function boot(){
 boot();
 })();
 </script>
+<!-- ritorno alla villa -->
+<script>
+(function(){
+  // Se si entra dalla veranda della Villa, compare il tasto per tornare in giardino.
+  try{
+    var q=new URLSearchParams(location.search);
+    if(q.get('da')==='villa') sessionStorage.setItem('scacchi.daVilla','1');
+    if(!sessionStorage.getItem('scacchi.daVilla')) return;
+    var top=document.getElementById('top'); if(!top) return;
+    var a=document.createElement('a');
+    a.href='villa/?da=veranda'; a.textContent='\u2190 Villa'; a.setAttribute('aria-label','Torna alla Villa');
+    a.style.cssText='display:inline-flex;align-items:center;min-height:36px;padding:0 12px;margin-right:6px;border-radius:18px;border:1px solid #d8b26288;color:#d8b262;text-decoration:none;font-weight:600;white-space:nowrap';
+    top.insertBefore(a,top.firstChild);
+  }catch(e){}
+})();
+</script>
 </body>
 </html>

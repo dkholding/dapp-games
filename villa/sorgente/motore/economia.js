@@ -48,6 +48,16 @@ V.Economia=class{
   }
   equipaggia(id){ if(id!==null&&!this.possiede(id)) return false; this.d.nft.equip=id; this.salva(); return true; }
   equipaggiato(){ return this.conf.catalogo.find(x=>x.id===this.d.nft.equip)||null; }
+  // Consumabili (da bere): si pagano e restano "in mano" per qualche minuto.
+  consuma(id,ora){
+    const b=(this.conf.bevande||[]).find(x=>x.id===id);
+    if(!b||!this.paga(b.prezzo,b.nome)) return false;
+    this.d.bevanda={id,fino:ora+b.minuti*60000}; this.salva(); return true;
+  }
+  bevanda(ora){
+    const x=this.d.bevanda; if(!x||x.fino<=ora) return null;
+    return (this.conf.bevande||[]).find(b=>b.id===x.id)||null;
+  }
 };
 
 // Tornei a orario: uno ogni mezz'ora (:00 e :30), il gioco ruota.

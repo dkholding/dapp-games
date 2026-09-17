@@ -47,6 +47,24 @@ test('NFT di prova', () => {
   assert.equal(e.equipaggia(null), true);
 });
 
+test('economia della villa: da bere e abiti, separata dalle fiches', () => {
+  const Vx = carica('motore/base.js', 'motore/salvataggio.js', 'motore/economia.js', 'zone/villa.js');
+  const s = finto(), A = Vx.archivio(s);
+  const villa = new Vx.Economia(A, Vx.VILLA.salvataggio, Vx.VILLA.economia);
+  const carte = new Vx.Economia(A, 'carte', CONF);
+  assert.equal(villa.saldo(), 100);
+  assert.equal(villa.consuma('spritz', 1000), true);
+  assert.equal(villa.saldo(), 80);
+  assert.equal(villa.bevanda(1000 + 60000).id, 'spritz');
+  assert.equal(villa.bevanda(1000 + 20 * 60000), null);
+  assert.equal(villa.consuma('inesistente', 0), false);
+  assert.equal(villa.compra('abito-capitano'), false, 'non bastano i Ducati');
+  assert.equal(villa.compra('abito-lino'), true);
+  assert.equal(villa.equipaggiato().id, 'abito-lino');
+  assert.equal(carte.saldo(), 1000, 'le fiches non si toccano');
+  assert.ok(s.m.has('villa.generale.v1'));
+});
+
 test('tornei: programma, tabellone, avanzamento, premi', () => {
   const Vx = V(), T = Vx.tornei, ora = Date.UTC(2026, 8, 14, 10, 7);
   const p = T.programma(ora, ['scopa', 'briscola', 'tressette']);

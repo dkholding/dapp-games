@@ -39,7 +39,7 @@ V.Mondo=class{
     this.vicino=null; this.stanza=null; this.scritta=null;
     this.costruisci();
     const p=op.partenza||this.m.partenza;
-    this.p={x:p.x,y:p.y,dir:0,passo:0,colore:op.colore||V.COLORI_ABITO[0]};
+    this.p={x:p.x,y:p.y,dir:0,passo:0,colore:op.colore||V.COLORI_ABITO[0],dettaglio:op.dettaglio||null};
     this.avventori=this.creaAvventori(this.m.avventori||7);
     this.misura();
 
@@ -393,12 +393,15 @@ V.Mondo=class{
     c.save(); c.translate(g.x,g.y); c.rotate(g.dir||0);
     c.fillStyle=g.colore; c.beginPath(); c.ellipse(0,oscilla*0.3,RAGGIO*0.8,RAGGIO,0,0,7); c.fill();
     c.fillStyle='rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(-3,0,RAGGIO*0.5,RAGGIO*0.8,0,0,7); c.fill();
+    if(g.dettaglio){ c.fillStyle=g.dettaglio; c.fillRect(-2,-RAGGIO*0.75,4,RAGGIO*1.5); }
     c.fillStyle=g.pelle||PELLE[0]; c.beginPath(); c.arc(4,0,RAGGIO*0.55,0,7); c.fill();
     c.restore();
     if(g.proprio){
       c.strokeStyle='#ffd66b'; c.lineWidth=2.5; c.beginPath(); c.arc(g.x,g.y,RAGGIO+5,0,7); c.stroke();
       const nome=this.op.nome||''; if(nome){ c.font='700 13px system-ui,sans-serif'; c.textAlign='center'; c.textBaseline='middle';
         c.lineWidth=4; c.strokeStyle='rgba(0,0,0,.6)'; c.strokeText(nome,g.x,g.y-RAGGIO-14); c.fillStyle='#fff'; c.fillText(nome,g.x,g.y-RAGGIO-14); }
+      const b=this.op.bevanda&&this.op.bevanda();
+      if(b){ c.font='18px system-ui,sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(b.icona,g.x+RAGGIO+6,g.y-4+Math.sin(t/300)*1.5); }
     }
   }
 
