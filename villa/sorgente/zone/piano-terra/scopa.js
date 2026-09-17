@@ -118,7 +118,15 @@ function mossaDiRiserva(st,posto){
   return mosseLegali(st,posto).sort((a,b)=>val(a.carta)-val(b.carta))[0]||null;
 }
 
+// Righe per la tabella di fine smazzata (uguale per tutti i giochi).
+function riepilogo(st){
+  const r=st.ultimaSmazzata; if(!r) return null;
+  const riga=(nome,p,v)=>({nome,valori:p.map((x,i)=>(x?'+'+x:'·')+(v?` (${v[i]})`:''))});
+  return {righe:[riga('Carte',r.carte,r.valori.carte),riga('Denari',r.denari,r.valori.denari),riga('Settebello',r.settebello),
+    riga('Primiera',r.primiera,r.valori.primiera),riga('Scope',r.scope)],totale:r.totale};
+}
+
 V.giochi=V.giochi||{};
 V.giochi.scopa={id:'scopa',nome:'Scopa',giocatori:[2,4],nuovaPartita,mosseLegali,applica,abbandona,
-  finita:st=>st.finita,punteggio:st=>st.punti,squadra,prese,contaSmazzata,valorePrimiera,mossaDiRiserva};
+  finita:st=>st.finita,punteggio:st=>st.punti,squadra,prese,contaSmazzata,valorePrimiera,mossaDiRiserva,riepilogo};
 })(globalThis.V=globalThis.V||{});

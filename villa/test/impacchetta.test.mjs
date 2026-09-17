@@ -26,5 +26,7 @@ test("il codice dell'ingresso si carica tutto insieme", () => {
   vm.runInThisContext(js, { filename: 'carte/index.html' });
   assert.equal(typeof globalThis.V.Tavolo, 'function');
   assert.equal(typeof globalThis.V.giochi.scopa.bot, 'function');
-  assert.equal(globalThis.V.zone['piano-terra'].sale[0].tavoli.length, 3);
+  assert.ok(globalThis.V.zone['piano-terra'].mappa.tavoli.length >= 19);
+  assert.equal(typeof globalThis.V.Mondo, 'function');
+  for (const g of ['scopa', 'briscola', 'tressette']) assert.equal(typeof globalThis.V.giochi[g].bot, 'function');
 });

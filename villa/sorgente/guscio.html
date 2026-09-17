@@ -17,7 +17,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 header.barra{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;border-bottom:1px solid #ffffff14}
 .luogo{font-family:Georgia,"Times New Roman",serif;letter-spacing:.04em;color:var(--oro);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chi{display:flex;align-items:center;gap:8px;min-width:0}
-#nomeG{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+#nomeG{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:22vw}
+@media (max-width:480px){#nomeG{display:none}.luogo{font-size:14px}.tondo{min-width:40px;min-height:40px}}
 .tondo{min-width:44px;min-height:44px;border-radius:22px;border:1px solid #ffffff22;background:#ffffff0d}
 #schermoSala{flex:1;overflow:auto;padding:16px;display:flex;justify-content:center}
 .sala{width:100%;max-width:960px}
@@ -64,26 +65,66 @@ table.conti{width:100%;border-collapse:collapse;margin-top:6px}
 .verifica summary{cursor:pointer;min-height:32px}
 .verifica code{display:block;word-break:break-all;background:#0d1b24;padding:8px;border-radius:8px;font-size:12px;user-select:all}
 .copia{min-height:44px;margin-top:6px;border-radius:10px;border:1px solid #ffffff2a;background:#ffffff10;padding:0 12px}
+.pillola{font-size:13px;padding:4px 10px;border-radius:12px;background:#ffffff12;border:1px solid #ffffff1f;white-space:nowrap}
+#soldi{color:var(--oro);font-weight:600}
+#schermoMondo{flex:1;display:flex;flex-direction:column;min-height:0}
+#schermoMondo .contenitoreTela{margin:0}
+#telaMondo{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block;user-select:none;-webkit-user-select:none}
+.azione{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:10px;
+  max-width:calc(100% - 24px);padding:8px 8px 8px 14px;border-radius:16px;background:#0b1a12e6;border:1px solid #d8b26288;box-shadow:0 8px 24px #0008}
+.azione .testo{font-size:14px;line-height:1.25}
+.azione button{min-height:44px;padding:0 18px;border-radius:12px;border:0;background:var(--oro);color:#2a1a10;font-weight:700;white-space:nowrap}
+#avviso{position:fixed;left:50%;top:calc(64px + env(safe-area-inset-top));transform:translateX(-50%);z-index:20;max-width:calc(100% - 24px);
+  padding:10px 16px;border-radius:14px;background:#16242cf2;border:1px solid var(--oro);box-shadow:0 8px 24px #0008;text-align:center}
+#postaTavolo{font-size:12px;color:var(--oro);white-space:nowrap}
+.scelte{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.scelte button{min-height:44px;min-width:64px;padding:0 12px;border-radius:10px;border:1px solid #ffffff2a;background:#ffffff10}
+.scelte button.scelto{border-color:var(--oro);background:#d8b26233;box-shadow:0 0 0 2px var(--oro) inset}
+.scelte button:disabled{opacity:.4}
+.scelte .colore{min-width:44px;width:44px;border-radius:22px}
+.riga-torneo{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ffffff14}
+.riga-torneo button{min-height:44px;padding:0 12px;border-radius:10px;border:1px solid #ffffff2a;background:#ffffff10;white-space:nowrap}
+.riga-torneo button.primario{background:var(--oro);color:#2a1a10;border-color:var(--oro);font-weight:600}
+.riga-torneo button:disabled{opacity:.45}
+.riga-torneo small{color:var(--tenue)}
+.stato{color:var(--tenue);font-size:13px;white-space:nowrap}
+.cresci{flex:1}
+.campione{width:34px;height:50px;border-radius:5px;border:3px solid;flex:none}
+.barra-xp{height:8px;border-radius:4px;background:#ffffff18;overflow:hidden}
+.barra-xp span{display:block;height:100%;background:var(--oro)}
+.finestra h3{font-family:Georgia,serif;font-weight:normal;color:var(--avorio);margin:16px 0 4px}
+.movimenti{list-style:none;padding:0;margin:0;font-size:13px}
+.movimenti li{padding:3px 0}
+.piu{color:#9fe0a0}.meno{color:#f0a090}
+.soldi{font-size:18px;font-weight:600;margin:6px 0}
+.azioni button:disabled{opacity:.45}
 </style></head><body>
 <div id="app">
   <header class="barra">
-    <span class="luogo">La Villa · Piano terra</span>
-    <span class="chi"><span id="nomeG"></span><button id="audio" class="tondo" aria-label="Suoni">🔊</button></span>
+    <span class="luogo" id="luogo">La Villa</span>
+    <span class="chi">
+      <span id="soldi" class="pillola"></span><span id="livello" class="pillola"></span>
+      <span id="nomeG"></span>
+      <button id="audio" class="tondo" aria-label="Suoni">🔊</button>
+      <button id="menu" class="tondo" aria-label="Menu">☰</button>
+    </span>
   </header>
-  <main id="schermoSala"><div class="sala">
-    <h1 id="nomeSala"></h1><p class="tag" id="tagSala"></p>
-    <div id="tavoli" class="griglia"></div>
-    <p class="stat" id="stat"></p>
-  </div></main>
+  <section id="schermoMondo">
+    <div class="contenitoreTela">
+      <canvas id="telaMondo"></canvas>
+      <div id="azioneVicino" class="azione" hidden><div class="testo"></div><button>Siediti</button></div>
+    </div>
+  </section>
   <section id="schermoTavolo" hidden>
     <div class="testaTavolo">
       <button id="esci" class="tondo" aria-label="Lascia il tavolo">←</button>
-      <span class="titolo" id="titoloTavolo"></span><span id="impronta"></span>
+      <span class="titolo" id="titoloTavolo"></span><span id="postaTavolo"></span><span id="impronta"></span>
     </div>
     <div class="contenitoreTela"><canvas id="tela"></canvas></div>
   </section>
 </div>
 <div id="velo" hidden><div class="finestra" id="finestra" role="dialog" aria-modal="true"></div></div>
+<div id="avviso" hidden role="status"></div>
 <script>globalThis.INGRESSO=/*INGRESSO*/;
 /*CODICE*/
 </script></body></html>

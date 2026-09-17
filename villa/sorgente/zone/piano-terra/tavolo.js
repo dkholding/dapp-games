@@ -50,12 +50,13 @@ class Tavolo{
     document.addEventListener('visibilitychange',this.hVis);
 
     this.iniziaTurno();
-    this.ciclo=t=>{ if(this.chiuso) return; this.fotogramma(t); this.raf=requestAnimationFrame(this.ciclo); };
+    this.ciclo=t=>{ if(this.chiuso) return; this.ultimoFotogramma=ORA(); this.fotogramma(t); this.raf=requestAnimationFrame(this.ciclo); };
     this.raf=requestAnimationFrame(this.ciclo);
+    this.battito=setInterval(()=>{ if(!this.chiuso&&ORA()-(this.ultimoFotogramma||0)>220){ this.ultimoFotogramma=ORA(); this.fotogramma(ORA()); } },120);
   }
 
   chiudi(){
-    this.chiuso=true; this.finito=true; cancelAnimationFrame(this.raf);
+    this.chiuso=true; this.finito=true; cancelAnimationFrame(this.raf); clearInterval(this.battito);
     this.tela.removeEventListener('pointerdown',this.hGiu);
     globalThis.removeEventListener('pointermove',this.hMuovi);
     globalThis.removeEventListener('pointerup',this.hSu);
