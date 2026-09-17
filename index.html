@@ -3,179 +3,816 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Incubatore dApp Games</title>
-<meta name="description" content="Quattro giochi skill-based su TON e Telegram, costruiti sopra un solo motore economico.">
+<title>dApp Games</title>
+<meta name="description" content="La piattaforma dell'incubatore: i giochi si aprono in schede e tutte le monete si gestiscono da un portafoglio solo.">
+<meta name="theme-color" content="#08090c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AE%3C/text%3E%3C/svg%3E">
 <style>
-/* Nessuna dipendenza esterna: è la regola §14 dell'architettura, e vale
-   anche per questa pagina. Font di sistema, usati con una gerarchia vera. */
+/* La piattaforma centrale. Nessuna dipendenza esterna (regola §14 dell'architettura):
+   font di sistema, niente librerie, niente rete. I giochi restano file loro e si
+   aprono qui dentro, ognuno nella sua scheda. */
 :root{
-  --bg:#08090c; --bg2:#0c0e13; --panel:#101319; --panel2:#151a22; --line:#1e242e;
+  --bg:#08090c; --bg2:#0c0e13; --panel:#101319; --panel2:#151a22; --line:#1e242e; --line2:#2a323f;
   --txt:#eef2f7; --dim:#8b96a6; --dim2:#5b6675;
-  --snake:#2dd4bf; --scacchi:#c084fc; --king:#c8342c; --villa:#d8b262;
+  --ok:#34d399; --warn:#fbbf24; --err:#f87171; --ton:#4fb3ff;
+  --acc:#4fb3ff;
 }
 *{box-sizing:border-box}
+html,body{height:100%}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--txt);
+body{margin:0;background:var(--bg);color:var(--txt);overflow:hidden;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
-  line-height:1.5}
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;line-height:1.5}
 a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:8px}
 
-.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
 
-/* ── Testata ────────────────────────────────────── */
-header{padding:64px 0 12px}
-.eyebrow{font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
-  color:var(--dim2);margin:0 0 18px}
-h1{margin:0;font-size:clamp(38px,7vw,66px);font-weight:800;letter-spacing:-2px;
-  line-height:1.02;text-wrap:balance}
+/* ── Barra in alto ─────────────────────────────── */
+.barra{display:grid;grid-template-columns:auto 1fr auto auto;
+  grid-template-areas:"marchio azioni azioni pillola" "schede schede schede schede";
+  align-items:center;gap:6px 8px;background:var(--bg2);border-bottom:1px solid var(--line);
+  padding:calc(8px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left));
+  flex:none;z-index:5}
+.marchio{grid-area:marchio;display:flex;align-items:center;gap:8px;font-weight:800;
+  letter-spacing:-.3px;font-size:15px;min-height:40px;white-space:nowrap}
+.marchio i{font-style:normal;display:grid;place-items:center;width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(135deg,#4fb3ff,#7c5cff);font-size:15px}
+.azioni{grid-area:azioni;display:flex;justify-content:flex-end;gap:4px}
+.azioni button{min-width:40px;height:40px;border-radius:10px;color:var(--dim);font-size:17px}
+.azioni button:hover{background:var(--panel2);color:var(--txt)}
+.pillola{grid-area:pillola;display:flex;align-items:center;gap:6px;height:36px;padding:0 12px;
+  border-radius:99px;background:var(--panel2);border:1px solid var(--line2);font-weight:700;font-size:13px;white-space:nowrap}
+.pillola b{color:var(--ton)}
+.schede{grid-area:schede;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:0 -4px}
+.schede::-webkit-scrollbar{display:none}
+.scheda{position:relative;display:flex;align-items:center;gap:7px;flex:none;height:42px;
+  padding:0 12px;border-radius:10px 10px 0 0;color:var(--dim);font-size:13.5px;font-weight:600;white-space:nowrap}
+.scheda:hover{color:var(--txt)}
+.scheda[aria-selected=true]{color:var(--txt);background:var(--bg)}
+.scheda[aria-selected=true]::after{content:'';position:absolute;left:10px;right:10px;bottom:0;height:2px;
+  border-radius:2px;background:var(--k,var(--acc))}
+.scheda .x{display:grid;place-items:center;width:24px;height:24px;margin-right:-6px;border-radius:6px;
+  font-size:15px;color:var(--dim2)}
+.scheda .x:hover{background:var(--panel2);color:var(--txt)}
+
+/* ── Le viste ──────────────────────────────────── */
+#viste{position:relative;flex:1;min-height:0}
+.vista{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch}
+.vista[hidden]{display:none}
+.vista.gioco{overflow:hidden;background:#000}
+.vista.gioco iframe{display:block;width:100%;height:100%;border:0}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px calc(48px + env(safe-area-inset-bottom))}
+
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--dim2);margin:0 0 12px}
+h1{margin:0;font-size:clamp(32px,6.5vw,56px);font-weight:800;letter-spacing:-1.6px;line-height:1.04;text-wrap:balance}
 h1 em{font-style:normal;color:var(--dim2)}
-.lede{margin:20px 0 0;max-width:56ch;font-size:clamp(15px,2.2vw,17.5px);color:var(--dim);
-  line-height:1.65}
+h2.sez{margin:40px 0 14px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim)}
+.lede{margin:14px 0 0;max-width:58ch;font-size:clamp(14.5px,2.1vw,16.5px);color:var(--dim);line-height:1.65}
 .lede b{color:var(--txt);font-weight:600}
+.testa{padding:36px 0 4px}
 
-/* ── I giochi ───────────────────────────────────── */
-.games{display:grid;grid-template-columns:1fr;gap:16px;padding:44px 0 8px}
-.game{position:relative;display:flex;flex-direction:column;background:var(--panel);
-  border:1px solid var(--line);border-radius:18px;padding:22px 20px 20px;overflow:hidden;
-  transition:border-color .18s,transform .18s}
-.game::before{content:'';position:absolute;inset:0 0 auto;height:3px;background:var(--k)}
-.mark{font-size:34px;line-height:1;margin-bottom:14px}
-.game h2{margin:0;font-size:21px;font-weight:700;letter-spacing:-.4px}
-.game .pitch{margin:7px 0 0;font-size:13.5px;color:var(--dim);line-height:1.55;flex:1}
-.facts{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 18px}
-.facts span{font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
-  color:var(--dim2);background:var(--panel2);border:1px solid var(--line);
-  border-radius:99px;padding:4px 9px}
-.play{display:flex;align-items:center;justify-content:center;gap:8px;
-  background:var(--k);color:#07090c;border-radius:11px;padding:13px 18px;
-  font-size:14px;font-weight:800;letter-spacing:.2px;min-height:48px;
+/* Riassunto del portafoglio in lobby */
+.riassunto{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-top:24px;padding:14px 16px;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px}
+.riassunto .voce{display:flex;flex-direction:column}
+.riassunto .voce small{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--dim2)}
+.riassunto .voce b{font-size:18px}
+.riassunto .spazio{flex:1}
+
+.bottone{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;
+  border-radius:11px;font-size:14px;font-weight:800;background:var(--k,var(--acc));color:#07090c;
   transition:filter .15s,transform .08s}
-.play:active{transform:scale(.985)}
+.bottone:active{transform:scale(.985)}
+.bottone.sec{background:var(--panel2);color:var(--txt);border:1px solid var(--line2);font-weight:700}
+.bottone[disabled]{opacity:.4;cursor:not-allowed}
+.piccolo{min-height:36px;padding:0 12px;font-size:13px;border-radius:9px}
 
-/* ── Il motore condiviso ────────────────────────── */
-.engine{margin:52px 0 0;border-top:1px solid var(--line);padding-top:36px}
-h3{margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:.9px;
-  text-transform:uppercase;color:var(--dim)}
-.engine p{margin:0 0 26px;max-width:62ch;font-size:14px;color:var(--dim);line-height:1.65}
-.engine p b{color:var(--txt);font-weight:600}
-.pillars{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);
-  border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.pillar{background:var(--bg2);padding:18px 18px 20px}
-.pillar b{display:block;font-size:13.5px;font-weight:700;margin-bottom:5px}
-.pillar span{font-size:12.5px;color:var(--dim);line-height:1.55}
+/* Schede dei giochi */
+.giochi{display:grid;grid-template-columns:1fr;gap:14px}
+.carta{position:relative;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);
+  border-radius:18px;padding:20px 18px 18px;overflow:hidden;transition:border-color .18s}
+.carta::before{content:'';position:absolute;inset:0 0 auto;height:3px;background:var(--k)}
+.carta .mark{font-size:30px;line-height:1;margin-bottom:12px}
+.carta h3{margin:0;font-size:20px;font-weight:700;letter-spacing:-.4px}
+.carta .pitch{margin:6px 0 0;font-size:13.5px;color:var(--dim);line-height:1.55;flex:1}
+.fatti{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0}
+.fatti span{font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--dim2);
+  background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:4px 9px}
+.monete{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 16px}
+.monete span{font-size:12px;font-weight:600;color:var(--txt);background:var(--bg2);border:1px solid var(--line);
+  border-radius:8px;padding:4px 8px}
+.monete span em{font-style:normal;color:var(--dim)}
+.carta .tasti{display:flex;gap:8px}
+.carta .tasti .bottone{flex:1}
+.carta.vuota{border-style:dashed;background:transparent;justify-content:center;align-items:flex-start;min-height:160px}
+.carta.vuota::before{display:none}
+.carta.vuota p{margin:0;color:var(--dim2);font-size:13.5px}
 
-footer{padding:44px 0 60px;color:var(--dim2);font-size:12px;line-height:1.7}
-footer b{color:var(--dim);font-weight:600}
+/* Pilastri */
+.pilastri{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);border:1px solid var(--line);
+  border-radius:14px;overflow:hidden}
+.pilastro{background:var(--bg2);padding:16px 16px 18px}
+.pilastro b{display:block;font-size:13.5px;margin-bottom:4px}
+.pilastro span{font-size:12.5px;color:var(--dim);line-height:1.55}
+.piede{margin-top:36px;color:var(--dim2);font-size:12px;line-height:1.7}
+
+/* ── Portafoglio ───────────────────────────────── */
+.cassa{background:linear-gradient(160deg,#0f2233,#101319 60%);border:1px solid #1d3a55;border-radius:18px;padding:20px 18px}
+.cassa .grande{display:flex;align-items:baseline;gap:8px;margin:4px 0 2px}
+.cassa .grande b{font-size:clamp(34px,8vw,48px);font-weight:800;letter-spacing:-1.2px}
+.cassa .grande span{font-size:16px;font-weight:700;color:var(--ton)}
+.indirizzo{display:flex;align-items:center;gap:8px;margin-top:10px;font-family:ui-monospace,Consolas,monospace;
+  font-size:12px;color:var(--dim)}
+.indirizzo code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.token{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.token div{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.token small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--dim2)}
+.token b{font-size:18px}
+
+.blocchi{display:grid;grid-template-columns:1fr;gap:14px}
+.blocco{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.blocco header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);
+  box-shadow:inset 3px 0 0 var(--k)}
+.blocco header b{flex:1;font-size:15px}
+.stato{font-size:11px;font-weight:700;border-radius:99px;padding:3px 8px;white-space:nowrap}
+.stato.ok{color:var(--ok);background:rgba(52,211,153,.1)}
+.stato.no{color:var(--err);background:rgba(248,113,113,.1)}
+.stato.aperto{color:var(--warn);background:rgba(251,191,36,.1)}
+.riga{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--line)}
+.riga:first-of-type{border-top:0}
+.riga .nome{flex:1;min-width:0}
+.riga .nome b{display:block;font-size:14px}
+.riga .nome small{font-size:11.5px;color:var(--dim)}
+.riga .quanto{font-size:16px;font-weight:700;text-align:right;white-space:nowrap}
+.riga .quanto.nulla{color:var(--dim2);font-size:12.5px;font-weight:600}
+.riga .muovi{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;width:100%}
+.riga.mobile{flex-wrap:wrap}
+.lucchetto{font-size:11px;color:var(--dim2)}
+
+.filtri{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:10px}
+.filtri button{flex:none;height:32px;padding:0 12px;border-radius:99px;border:1px solid var(--line2);
+  font-size:12.5px;font-weight:600;color:var(--dim)}
+.filtri button[aria-pressed=true]{background:var(--txt);color:var(--bg);border-color:var(--txt)}
+.movimenti{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.mov{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px}
+.mov:first-child{border-top:0}
+.mov .ic{width:28px;text-align:center;font-size:16px}
+.mov .cosa{flex:1;min-width:0}
+.mov .cosa small{display:block;color:var(--dim2);font-size:11px}
+.mov .n{font-weight:700;text-align:right;white-space:nowrap}
+.mov .n .piu{color:var(--ok)} .mov .n .meno{color:var(--err)}
+.vuoto{padding:22px 14px;color:var(--dim2);font-size:13px;text-align:center}
+.intesta{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.intesta h2.sez{margin-bottom:14px}
+
+/* ── Finestra di trasferimento ─────────────────── */
+dialog{background:var(--panel);color:var(--txt);border:1px solid var(--line2);border-radius:18px;padding:0;
+  width:min(440px,calc(100vw - 24px));box-shadow:0 30px 80px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+.fin{padding:20px 18px 18px}
+.fin h3{margin:0 0 4px;font-size:18px}
+.fin p{margin:0 0 12px;color:var(--dim);font-size:13.5px}
+.percorso{display:flex;align-items:center;gap:8px;margin:14px 0;font-size:13px}
+.percorso div{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.percorso small{display:block;color:var(--dim2);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.importo{display:flex;gap:8px}
+.importo input{flex:1;min-width:0;height:48px;border-radius:11px;border:1px solid var(--line2);background:var(--bg);
+  color:var(--txt);font:inherit;font-size:20px;font-weight:700;padding:0 12px}
+.importo input:focus{outline:2px solid var(--acc);outline-offset:0}
+.nota{font-size:12.5px;color:var(--dim);margin:10px 0 0}
+.nota.err{color:var(--err)} .nota.warn{color:var(--warn)}
+.fin .fondo{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+
+#avviso{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,20px);
+  background:var(--txt);color:var(--bg);font-size:13.5px;font-weight:600;padding:10px 16px;border-radius:12px;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;max-width:calc(100vw - 32px)}
+#avviso.su{opacity:1;transform:translate(-50%,0)}
 
 /* ── Tablet ─────────────────────────────────────── */
 @media (min-width:720px){
-  .wrap{padding:0 32px}
-  header{padding-top:88px}
-  .games{grid-template-columns:1fr 1fr;gap:18px}
-  .pillars{grid-template-columns:1fr 1fr}
+  .wrap{padding:0 28px 60px}
+  .testa{padding-top:56px}
+  .giochi{grid-template-columns:1fr 1fr;gap:16px}
+  .pilastri{grid-template-columns:1fr 1fr}
+  .blocchi{grid-template-columns:1fr 1fr}
+  .token{grid-template-columns:repeat(3,1fr)}
+  .riga.mobile{flex-wrap:nowrap}
+  .riga .muovi{width:auto}
 }
-/* ── Computer ───────────────────────────────────── */
-@media (min-width:1080px){
-  header{padding-top:104px}
-  .games{grid-template-columns:repeat(3,1fr)}
-  .game{padding:26px 24px 24px}
-  .pillars{grid-template-columns:repeat(4,1fr)}
+/* ── Computer: una riga sola in alto ────────────── */
+@media (min-width:1000px){
+  .barra{grid-template-columns:auto 1fr auto auto;grid-template-areas:"marchio schede azioni pillola";
+    padding-top:calc(6px + env(safe-area-inset-top))}
+  .schede{margin:0 0 0 14px;align-self:end}
+  .giochi{grid-template-columns:repeat(3,1fr)}
+  .pilastri{grid-template-columns:repeat(4,1fr)}
+  .cassa{padding:26px 26px}
+  .testa{padding-top:72px}
 }
 @media (hover:hover) and (pointer:fine){
-  .game:hover{border-color:var(--k);transform:translateY(-2px)}
-  .play:hover{filter:brightness(1.08)}
+  .carta:not(.vuota):hover{border-color:var(--k)}
+  .bottone:hover{filter:brightness(1.08)}
 }
-@media (prefers-reduced-motion:reduce){
-  *{transition:none!important}
-}
-:focus-visible{outline:2px solid var(--snake);outline-offset:3px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-
-<div class="wrap">
-
-  <header>
-    <p class="eyebrow">TON · Telegram Mini App</p>
-    <h1>Quattro giochi.<br><em>Un motore solo.</em></h1>
-    <p class="lede">Ogni gioco è un file unico che si apre e funziona: niente installazioni,
-      niente dipendenze esterne, niente wallet obbligatorio per giocare. Sotto, tutti e quattro
-      condividono <b>la stessa economia</b> — ledger a partita doppia, montepremi a somma
-      zero, emissione vincolata ai consumi.</p>
+<div id="app">
+  <header class="barra">
+    <button class="marchio" data-vai="lobby" aria-label="Torna ai giochi"><i>🎮</i><span>dApp Games</span></button>
+    <nav class="schede" id="schede" role="tablist" aria-label="Schede aperte"></nav>
+    <div class="azioni" id="azioni"></div>
+    <button class="pillola" id="pillola" data-vai="portafoglio" aria-label="Apri il portafoglio"></button>
   </header>
-
-  <main class="games">
-
-    <article class="game" style="--k:var(--king)">
-      <div class="mark">🚩</div>
-      <h2>The King of the Empire</h2>
-      <p class="pitch">Scegli il tuo condottiero — è un NFT, ed è tuo — e cammina di persona in un
-        mondo unico: la tua gente ti corre dietro in fila. Dove pianti l'asta il posto lavora,
-        anche quando te ne vai. I contadini che armi diventano guerrieri sotto i tuoi occhi.</p>
-      <div class="facts"><span>Arcade</span><span>Mondo unico</span><span>Condottiero NFT</span></div>
-      <a class="play" href="king/">GIOCA</a>
-    </article>
-
-    <article class="game" style="--k:var(--snake)">
-      <div class="mark">🐍</div>
-      <h2>Snake Royale</h2>
-      <p class="pitch">Dieci serpenti, un'arena che si stringe, due o tre minuti. Chi ti uccide
-        assorbe la tua massa. Abilità pura e leggibile: nessuno può dire di aver perso
-        per sfortuna.</p>
-      <div class="facts"><span>Arena</span><span>10 giocatori</span><span>2–4 minuti</span></div>
-      <a class="play" href="snake-royale.html">GIOCA</a>
-    </article>
-
-    <article class="game" style="--k:var(--scacchi)">
-      <div class="mark">♟️</div>
-      <h2>Scacchi Arena</h2>
-      <p class="pitch">Una città che si attraversa a piedi, con i tavoli sparsi per le
-        piazze. Ti siedi davanti a qualcuno, scegli la posta e giochi. Il gioco più vecchio
-        del mondo, con un motore vero dietro.</p>
-      <div class="facts"><span>Scacchi</span><span>1 contro 1</span><span>Posta libera</span></div>
-      <a class="play" href="scacchi-arena.html">GIOCA</a>
-    </article>
-
-    <article class="game" style="--k:var(--villa)">
-      <div class="mark">🃏</div>
-      <h2>La Villa</h2>
-      <p class="pitch">Una villa a strapiombo sul mare. Dal giardino entri al piano terra, dove si
-        gioca a Scopa, Briscola, Tressette, Scala 40 e Burraco, oppure prendi il sentiero per la
-        veranda, dove ti aspetta Scacchi Arena. Al bancone si beve coi Ducati della villa.</p>
-      <div class="facts"><span>Carte e scacchi</span><span>Mondo da girare</span><span>Tornei a orario</span></div>
-      <a class="play" href="villa/">ENTRA</a>
-      <a class="play" href="villa/carte/" style="margin-left:8px">SOLO CARTE</a>
-    </article>
-
+  <main id="viste">
+    <section class="vista" id="v-lobby" role="tabpanel"></section>
+    <section class="vista" id="v-portafoglio" role="tabpanel" hidden></section>
   </main>
-
-  <section class="engine">
-    <h3>Cosa hanno in comune</h3>
-    <p>La scommessa dell'incubatore è che il pezzo difficile non sia il gioco, ma
-      <b>l'impianto economico sotto</b>. Quello è costruito una volta e non sa niente del
-      gioco che ha sopra: aggiungere un titolo significa scrivere il gioco, non rifare
-      l'economia.</p>
-    <div class="pillars">
-      <div class="pillar"><b>Somma zero</b><span>Quello che vinci esce dalle quote degli
-        altri, non da token coniati dal nulla.</span></div>
-      <div class="pillar"><b>Partita doppia</b><span>Ogni movimento di valore è una scrittura
-        che somma a zero. Se non quadra, viene rifiutata.</span></div>
-      <div class="pillar"><b>Due valute</b><span>Una scambiabile e una no. I Coins non
-        tornano mai indietro: è la membrana che tiene fuori i bot.</span></div>
-      <div class="pillar"><b>Divertenti a token spento</b><span>Se il gioco non regge senza
-        ricompense, il token non lo salva: ne accelera la morte.</span></div>
-    </div>
-  </section>
-
-  <footer>
-    Prototipi giocabili — economia simulata in locale, nessuna transazione reale.<br>
-    Il wallet, il marketplace e i premi girano su dati finti finché il gioco non supera
-    il collaudo di ritenzione.<br><br>
-    <b>Incubatore dApp Games</b>
-  </footer>
-
 </div>
+<dialog id="finestra"></dialog>
+<div id="avviso" role="status" aria-live="polite"></div>
 
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════════════
+   0 · ATTREZZI
+   ═══════════════════════════════════════════════════════════════ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf=(n,d=2)=>Number(n||0).toLocaleString('it-IT',{maximumFractionDigits:d});
+const ora=()=>Date.now();
+const arrotonda=(n,d)=>Math.round(n*10**d)/10**d;
+const uid=p=>p+'_'+Math.random().toString(36).slice(2,10);   // stesso formato dei giochi
+
+const memoria={};
+function leggi(k){
+  let t=null;
+  try{ t=localStorage.getItem(k) }catch(e){ t=memoria[k]??null }
+  if(t==null) return null;
+  try{ return JSON.parse(t) }catch(e){ return null }
+}
+function scrivi(k,v){
+  const t=JSON.stringify(v); memoria[k]=t;
+  try{ localStorage.setItem(k,t); return true }catch(e){ return false }
+}
+
+let tAvviso=0;
+function avviso(testo){
+  const a=$('#avviso'); a.textContent=testo; a.classList.add('su');
+  clearTimeout(tAvviso); tAvviso=setTimeout(()=>a.classList.remove('su'),2600);
+}
+async function copia(testo){
+  try{ await navigator.clipboard.writeText(testo); avviso('Copiato negli appunti'); return }catch(e){}
+  // Il browser ha bloccato gli appunti: si seleziona il testo, basta Ctrl+C.
+  const t=document.createElement('textarea'); t.value=testo; t.style.cssText='position:fixed;opacity:0';
+  document.body.appendChild(t); t.select();
+  let ok=false; try{ ok=document.execCommand('copy') }catch(e){}
+  t.remove(); avviso(ok?'Copiato negli appunti':'Il browser non lascia copiare: selezionalo e premi Ctrl+C');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   1 · IL REGISTRO DEI GIOCHI
+   Aggiungere un gioco alla piattaforma = aggiungere una voce qui.
+   `voci` sono le schede che il gioco può aprire (la Villa ne ha due).
+   `chiavi` sono i salvataggi del gioco: servono a capire se è aperto
+   altrove prima di toccarne le monete.
+   ═══════════════════════════════════════════════════════════════ */
+const GIOCHI=[
+  {id:'king', nome:'The King of the Empire', icona:'🚩', colore:'#c8342c',
+   pitch:'Scegli il tuo condottiero — è un NFT, ed è tuo — e guida la tua gente in un mondo unico. La città cresce a livelli, la guerra si combatte con le mani.',
+   fatti:['Arcade','Mondo unico','Condottiero NFT'],
+   chiavi:['king.me.v1','king.world.v1'],
+   voci:[{id:'king', etichetta:'Gioca', corto:'King', url:'king/'}]},
+  {id:'snake', nome:'Snake Royale', icona:'🐍', colore:'#2dd4bf',
+   pitch:'Dieci serpenti, un\'arena che si stringe, due o tre minuti. Chi ti uccide assorbe la tua massa. Abilità pura e leggibile.',
+   fatti:['Arena','10 giocatori','2–4 minuti'],
+   chiavi:['snakeroyale.v1'],
+   voci:[{id:'snake', etichetta:'Gioca', corto:'Snake', url:'snake-royale.html'}]},
+  {id:'scacchi', nome:'Scacchi Arena', icona:'♟️', colore:'#c084fc',
+   pitch:'Una città da attraversare a piedi, con i tavoli sparsi per le piazze. Ti siedi davanti a qualcuno, scegli la posta e giochi.',
+   fatti:['Scacchi','1 contro 1','Posta libera'],
+   chiavi:['scacchiarena.v2'],
+   voci:[{id:'scacchi', etichetta:'Gioca', corto:'Scacchi', url:'scacchi-arena.html'}]},
+  {id:'villa', nome:'La Villa', icona:'🃏', colore:'#d8b262',
+   pitch:'Una villa a strapiombo sul mare. Al piano terra Scopa, Briscola, Tressette, Scala 40 e Burraco; in veranda gli scacchi; al bancone si beve coi Ducati.',
+   fatti:['Carte e scacchi','Mondo da girare','Tornei a orario'],
+   chiavi:['villa.generale.v1','villa.carte.v1','villa.giocatore.v1'],
+   voci:[{id:'villa', etichetta:'Entra', corto:'Villa', url:'villa/'},
+         {id:'villa-carte', etichetta:'Solo carte', corto:'Carte', url:'villa/carte/'}]}
+];
+const GIOCO=Object.fromEntries(GIOCHI.map(g=>[g.id,g]));
+const VOCE={};
+for(const g of GIOCHI) for(const v of g.voci) VOCE[v.id]={...v, gioco:g};
+const MAX_SCHEDE=4;
+
+/* ═══════════════════════════════════════════════════════════════
+   2 · LO STATO DELLA PIATTAFORMA
+   Il portafoglio centrale è di PROVA come tutto il resto: nessuna
+   catena dietro, l'indirizzo è finto. Il giorno di TON Connect cambia
+   da dove arrivano ton e indirizzo, non il resto della pagina.
+   ═══════════════════════════════════════════════════════════════ */
+const CHIAVE='piattaforma.v1';
+const REGALO_TON=5;
+function indirizzoProva(){
+  const c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+  let a='EQ'; for(let i=0;i<46;i++) a+=c[Math.floor(Math.random()*c.length)];
+  return a;
+}
+function nuovoStato(){
+  return {v:1, schede:[], attiva:'lobby', recenti:[], filtro:'tutti',
+    portafoglio:{indirizzo:indirizzoProva(), ton:0, regalo:0, token:{snk:0, arc:0}},
+    movimenti:[]};
+}
+let P=leggi(CHIAVE);
+if(!P||P.v!==1) P=nuovoStato();
+P.schede=(P.schede||[]).filter(id=>VOCE[id]);
+if(P.attiva!=='lobby'&&P.attiva!=='portafoglio'&&!P.schede.includes(P.attiva)) P.attiva='lobby';
+const salva=()=>scrivi(CHIAVE,P);
+function movimento(testo,n,valuta,gioco){
+  P.movimenti.unshift({t:ora(),testo,n,valuta,gioco:gioco||null});
+  P.movimenti.length=Math.min(P.movimenti.length,200);
+}
+if(!P.portafoglio.regalo){
+  P.portafoglio.regalo=REGALO_TON; P.portafoglio.ton+=REGALO_TON;
+  movimento('Regalo di benvenuto',REGALO_TON,'TON');
+}
+salva();
+
+/* ═══════════════════════════════════════════════════════════════
+   3 · LE MONETE DELL'ECOSISTEMA
+   Ogni moneta sa dove sta scritta e come leggerla. Le "scambiabili"
+   passano dal gioco al portafoglio e ritorno; le altre si vedono
+   ma restano nel loro gioco — è la membrana dell'architettura:
+   Coins, Ducati e Fiches non escono mai.
+   ═══════════════════════════════════════════════════════════════ */
+const LEDGER={snake:{chiave:'snakeroyale.v1',v:1}, scacchi:{chiave:'scacchiarena.v2',v:2}};
+function ledger(g){
+  const L=LEDGER[g], d=leggi(L.chiave);
+  return d&&d.v===L.v&&d.accounts&&Array.isArray(d.txs)?d:null;
+}
+function quadra(d){ let s=0; for(const k in d.accounts) s+=d.accounts[k]; return Math.abs(s)<1e-6 }
+/* Stessa scrittura del gioco (§3 di Snake e Scacchi): se non somma a zero, non si scrive. */
+function scritturaLedger(d,tipo,ref,mosse){
+  let s=0;
+  for(const [,v] of mosse){ if(!Number.isFinite(v)) throw new Error('Importo non numerico'); s+=v }
+  if(Math.abs(s)>1e-6) throw new Error('Scrittura sbilanciata');
+  d.seq=(d.seq||0)+1;
+  const tx={id:'tx_'+d.seq,type:tipo,ref,at:ora()};
+  d.txs.push(tx); if(d.txs.length>400) d.txs.splice(0,d.txs.length-400);
+  d.entries=d.entries||[];
+  for(const [a,v] of mosse){ d.accounts[a]=(d.accounts[a]||0)+v; d.entries.push({t:tx.id,a,v}) }
+  if(d.entries.length>2500) d.entries.splice(0,d.entries.length-2500);
+}
+function kingIo(){
+  // King legge le chiavi nuove solo se ci sono TUTTE E DUE: con una sola
+  // tornerebbe alle vecchie di Codazzo e la modifica andrebbe persa.
+  const m=leggi('king.world.v1'), i=leggi('king.me.v1');
+  return m&&m.v===1&&i&&i.v===1&&i.borsa?i:null;
+}
+const saldoVilla=k=>{ const d=leggi(k); return d&&typeof d.soldi==='number'?d.soldi:null };
+const contoLedger=(g,conto)=>{ const d=ledger(g); return d?(d.accounts[conto]||0):null };
+
+const VALUTE=[
+  {id:'ton-king', gioco:'king', nome:'TON', simbolo:'TON', tipo:'ton', dec:1,
+   dove:'Borsa del condottiero', leggi:()=>{ const i=kingIo(); return i?(i.borsa.ton||0):null }},
+  {id:'snk', gioco:'snake', nome:'$SNK', simbolo:'$SNK', tipo:'token', dec:2, conto:'player:SNK',
+   dove:'Token del gioco', leggi:()=>contoLedger('snake','player:SNK')},
+  {id:'coins-snake', gioco:'snake', nome:'Coins', simbolo:'Coins', tipo:'interna', dec:0,
+   dove:'Moneta di gioco', leggi:()=>contoLedger('snake','player:COINS')},
+  {id:'arc', gioco:'scacchi', nome:'$ARC', simbolo:'◈ $ARC', tipo:'token', dec:2, conto:'player:ARC',
+   dove:'Token del gioco', leggi:()=>contoLedger('scacchi','player:ARC')},
+  {id:'coins-scacchi', gioco:'scacchi', nome:'Coins', simbolo:'Coins', tipo:'interna', dec:0,
+   dove:'Moneta di gioco', leggi:()=>contoLedger('scacchi','player:COINS')},
+  {id:'ducati', gioco:'villa', nome:'Ducati', simbolo:'◆', tipo:'interna', dec:0,
+   dove:'Bancone e abiti', leggi:()=>saldoVilla('villa.generale.v1')},
+  {id:'fiches', gioco:'villa', nome:'Fiches', simbolo:'◉', tipo:'interna', dec:0,
+   dove:'Tavoli del piano terra', leggi:()=>saldoVilla('villa.carte.v1')}
+];
+const VAL=Object.fromEntries(VALUTE.map(v=>[v.id,v]));
+/* Dove finisce ogni moneta scambiabile quando esce dal gioco */
+const inPortafoglio={
+  'ton-king':{leggi:()=>P.portafoglio.ton, muta:n=>{P.portafoglio.ton=arrotonda(P.portafoglio.ton+n,2)}, sigla:'TON'},
+  snk:{leggi:()=>P.portafoglio.token.snk, muta:n=>{P.portafoglio.token.snk=arrotonda(P.portafoglio.token.snk+n,6)}, sigla:'$SNK'},
+  arc:{leggi:()=>P.portafoglio.token.arc, muta:n=>{P.portafoglio.token.arc=arrotonda(P.portafoglio.token.arc+n,6)}, sigla:'$ARC'}
+};
+
+/* ── Chi sta scrivendo? ───────────────────────────
+   Un gioco aperto tiene le monete in memoria e al prossimo salvataggio
+   riscrive tutto: se la piattaforma cambiasse il saldo sotto di lui, la
+   modifica sparirebbe. Quindi si sposta solo a gioco chiuso. */
+const ultimaScrittura={};     // gioco → quando qualcuno FUORI dalla piattaforma ha salvato
+const chiusoIl={};            // gioco → quando abbiamo chiuso la sua scheda
+addEventListener('storage',e=>{
+  if(!e.key) return;
+  const g=GIOCHI.find(x=>x.chiavi.includes(e.key)||(e.key.startsWith('villa.')&&x.id==='villa'));
+  if(g&&!giocoAperto(g.id)&&ora()-(chiusoIl[g.id]||0)>3000) ultimaScrittura[g.id]=ora();
+  if(e.key===CHIAVE) return;
+  ridisegnaSoldi();
+});
+const giocoAperto=g=>P.schede.some(id=>VOCE[id].gioco.id===g);
+function blocco(g){
+  if(giocoAperto(g)) return 'aperto';
+  if(ora()-(ultimaScrittura[g]||0)<15000) return 'altrove';
+  return null;
+}
+
+/* ── Lo spostamento ─────────────────────────────── */
+function sposta(idValuta,verso,importo){
+  const V=VAL[idValuta], W=inPortafoglio[idValuta], g=GIOCO[V.gioco];
+  if(!W) throw new Error('Questa moneta resta nel suo gioco');
+  if(!(importo>0)||!Number.isFinite(importo)) throw new Error('Scrivi un importo valido');
+  importo=arrotonda(importo,V.dec);
+  if(!(importo>0)) throw new Error('Importo troppo piccolo');
+  const b=blocco(g.id);
+  if(b==='aperto') throw new Error('Chiudi prima la scheda di '+g.nome);
+  if(b==='altrove') throw new Error(g.nome+' sembra aperto in un\'altra finestra: chiudilo e riprova');
+  const alPortafoglio=verso==='fuori';
+  if(!alPortafoglio&&importo>W.leggi()+1e-9) throw new Error('Nel portafoglio non ce ne sono abbastanza');
+
+  if(V.tipo==='token'){
+    const L=LEDGER[g.id], d=ledger(g.id);
+    if(!d) throw new Error('Apri '+g.nome+' una volta: il conto nasce lì');
+    if(!quadra(d)) throw new Error('I conti di '+g.nome+' non quadrano: non si tocca niente');
+    const saldo=d.accounts[V.conto]||0;
+    if(alPortafoglio){
+      if(importo>saldo+1e-9) throw new Error('Nel gioco ce ne sono solo '+nf(saldo,V.dec));
+      scritturaLedger(d,'withdrawal_lock','w',[[V.conto,-importo],['sys:external',importo]]);
+      d.withdrawals=d.withdrawals||[];
+      // Resta nella piattaforma, non esce sulla catena: niente coda, risulta già pagato.
+      d.withdrawals.push({id:uid('w'),amt:importo,at:ora(),ready:ora(),label:'verso la piattaforma',risk:0,st:'pagato'});
+      if(d.withdrawals.length>60) d.withdrawals.splice(0,d.withdrawals.length-60);
+    }else{
+      scritturaLedger(d,'deposit','d',[['sys:external',-importo],[V.conto,importo]]);
+      d.deposits=d.deposits||[];
+      d.deposits.push({id:uid('d'),amt:importo,at:ora()});
+      if(d.deposits.length>60) d.deposits.splice(0,d.deposits.length-60);
+    }
+    if(!scrivi(L.chiave,d)) throw new Error('Il browser non lascia salvare');
+  }else if(V.tipo==='ton'){
+    const io=kingIo();
+    if(!io) throw new Error('Apri King una volta: la borsa nasce lì');
+    const saldo=io.borsa.ton||0;
+    if(alPortafoglio&&importo>saldo+1e-9) throw new Error('Nella borsa ci sono solo '+nf(saldo,1)+' TON');
+    io.borsa.ton=arrotonda(saldo+(alPortafoglio?-importo:importo),2);
+    if(!scrivi('king.me.v1',io)) throw new Error('Il browser non lascia salvare');
+  }
+  W.muta(alPortafoglio?importo:-importo);
+  movimento(alPortafoglio?'Da '+g.nome+' al portafoglio':'Dal portafoglio a '+g.nome,
+    alPortafoglio?importo:-importo, W.sigla, g.id);
+  salva();
+  return importo;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4 · I MOVIMENTI DI TUTTO L'ECOSISTEMA
+   ═══════════════════════════════════════════════════════════════ */
+const TIPI={
+  deposit:'Deposito', withdrawal_lock:'Prelievo', welcome_grant:'Regalo di benvenuto', welcome_coins:'Coins di benvenuto',
+  match_entry:'Iscrizione alla partita', match_settle:'Esito della partita', match_reward_coins:'Premio in Coins',
+  reward_snk:'Premio in $SNK', reward_arc:'Premio in $ARC', reward_coins:'Premio in Coins',
+  ticket_buy:'Biglietto comprato', repair:'Riparazione (bruciati)', craft:'Fusione di NFT', stake:'Stake',
+  battlepass:'Pass stagionale', market_buy:'Acquisto al mercato', market_sold:'Venduto al mercato',
+  bid:'Offerta all\'asta', bid_refund:'Offerta restituita', auction_win:'Asta vinta', auction_sold:'Venduto all\'asta',
+  convert_snk_coins:'Cambio $SNK → Coins', convert_arc_coins:'Cambio $ARC → Coins',
+  tourney_entry:'Iscrizione al torneo', tourney_settle:'Esito del torneo', tourney_prize_coins:'Premio del torneo'
+};
+function tuttiMovimenti(){
+  const out=[];
+  for(const m of P.movimenti)
+    out.push({t:m.t, fonte:m.gioco||'piattaforma', testo:m.testo, dove:'Portafoglio', importi:[[m.n,m.valuta]]});
+  for(const [g,sigle] of [['snake',{'player:SNK':'$SNK','player:COINS':'Coins'}],['scacchi',{'player:ARC':'$ARC','player:COINS':'Coins'}]]){
+    const d=ledger(g); if(!d) continue;
+    const per={};
+    for(const e of d.entries||[]) if(sigle[e.a]){ (per[e.t]=per[e.t]||{})[e.a]=((per[e.t]||{})[e.a]||0)+e.v }
+    for(const tx of d.txs){
+      const p=per[tx.id]; if(!p) continue;
+      const importi=Object.entries(p).filter(([,v])=>Math.abs(v)>1e-9).map(([a,v])=>[v,sigle[a]]);
+      if(importi.length) out.push({t:tx.at, fonte:g, testo:TIPI[tx.type]||tx.type.replace(/_/g,' '), dove:GIOCO[g].nome, importi});
+    }
+  }
+  for(const [k,sigla,dove] of [['villa.generale.v1','Ducati','La Villa'],['villa.carte.v1','Fiches','Villa · carte']]){
+    const d=leggi(k); if(!d||!Array.isArray(d.movimenti)) continue;
+    for(const m of d.movimenti) out.push({t:m.t, fonte:'villa', testo:m.causale, dove, importi:[[m.n,sigla]]});
+  }
+  return out.sort((a,b)=>b.t-a.t);
+}
+const quando=t=>{
+  const d=new Date(t), oggi=new Date();
+  const h=d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  return d.toDateString()===oggi.toDateString()?'oggi '+h:d.toLocaleDateString('it-IT',{day:'numeric',month:'short'})+' '+h;
+};
+const segno=(n,sigla)=>`<span class="${n>=0?'piu':'meno'}">${n>=0?'+':'−'}${nf(Math.abs(n))} ${esc(sigla)}</span>`;
+
+/* ═══════════════════════════════════════════════════════════════
+   5 · IL PONTE CON TELEGRAM
+   Come in King: nessuna libreria, gli stessi messaggi di
+   telegram-web-app.js. Fuori da Telegram non succede niente.
+   ═══════════════════════════════════════════════════════════════ */
+function tgEvento(tipo,dati){
+  try{
+    const d=dati||{};
+    if(window.TelegramWebviewProxy&&window.TelegramWebviewProxy.postEvent)
+      window.TelegramWebviewProxy.postEvent(tipo,JSON.stringify(d));
+    else if(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.performAction)
+      window.webkit.messageHandlers.performAction.postMessage({eventType:tipo,eventData:d});
+    else if(window.external&&window.external.notify)
+      window.external.notify(JSON.stringify({eventType:tipo,eventData:d}));
+    else if(window.parent&&window.parent!==window)
+      window.parent.postMessage(JSON.stringify({eventType:tipo,eventData:d}),'https://web.telegram.org');
+  }catch(e){}
+}
+function apriTelegram(){
+  tgEvento('web_app_ready');
+  tgEvento('web_app_expand');
+  // i giochi si comandano trascinando: il gesto verso il basso non deve chiudere la Mini App
+  tgEvento('web_app_setup_swipe_behavior',{allow_vertical_swipe:false});
+  tgEvento('web_app_setup_closing_behavior',{need_confirmation:true});
+}
+function datiTelegram(){
+  try{
+    const h=new URLSearchParams(location.hash.slice(1));
+    const dati=new URLSearchParams(h.get('tgWebAppData')||'');
+    const u=JSON.parse(dati.get('user')||'null');
+    return {nome:u&&u.first_name||'', avvio:h.get('tgWebAppStartParam')||dati.get('start_param')||''};
+  }catch(e){ return {nome:'',avvio:''} }
+}
+const TG=datiTelegram();
+
+/* ═══════════════════════════════════════════════════════════════
+   6 · LE SCHEDE
+   Il gioco si carica quando la sua scheda si apre la prima volta,
+   non prima: dopo un ricarico le schede tornano, ma i giochi
+   pesanti partono solo quando ci si clicca.
+   ═══════════════════════════════════════════════════════════════ */
+const vistaDi=id=>id==='lobby'?$('#v-lobby'):id==='portafoglio'?$('#v-portafoglio'):document.getElementById('g-'+id);
+function apri(id){
+  if(!VOCE[id]) return;
+  if(!P.schede.includes(id)){
+    if(P.schede.length>=MAX_SCHEDE){ avviso('Hai già '+MAX_SCHEDE+' giochi aperti: chiudine uno'); return }
+    P.schede.push(id);
+  }
+  P.recenti=[id,...P.recenti.filter(x=>x!==id)].slice(0,4);
+  attiva(id);
+}
+function attiva(id){
+  P.attiva=id; salva();
+  if(VOCE[id]&&!vistaDi(id)){
+    const v=VOCE[id], s=document.createElement('section');
+    s.className='vista gioco'; s.id='g-'+id; s.setAttribute('role','tabpanel');
+    const f=document.createElement('iframe');
+    f.src=v.url; f.title=v.gioco.nome;
+    f.allow='fullscreen; autoplay; clipboard-write; gamepad';
+    f.setAttribute('allowfullscreen','');
+    s.appendChild(f); $('#viste').appendChild(s);
+  }
+  for(const s of document.querySelectorAll('.vista')) s.hidden=s!==vistaDi(id);
+  disegnaSchede();
+  if(id==='portafoglio') disegnaPortafoglio();
+  if(id==='lobby') disegnaLobby();
+  const f=vistaDi(id)?.querySelector('iframe');
+  if(f) setTimeout(()=>{ try{ f.focus() }catch(e){} },50);
+}
+function chiudi(id){
+  const s=vistaDi(id);
+  if(s){ const f=s.querySelector('iframe'); try{ f.src='about:blank' }catch(e){} s.remove() }
+  const i=P.schede.indexOf(id); if(i<0) return;
+  P.schede.splice(i,1);
+  const g=VOCE[id].gioco.id;
+  if(!giocoAperto(g)) chiusoIl[g]=ora();
+  if(P.attiva===id) P.attiva=P.schede[i]||P.schede[i-1]||'lobby';
+  attiva(P.attiva);
+}
+function ricarica(id){ const f=vistaDi(id)?.querySelector('iframe'); if(f) f.src=VOCE[id].url }
+
+function disegnaSchede(){
+  const fisse=[['lobby','🏠','Giochi'],['portafoglio','💰','Portafoglio']];
+  let h=fisse.map(([id,ic,t])=>`<button class="scheda" role="tab" aria-selected="${P.attiva===id}" data-vai="${id}">${ic} ${t}</button>`).join('');
+  h+=P.schede.map(id=>{ const v=VOCE[id];
+    return `<button class="scheda" role="tab" aria-selected="${P.attiva===id}" data-vai="${id}" style="--k:${v.gioco.colore}" title="${esc(v.gioco.nome)}">${v.gioco.icona} ${esc(v.corto)}<span class="x" data-chiudi="${id}" role="button" aria-label="Chiudi ${esc(v.gioco.nome)}">×</span></button>` }).join('');
+  $('#schede').innerHTML=h;
+  $('#schede [aria-selected=true]')?.scrollIntoView({block:'nearest',inline:'nearest'});
+  $('#azioni').innerHTML=VOCE[P.attiva]
+    ?`<button data-ricarica="${P.attiva}" title="Ricarica il gioco" aria-label="Ricarica il gioco">↻</button><button data-dasolo="${P.attiva}" title="Apri il gioco da solo in una nuova scheda del browser" aria-label="Apri da solo">⤢</button><button data-chiudi="${P.attiva}" title="Chiudi il gioco" aria-label="Chiudi il gioco">✕</button>`
+    :'';
+  disegnaPillola();
+}
+function disegnaPillola(){ $('#pillola').innerHTML=`💰 <b>${nf(P.portafoglio.ton,2)}</b> TON` }
+
+/* ═══════════════════════════════════════════════════════════════
+   7 · LA LOBBY
+   ═══════════════════════════════════════════════════════════════ */
+function chipMonete(g){
+  return VALUTE.filter(v=>v.gioco===g.id).map(v=>{ const n=v.leggi();
+    return `<span>${n==null?'<em>—</em>':nf(n,v.dec)} <em>${esc(v.simbolo)}</em></span>` }).join('');
+}
+function disegnaLobby(){
+  const W=P.portafoglio;
+  const recenti=P.recenti.filter(id=>VOCE[id]);
+  $('#v-lobby').innerHTML=`<div class="wrap">
+    <div class="testa">
+      <p class="eyebrow">TON · Telegram Mini App${TG.nome?' · ciao '+esc(TG.nome):''}</p>
+      <h1>Tutti i giochi.<br><em>Un portafoglio solo.</em></h1>
+      <p class="lede">Ogni gioco si apre qui, nella sua scheda, e puoi tenerne aperti più di uno.
+        Le monete di tutti si vedono e si gestiscono da <b>un unico portafoglio</b>: i token salgono lì
+        dai giochi e ci tornano, le monete di gioco restano dove sono nate.</p>
+      <div class="riassunto">
+        <div class="voce"><small>TON</small><b>${nf(W.ton,2)}</b></div>
+        <div class="voce"><small>$SNK</small><b>${nf(W.token.snk)}</b></div>
+        <div class="voce"><small>$ARC</small><b>${nf(W.token.arc)}</b></div>
+        <div class="spazio"></div>
+        <button class="bottone sec piccolo" data-vai="portafoglio">Gestisci le monete →</button>
+      </div>
+    </div>
+    ${recenti.length?`<h2 class="sez">Continua</h2><div class="filtri">${recenti.map(id=>{const v=VOCE[id];
+      return `<button data-apri="${id}">${v.gioco.icona} ${esc(v.corto)}</button>`}).join('')}</div>`:''}
+    <h2 class="sez">I giochi</h2>
+    <div class="giochi">
+      ${GIOCHI.map(g=>`<article class="carta" style="--k:${g.colore}">
+        <div class="mark">${g.icona}</div>
+        <h3>${esc(g.nome)}</h3>
+        <p class="pitch">${esc(g.pitch)}</p>
+        <div class="fatti">${g.fatti.map(f=>`<span>${esc(f)}</span>`).join('')}</div>
+        <div class="monete">${chipMonete(g)}</div>
+        <div class="tasti">${g.voci.map((v,i)=>`<button class="bottone${i?' sec':''}" data-apri="${v.id}">${esc(v.etichetta.toUpperCase())}</button>`).join('')}</div>
+      </article>`).join('')}
+      <div class="carta vuota"><p>＋ Qui si aggiunge il prossimo gioco: una voce nel registro e ha già la sua scheda e il suo posto nel portafoglio.</p></div>
+    </div>
+    <h2 class="sez">Cosa hanno in comune</h2>
+    <div class="pilastri">
+      <div class="pilastro"><b>Somma zero</b><span>Quello che vinci esce dalle quote degli altri, non da token coniati dal nulla.</span></div>
+      <div class="pilastro"><b>Partita doppia</b><span>Ogni movimento di valore è una scrittura che somma a zero. Se non quadra, viene rifiutata.</span></div>
+      <div class="pilastro"><b>Due valute</b><span>Una scambiabile e una no. Le monete di gioco non tornano mai indietro: è la membrana che tiene fuori i bot.</span></div>
+      <div class="pilastro"><b>Divertenti a token spento</b><span>Se il gioco non regge senza ricompense, il token non lo salva: ne accelera la morte.</span></div>
+    </div>
+    <p class="piede">Prototipi giocabili — economia simulata in questo browser, nessuna transazione reale.
+      Il portafoglio è di prova: l'indirizzo è finto e i TON sono un regalo, finché non arriva TON Connect.<br><br><b>Incubatore dApp Games</b></p>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   8 · IL PORTAFOGLIO
+   ═══════════════════════════════════════════════════════════════ */
+function statoGioco(g){
+  if(giocoAperto(g.id)) return '<span class="stato aperto">aperto in una scheda</span>';
+  if(LEDGER[g.id]){ const d=ledger(g.id);
+    if(!d) return '<span class="stato aperto">mai aperto</span>';
+    return quadra(d)?'<span class="stato ok">✓ i conti quadrano</span>':'<span class="stato no">✗ i conti non quadrano</span>' }
+  if(g.id==='king') return kingIo()?'<span class="stato ok">borsa trovata</span>':'<span class="stato aperto">mai aperto</span>';
+  return VALUTE.some(v=>v.gioco===g.id&&v.leggi()!=null)?'<span class="stato ok">salvataggio trovato</span>':'<span class="stato aperto">mai aperta</span>';
+}
+function rigaValuta(v){
+  const n=v.leggi(), W=inPortafoglio[v.id];
+  const quanto=n==null?'<span class="quanto nulla">si apre al primo avvio</span>':`<span class="quanto">${nf(n,v.dec)} <small style="color:var(--dim);font-weight:600">${esc(v.simbolo)}</small></span>`;
+  const muovi=W&&n!=null
+    ?`<div class="muovi"><button class="bottone sec piccolo" data-sposta="${v.id}" data-verso="fuori" ${n>0?'':'disabled'}>↑ Al portafoglio</button><button class="bottone sec piccolo" data-sposta="${v.id}" data-verso="dentro" ${W.leggi()>0?'':'disabled'}>↓ Al gioco</button></div>`
+    :W?'':'<div class="muovi"><span class="lucchetto">🔒 resta nel gioco</span></div>';
+  return `<div class="riga mobile"><div class="nome"><b>${esc(v.nome)}</b><small>${esc(v.dove)}${W?' · scambiabile':''}</small></div>${quanto}${muovi}</div>`;
+}
+function disegnaPortafoglio(){
+  const W=P.portafoglio, tutti=tuttiMovimenti();
+  const filtro=P.filtro||'tutti';
+  const lista=tutti.filter(m=>filtro==='tutti'||m.fonte===filtro).slice(0,80);
+  const sc=$('#v-portafoglio').scrollTop;
+  $('#v-portafoglio').innerHTML=`<div class="wrap">
+    <div class="testa">
+      <p class="eyebrow">Il portafoglio centrale</p>
+      <div class="cassa">
+        <small class="eyebrow" style="margin:0">Saldo TON</small>
+        <div class="grande"><b>${nf(W.ton,2)}</b><span>TON</span></div>
+        <div class="indirizzo"><span>Indirizzo di prova</span><code>${esc(W.indirizzo)}</code>
+          <button class="bottone sec piccolo" data-copia="indirizzo">Copia</button></div>
+        <div class="token">
+          <div><small>$SNK · Snake</small><b>${nf(W.token.snk)}</b></div>
+          <div><small>$ARC · Scacchi</small><b>${nf(W.token.arc)}</b></div>
+          <div><small>TON nei giochi</small><b>${VAL['ton-king'].leggi()==null?'—':nf(VAL['ton-king'].leggi(),1)}</b></div>
+        </div>
+      </div>
+      <p class="lede" style="font-size:14px">Le monete <b>scambiabili</b> salgono qui dai giochi e ci tornano quando vuoi:
+        ogni token torna solo al suo gioco. Le monete di gioco si vedono ma restano dove sono nate.
+        Per spostare le monete di un gioco, la sua scheda deve essere chiusa.</p>
+    </div>
+    <h2 class="sez">Le monete nei giochi</h2>
+    <div class="blocchi">
+      ${GIOCHI.map(g=>`<section class="blocco" style="--k:${g.colore}">
+        <header><span>${g.icona}</span><b>${esc(g.nome)}</b>${statoGioco(g)}</header>
+        ${VALUTE.filter(v=>v.gioco===g.id).map(rigaValuta).join('')}
+      </section>`).join('')}
+    </div>
+    <div class="intesta"><h2 class="sez">Movimenti</h2>
+      <button class="bottone sec piccolo" data-copia="movimenti" ${lista.length?'':'disabled'}>Copia l'elenco</button></div>
+    <div class="filtri">${[['tutti','Tutti'],['piattaforma','💰 Portafoglio'],...GIOCHI.map(g=>[g.id,g.icona+' '+g.voci[0].corto])]
+      .map(([id,t])=>`<button data-filtro="${id}" aria-pressed="${filtro===id}">${esc(t)}</button>`).join('')}</div>
+    <div class="movimenti">${lista.length?lista.map(m=>`<div class="mov">
+      <span class="ic">${m.fonte==='piattaforma'?'💰':GIOCO[m.fonte]?.icona||'•'}</span>
+      <div class="cosa">${esc(m.testo)}<small>${esc(m.dove)} · ${quando(m.t)}</small></div>
+      <div class="n">${m.importi.map(([n,s])=>segno(n,s)).join('<br>')}</div></div>`).join('')
+      :'<div class="vuoto">Nessun movimento ancora. Gioca una partita e compare qui.</div>'}</div>
+  </div>`;
+  $('#v-portafoglio').scrollTop=sc;
+  ultimaLista=lista;
+}
+let ultimaLista=[];
+function ridisegnaSoldi(){
+  disegnaPillola();
+  if(P.attiva==='portafoglio'&&!$('#finestra').open) disegnaPortafoglio();
+  if(P.attiva==='lobby') disegnaLobby();
+}
+
+/* ── La finestra dello spostamento ─────────────── */
+let aperta=null;
+function finestraSposta(idValuta,verso,msg){
+  const V=VAL[idValuta], W=inPortafoglio[idValuta], g=GIOCO[V.gioco];
+  aperta={idValuta,verso};
+  const fuori=verso==='fuori', inGioco=V.leggi()||0, max=fuori?inGioco:W.leggi();
+  const b=blocco(g.id);
+  const avvisoBlocco=b==='aperto'
+    ?`<p class="nota warn">${esc(g.nome)} è aperto in una scheda: tiene le monete in memoria e al prossimo salvataggio cancellerebbe lo spostamento.</p><div class="fondo" style="justify-content:flex-start;margin-top:10px"><button class="bottone sec piccolo" data-chiudigioco="${g.id}">Chiudi ${esc(g.nome)}</button></div>`
+    :b==='altrove'?`<p class="nota warn">${esc(g.nome)} ha salvato da pochi secondi: sembra aperto in un'altra finestra. Chiudilo e riprova tra poco.</p>`:'';
+  const fin=$('#finestra');
+  fin.innerHTML=`<form class="fin" method="dialog">
+    <h3>${fuori?'Porta al portafoglio':'Manda al gioco'}</h3>
+    <p>${esc(V.nome)} · ${esc(g.nome)}</p>
+    <div class="percorso">
+      <div><small>Da</small>${fuori?`${g.icona} ${esc(g.nome)}`:'💰 Portafoglio'}<br><b>${nf(fuori?inGioco:W.leggi(),V.dec)}</b></div>
+      <span>→</span>
+      <div><small>A</small>${fuori?'💰 Portafoglio':`${g.icona} ${esc(g.nome)}`}<br><b>${nf(fuori?W.leggi():inGioco,V.dec)}</b></div>
+    </div>
+    <div class="importo">
+      <input id="importo" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Importo">
+      <button type="button" class="bottone sec" data-tutto="${max}">Tutto</button>
+    </div>
+    ${avvisoBlocco}
+    <p class="nota err" id="errore">${msg?esc(msg):''}</p>
+    <div class="fondo">
+      <button type="button" class="bottone sec" data-annulla>Annulla</button>
+      <button type="submit" class="bottone" style="--k:${g.colore}" ${b?'disabled':''}>Sposta</button>
+    </div>
+  </form>`;
+  if(!fin.open) fin.showModal();
+  if(!b) setTimeout(()=>$('#importo')?.focus(),30);
+}
+$('#finestra').addEventListener('submit',e=>{
+  e.preventDefault();
+  if(!aperta) return;
+  const n=parseFloat(String($('#importo').value).replace(/\s/g,'').replace(',','.'));
+  try{
+    const fatto=sposta(aperta.idValuta,aperta.verso,n);
+    const V=VAL[aperta.idValuta];
+    $('#finestra').close(); aperta=null;
+    avviso(`Spostati ${nf(fatto,V.dec)} ${V.simbolo}`);
+    ridisegnaSoldi();
+  }catch(err){ $('#errore').textContent=err.message }
+});
+$('#finestra').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.id==='importo'){ e.preventDefault(); e.target.form.requestSubmit() }
+});
+$('#finestra').addEventListener('close',()=>{ aperta=null; ridisegnaSoldi() });
+
+/* ═══════════════════════════════════════════════════════════════
+   9 · I CLIC E L'AVVIO
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button,[data-chiudi]'); if(!t) return;
+  const d=t.dataset;
+  if(d.chiudi){ e.stopPropagation(); chiudi(d.chiudi); return }
+  if(d.vai) return attiva(d.vai);
+  if(d.apri) return apri(d.apri);
+  if(d.ricarica) return ricarica(d.ricarica);
+  if(d.dasolo) return void window.open(VOCE[d.dasolo].url,'_blank','noopener');
+  if(d.filtro){ P.filtro=d.filtro; salva(); return disegnaPortafoglio() }
+  if(d.sposta) return finestraSposta(d.sposta,d.verso);
+  if(d.tutto!=null){ const V=VAL[aperta.idValuta]; $('#importo').value=String(Math.floor(Number(d.tutto)*10**V.dec)/10**V.dec).replace('.',','); return }
+  if('annulla' in d) return $('#finestra').close();
+  if(d.chiudigioco){
+    for(const id of P.schede.filter(id=>VOCE[id].gioco.id===d.chiudigioco)) chiudi(id);
+    attiva('portafoglio');
+    return finestraSposta(aperta.idValuta,aperta.verso);
+  }
+  if(d.copia==='indirizzo') return copia(P.portafoglio.indirizzo);
+  if(d.copia==='movimenti') return copia(ultimaLista.map(m=>
+    `${new Date(m.t).toLocaleString('it-IT')}\t${m.dove}\t${m.testo}\t${m.importi.map(([n,s])=>(n>=0?'+':'-')+nf(Math.abs(n))+' '+s).join(' ')}`).join('\n'));
+});
+// clic centrale su una scheda = chiudila, come nel browser
+document.addEventListener('auxclick',e=>{
+  const t=e.target.closest('.scheda[data-vai]');
+  if(e.button===1&&t&&VOCE[t.dataset.vai]){ e.preventDefault(); chiudi(t.dataset.vai) }
+});
+// Un gioco può chiedere alla piattaforma di aprire un altro gioco o di aggiornare i saldi.
+addEventListener('message',e=>{
+  if(e.origin!==location.origin||!e.data||typeof e.data!=='object') return;
+  if(e.data.piattaforma==='apri'&&VOCE[e.data.gioco]) apri(e.data.gioco);
+  if(e.data.piattaforma==='saldi') ridisegnaSoldi();
+});
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ apriTelegram(); ridisegnaSoldi() } });
+
+apriTelegram();
+{
+  // Link diretto a un gioco: ?gioco=snake, oppure il parametro d'avvio del bot Telegram.
+  const chiesto=new URLSearchParams(location.search).get('gioco')||TG.avvio;
+  if(chiesto&&VOCE[chiesto]) apri(chiesto); else attiva(P.attiva);
+}
+</script>
 </body>
 </html>
