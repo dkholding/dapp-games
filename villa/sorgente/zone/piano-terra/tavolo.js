@@ -299,7 +299,7 @@ class Tavolo{
     const visibili=bersagli.filter(b=>!b.basso||b.mosso).map(b=>b.id).sort((a,b)=>this.pos[a].z-this.pos[b].z);
     const ok=this.giocabili(), mano=new Set(this.st.mani[0]);
     for(const id of visibili){ const p=this.pos[id];
-      V.disegnaCarta(c,p.su?id:null,p.x,p.y,this.cw*p.s,this.ch*p.s,{r:p.r,luce:forte.has(id)?2:luce.has(id)?1:0,
+      this.disegnaUna(c,p.su?id:null,p.x,p.y,this.cw*p.s,this.ch*p.s,{r:p.r,luce:forte.has(id)?2:luce.has(id)?1:0,
         spenta:!!(ok&&mano.has(id)&&!ok.has(id))}); }
     this.disegnaExtra(c,t);
 
@@ -309,6 +309,7 @@ class Tavolo{
     this.disegnaScritte(t);
   }
   disegnaExtra(){}
+  disegnaUna(c,id,x,y,w,h,op){ V.disegnaCarta(c,id,x,y,w,h,op); }
   puntiInGioco(){ return this.st.punti; }
 
   luci(){
@@ -340,8 +341,8 @@ class Tavolo{
     st.mani.forEach((_,p)=>{
       const lt=this.lati[p], turno=attivo&&st.turno===p;
       let x,y,al='center';
-      if(lt==='giu'){ if(this.basso){ x=this.W/2-cw*1.6-12; y=this.yManoGiu()-ch*0.12; al='right'; } else { x=this.W/2; y=this.yManoGiu()-ch/2-ch*0.16-18; } }
-      else if(lt==='su'){ if(this.basso){ x=this.W/2+cw*0.42+ch*this.sTop()/2+12; y=this.yManoSu(); al='left'; } else { x=this.W/2; y=this.yManoSu()+ch*this.sTop()/2+14; } }
+      if(lt==='giu'){ if(this.xyEtichettaGiu){ ({x,y,al}=this.xyEtichettaGiu()); } else if(this.basso){ x=this.W/2-cw*1.6-12; y=this.yManoGiu()-ch*0.12; al='right'; } else { x=this.W/2; y=this.yManoGiu()-ch/2-ch*0.16-18; } }
+      else if(lt==='su'){ if(this.xEtichettaSu){ x=this.xEtichettaSu(); y=this.yManoSu()+ch*this.sTop()/2+10; } else if(this.basso){ x=this.W/2+cw*0.42+ch*this.sTop()/2+12; y=this.yManoSu(); al='left'; } else { x=this.W/2; y=this.yManoSu()+ch*this.sTop()/2+14; } }
       else if(lt==='sinistra'){ x=this.pad; y=cen.y+(this.basso?cw*0.75+16:-cw*0.75-16); al='left'; }
       else { x=this.W-this.pad; y=cen.y+(this.basso?cw*0.75+16:-cw*0.75-16); al='right'; }
       const nome=(p===0?'Tu':corto(nomi[p],12))+(st.n===4&&p===2?' (compagno)':'');

@@ -16,8 +16,15 @@
       "zone/piano-terra/briscola.js",
       "zone/piano-terra/tressette.js",
       "zone/piano-terra/bot-prese.js",
+      "zone/piano-terra/mazzo-francese.js",
+      "zone/piano-terra/disegno-francesi.js",
+      "zone/piano-terra/combinazioni.js",
+      "zone/piano-terra/scala40.js",
+      "zone/piano-terra/burraco.js",
+      "zone/piano-terra/bot-combinazioni.js",
       "zone/piano-terra/tavolo.js",
       "zone/piano-terra/tavolo-mano.js",
+      "zone/piano-terra/tavolo-combinazioni.js",
       "zone/piano-terra/zona.js",
       "motore/avvio.js"
     ]

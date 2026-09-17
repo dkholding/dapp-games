@@ -16,7 +16,7 @@ function motivo(ctx,tipo){
       g.strokeStyle='#b9ae9a55'; g.lineWidth=1; g.beginPath(); g.moveTo(5,30); g.bezierCurveTo(20,20,30,45,60,35); g.stroke(); },
     marmoScuro:()=>{ c.width=c.height=80; g.fillStyle='#2b2f36'; g.fillRect(0,0,80,80); g.fillStyle='#e8e1d0'; g.fillRect(0,0,40,40); g.fillRect(40,40,40,40); },
     parquet:()=>{ c.width=120; c.height=40; const t=['#8a5a35','#7d5030','#96633b'];
-      for(let r=0;r<2;r++) for(let k=0;k<3;k++){ g.fillStyle=t[(r+k)%3]; g.fillRect(k*40+(r?20:0)-20,r*20,40,20); g.strokeStyle='#5a3920'; g.strokeRect(k*40+(r?20:0)-20+.5,r*20+.5,40,20); } },
+      for(let r=0;r<2;r++) for(let k=-1;k<4;k++){ const x=k*40+(r?20:0); g.fillStyle=t[((r+k)%3+3)%3]; g.fillRect(x,r*20,40,20); g.strokeStyle='#5a3920'; g.strokeRect(x+.5,r*20+.5,40,19); } },
     cotto:()=>{ c.width=c.height=50; g.fillStyle='#b8643f'; g.fillRect(0,0,50,50); g.strokeStyle='#8e4a2e'; g.lineWidth=2; g.strokeRect(1,1,48,48); },
     tappeto:()=>{ c.width=c.height=60; g.fillStyle='#7a1f2b'; g.fillRect(0,0,60,60); g.strokeStyle='#d8b26255'; g.beginPath(); g.moveTo(30,6); g.lineTo(54,30); g.lineTo(30,54); g.lineTo(6,30); g.closePath(); g.stroke(); },
     tappetoBlu:()=>{ c.width=c.height=60; g.fillStyle='#1f3a5a'; g.fillRect(0,0,60,60); g.strokeStyle='#d8b26244'; g.strokeRect(10,10,40,40); },
@@ -118,7 +118,7 @@ V.Mondo=class{
     const r=this.tela.getBoundingClientRect(), dpr=Math.min(globalThis.devicePixelRatio||1,2);
     this.W=Math.max(1,r.width); this.H=Math.max(1,r.height); this.dpr=dpr;
     this.tela.width=Math.round(this.W*dpr); this.tela.height=Math.round(this.H*dpr);
-    this.scala=V.clamp(Math.min(this.W,this.H)/560,0.55,1.35);
+    this.scala=V.clamp(Math.min(this.W,this.H)/620,0.55,1.05);
   }
   camera(){
     const s=this.scala, vw=this.W/s, vh=this.H/s, m=this.m;

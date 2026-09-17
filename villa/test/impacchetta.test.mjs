@@ -28,5 +28,6 @@ test("il codice dell'ingresso si carica tutto insieme", () => {
   assert.equal(typeof globalThis.V.giochi.scopa.bot, 'function');
   assert.ok(globalThis.V.zone['piano-terra'].mappa.tavoli.length >= 19);
   assert.equal(typeof globalThis.V.Mondo, 'function');
-  for (const g of ['scopa', 'briscola', 'tressette']) assert.equal(typeof globalThis.V.giochi[g].bot, 'function');
+  for (const g of ['scopa', 'briscola', 'tressette', 'scala40', 'burraco']) assert.equal(typeof globalThis.V.giochi[g].bot, 'function');
+  for (const k of ['Tavolo', 'TavoloMano', 'TavoloCombinazioni']) assert.equal(typeof globalThis.V[k], 'function');
 });

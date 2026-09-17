@@ -469,7 +469,7 @@ function motivo(ctx,tipo){
       g.strokeStyle='#b9ae9a55'; g.lineWidth=1; g.beginPath(); g.moveTo(5,30); g.bezierCurveTo(20,20,30,45,60,35); g.stroke(); },
     marmoScuro:()=>{ c.width=c.height=80; g.fillStyle='#2b2f36'; g.fillRect(0,0,80,80); g.fillStyle='#e8e1d0'; g.fillRect(0,0,40,40); g.fillRect(40,40,40,40); },
     parquet:()=>{ c.width=120; c.height=40; const t=['#8a5a35','#7d5030','#96633b'];
-      for(let r=0;r<2;r++) for(let k=0;k<3;k++){ g.fillStyle=t[(r+k)%3]; g.fillRect(k*40+(r?20:0)-20,r*20,40,20); g.strokeStyle='#5a3920'; g.strokeRect(k*40+(r?20:0)-20+.5,r*20+.5,40,20); } },
+      for(let r=0;r<2;r++) for(let k=-1;k<4;k++){ const x=k*40+(r?20:0); g.fillStyle=t[((r+k)%3+3)%3]; g.fillRect(x,r*20,40,20); g.strokeStyle='#5a3920'; g.strokeRect(x+.5,r*20+.5,40,19); } },
     cotto:()=>{ c.width=c.height=50; g.fillStyle='#b8643f'; g.fillRect(0,0,50,50); g.strokeStyle='#8e4a2e'; g.lineWidth=2; g.strokeRect(1,1,48,48); },
     tappeto:()=>{ c.width=c.height=60; g.fillStyle='#7a1f2b'; g.fillRect(0,0,60,60); g.strokeStyle='#d8b26255'; g.beginPath(); g.moveTo(30,6); g.lineTo(54,30); g.lineTo(30,54); g.lineTo(6,30); g.closePath(); g.stroke(); },
     tappetoBlu:()=>{ c.width=c.height=60; g.fillStyle='#1f3a5a'; g.fillRect(0,0,60,60); g.strokeStyle='#d8b26244'; g.strokeRect(10,10,40,40); },
@@ -571,7 +571,7 @@ V.Mondo=class{
     const r=this.tela.getBoundingClientRect(), dpr=Math.min(globalThis.devicePixelRatio||1,2);
     this.W=Math.max(1,r.width); this.H=Math.max(1,r.height); this.dpr=dpr;
     this.tela.width=Math.round(this.W*dpr); this.tela.height=Math.round(this.H*dpr);
-    this.scala=V.clamp(Math.min(this.W,this.H)/560,0.55,1.35);
+    this.scala=V.clamp(Math.min(this.W,this.H)/620,0.55,1.05);
   }
   camera(){
     const s=this.scala, vw=this.W/s, vh=this.H/s, m=this.m;
@@ -1500,6 +1500,815 @@ B.carteRicordate=(st,livello)=>ricordate(B,st,livello);
 T.carteRicordate=(st,livello)=>ricordate(T,st,livello);
 })(globalThis.V=globalThis.V||{});
 
+// ---- zone/piano-terra/mazzo-francese.js
+(function(V){'use strict';
+// Carte francesi: id = nome + seme + '#' + copia, es. '10C#1', 'QP#2'; i jolly sono 'JK#1'..'JK#4'.
+V.SEMI_FRANCESI=['C','Q','F','P'];   // cuori, quadri, fiori, picche
+V.NOMI_SEMI_FRANCESI={C:'cuori',Q:'quadri',F:'fiori',P:'picche'};
+const NOMI=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const base=id=>id.split('#')[0];
+const jolly=id=>base(id)==='JK';
+V.francese={
+  NOMI,
+  base,
+  jolly,
+  seme:id=>jolly(id)?null:base(id).slice(-1),
+  nome:id=>jolly(id)?'JK':base(id).slice(0,-1),
+  valore:id=>jolly(id)?0:NOMI.indexOf(base(id).slice(0,-1))+1,   // A=1 … K=13, jolly 0
+  chiave:(v,s)=>NOMI[v-1]+s,                                       // (1,'C') → 'AC'
+};
+V.mazzoFrancese=(copie=2,jolly=4)=>{
+  const out=[];
+  for(let k=1;k<=copie;k++) for(const s of V.SEMI_FRANCESI) for(const n of NOMI) out.push(n+s+'#'+k);
+  for(let j=1;j<=jolly;j++) out.push('JK#'+j);
+  return out;
+};
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/disegno-francesi.js
+(function(V){'use strict';
+// Carte francesi per Scala 40 e Burraco, disegnate a tracciati. Il dorso è lo stesso delle napoletane.
+const GLIFO={C:'♥',Q:'♦',F:'♣',P:'♠'};
+const ROSSO=s=>s==='C'||s==='Q';
+
+V.disegnaCartaFrancese=function(c,id,x,y,w,h,op){
+  if(!id) return V.disegnaCarta(c,null,x,y,w,h,op);
+  const F=V.francese, r=(op&&op.r)||0, luce=(op&&op.luce)||0, rad=w*0.1, sel=op&&op.selezionata;
+  c.save(); c.translate(x,y); c.rotate(r);
+  c.fillStyle='rgba(0,0,0,.28)'; V.tondo(c,-w/2+w*0.03,-h/2+w*0.05,w,h,rad); c.fill();
+  if(luce||sel){ c.shadowColor=sel?'#7fd3ff':'#ffcf5a'; c.shadowBlur=sel?16:12; }
+  V.tondo(c,-w/2,-h/2,w,h,rad);
+  c.fillStyle='#fbf8f1'; c.fill(); c.shadowColor='transparent'; c.shadowBlur=0;
+  c.lineWidth=sel?3:luce?3:1; c.strokeStyle=sel?'#3aa7e0':luce?'#e0a82e':'#9a9384'; c.stroke();
+  if(F.jolly(id)){
+    c.fillStyle='#7a2fa0'; c.textAlign='center'; c.textBaseline='middle';
+    c.font=`700 ${Math.round(w*0.2)}px Georgia,serif`;
+    c.save(); c.translate(-w*0.3,0); c.rotate(-Math.PI/2); c.fillText('JOLLY',0,0); c.restore();
+    c.font=`${Math.round(w*0.46)}px Georgia,serif`; c.fillStyle='#d8962b'; c.fillText('★',w*0.08,0);
+  } else {
+    const s=F.seme(id), n=F.nome(id), col=ROSSO(s)?'#c0262d':'#1d2530';
+    c.fillStyle=col; c.textAlign='center'; c.textBaseline='top';
+    const fs=Math.round(h*0.17);
+    // angolo in alto a sinistra: valore e seme uno sotto l'altro (visibile anche quando le carte si sovrappongono)
+    c.font=`700 ${fs}px Georgia,serif`; c.fillText(n,-w/2+w*0.17,-h/2+h*0.04);
+    c.font=`${Math.round(fs*0.95)}px Georgia,serif`; c.fillText(GLIFO[s],-w/2+w*0.17,-h/2+h*0.04+fs);
+    c.textBaseline='middle';
+    if(/[JQK]/.test(n)){
+      c.strokeStyle=col; c.lineWidth=1.5; V.tondo(c,-w*0.2,-h*0.28,w*0.56,h*0.56,4); c.stroke();
+      c.font=`700 ${Math.round(h*0.26)}px Georgia,serif`; c.fillText(n,w*0.08,-h*0.04);
+      c.font=`${Math.round(h*0.14)}px Georgia,serif`; c.fillText(GLIFO[s],w*0.08,h*0.17);
+    } else {
+      c.font=`${Math.round(h*0.34)}px Georgia,serif`; c.fillText(GLIFO[s],w*0.1,h*0.06);
+    }
+  }
+  if(op&&op.spenta){ V.tondo(c,-w/2,-h/2,w,h,rad); c.fillStyle='rgba(20,30,25,.45)'; c.fill(); }
+  c.restore();
+};
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/combinazioni.js
+(function(V){'use strict';
+// Combinazioni di Scala 40 e Burraco (carte francesi): funzioni pure.
+// Scala = stesso seme, valori consecutivi (asso basso A-2-3 o alto Q-K-A, niente giro K-A-2).
+// Tris = stesso valore (nella Scala 40 semi tutti diversi e al massimo 4 carte).
+// Matte: il jolly; nel Burraco anche i 2 (pinelle), che però in scala al loro posto contano naturali.
+// Al massimo una matta per combinazione.
+const F=()=>V.francese;
+const val=id=>F().valore(id), seme=id=>F().seme(id), jolly=id=>F().jolly(id);
+const gioco=r=>(r&&r.gioco)||'scala40';
+const selvaggia=(id,g)=>jolly(id)||g==='burraco'&&val(id)===2;
+const ORDINE_SEMI={C:0,Q:1,F:2,P:3};
+
+// Mette in fila le naturali (tutte dello stesso seme) e riempie i buchi con la matta.
+function disponi(nat,wild,g){
+  const s=seme(nat[0]);
+  if(nat.some(c=>seme(c)!==s)) return null;
+  const assi=nat.filter(c=>val(c)===1), resto=nat.filter(c=>val(c)!==1);
+  if(assi.length>(g==='burraco'?2:1)) return null;
+  const mappa0=new Map();
+  for(const c of resto){ if(mappa0.has(val(c))) return null; mappa0.set(val(c),c); }
+  const opzioni=assi.length===0?[[]]:assi.length===1?[[1],[14]]:[[1,14]];
+  for(const pa of opzioni){
+    const mappa=new Map(mappa0);
+    pa.forEach((p,i)=>mappa.set(p,assi[i]));
+    const ps=[...mappa.keys()].sort((a,b)=>a-b), lo=ps[0], hi=ps[ps.length-1];
+    const buchi=hi-lo+1-ps.length;
+    if(buchi>wild.length) continue;
+    let a=lo,b=hi;
+    if(wild.length>buchi){ if(hi<14) b=hi+1; else if(lo>1) a=lo-1; else continue; }
+    if(g!=='burraco'&&a===1&&b===14) continue;
+    const ordine=[], pos=[];
+    for(let p=a;p<=b;p++){ ordine.push(mappa.get(p)||wild[0]); pos.push(p); }
+    return {tipo:'scala',ordine,pos,jolly:wild.slice()};
+  }
+  return null;
+}
+
+function scala(carte,g){
+  const J=carte.filter(jolly), altre=carte.filter(c=>!jolly(c));
+  const due=g==='burraco'?altre.filter(c=>val(c)===2):[];
+  const fisse=altre.filter(c=>!due.includes(c));
+  let best=null;
+  for(let mask=0;mask<1<<due.length;mask++){
+    const nat=fisse.slice(), wild=J.slice();
+    due.forEach((c,i)=>(mask>>i&1?nat:wild).push(c));
+    if(wild.length>1||!nat.length) continue;
+    if(best&&wild.length>=best.jolly.length) continue;
+    const r=disponi(nat,wild,g);
+    if(r) best=r;
+  }
+  return best;
+}
+
+function tris(carte,g){
+  const wild=carte.filter(c=>selvaggia(c,g)), nat=carte.filter(c=>!selvaggia(c,g));
+  if(wild.length>1||nat.length<2) return null;
+  const v=val(nat[0]);
+  if(nat.some(c=>val(c)!==v)) return null;
+  if(g==='scala40'&&(carte.length>4||new Set(nat.map(seme)).size!==nat.length)) return null;
+  nat.sort((a,b)=>ORDINE_SEMI[seme(a)]-ORDINE_SEMI[seme(b)]);
+  const ordine=[...nat,...wild];
+  return {tipo:'tris',ordine,pos:ordine.map(()=>v),jolly:wild};
+}
+
+// → {tipo, ordine, pos, jolly} oppure null.
+function valida(carte,regole){
+  const g=gioco(regole);
+  if(!Array.isArray(carte)||carte.length<3||new Set(carte).size!==carte.length) return null;
+  if(carte.every(c=>selvaggia(c,g))) return null;
+  return scala(carte,g)||tris(carte,g);
+}
+
+// Punti di una carta: in mano (penalità della Scala 40) o sul tavolo (Burraco).
+function punti(id,regole){
+  const v=val(id);
+  if(gioco(regole)==='burraco'){
+    if(jolly(id)) return 30;
+    if(v===2) return 20;
+    if(v===1) return 15;
+    return v>=8?10:5;
+  }
+  if(jolly(id)) return 25;
+  if(v===1) return 11;
+  return v>=11?10:v;
+}
+
+// Punti di una combinazione. Scala 40: valore d'apertura (la matta vale la carta che sostituisce,
+// l'asso vale 1 solo in scala bassa). Burraco: somma dei valori delle carte.
+function valore(carte,regole){
+  const r=valida(carte,regole); if(!r) return 0;
+  if(gioco(regole)==='burraco') return r.ordine.reduce((a,c)=>a+punti(c,regole),0);
+  return r.pos.reduce((a,p)=>a+(p===1&&r.tipo==='scala'?1:p===1||p===14?11:p>=11?10:p),0);
+}
+
+// Attaccare carte a una combinazione già sul tavolo ({carte, tipo}): la nuova combinazione o null.
+function puoAttaccare(g,carte,regole){
+  if(!g||!Array.isArray(carte)||!carte.length) return null;
+  const r=valida([...g.carte,...carte],regole);
+  return r&&r.tipo===g.tipo?r:null;
+}
+
+// Suggerimento: combinazioni disgiunte scelte fra quelle possibili con la mano (ricerca limitata).
+const LIMITE=300;
+function suggerisci(mano,regole){
+  const g=gioco(regole), Fr=F(), bur=g==='burraco';
+  const copie=new Map(), jol=[];
+  for(const c of mano){ if(jolly(c)){ jol.push(c); continue; }
+    const k=Fr.base(c); if(!copie.has(k)) copie.set(k,[]); copie.get(k).push(c); }
+  const disp=new Map([...copie].map(([k,a])=>[k,a.length]));
+  const ha=k=>(disp.get(k)||0)>0;
+  const cand=[], visti=new Set();
+  const aggiungi=(chiavi,wild)=>{
+    const nome=chiavi.join(',')+'|'+wild; if(visti.has(nome)) return; visti.add(nome);
+    const finte=chiavi.map((k,i)=>k+'#'+(i+10)); if(wild) finte.push('JK#99');
+    const r=valida(finte,regole); if(!r) return;
+    const v=valore(finte,regole);
+    cand.push({chiavi,wild,score:v+finte.length*3-wild*(bur?10:2)});
+  };
+  // Scale: ogni tratto con al massimo un buco (riempito dalla matta), anche col buco a un'estremità.
+  for(const s of V.SEMI_FRANCESI){
+    const k=p=>Fr.chiave(p===14?1:p,s);
+    for(let a=1;a<=14;a++){
+      let manca=0; const chiavi=[];
+      for(let b=a;b<=14;b++){
+        if(!bur&&a===1&&b===14) break;
+        if(ha(k(b))&&!(b===14&&a===1&&disp.get(k(b))<2)) chiavi.push(k(b));
+        else if(++manca>1) break;
+        if(b-a+1<3||chiavi.length<2) continue;
+        aggiungi(chiavi.slice(),manca);
+      }
+    }
+  }
+  // Tris / combinazioni.
+  for(let v=1;v<=13;v++){
+    if(bur&&v===2) continue;
+    if(bur){
+      const lista=[];
+      for(const s of V.SEMI_FRANCESI){ const kk=Fr.chiave(v,s); for(let i=0;i<(disp.get(kk)||0);i++) lista.push(kk); }
+      for(let n=2;n<=lista.length;n++){ if(n>=3) aggiungi(lista.slice(0,n),0); aggiungi(lista.slice(0,n),1); }
+    } else {
+      const semi=V.SEMI_FRANCESI.filter(s=>ha(Fr.chiave(v,s)));
+      for(let m=1;m<1<<semi.length;m++){
+        const chiavi=semi.filter((_,i)=>m>>i&1).map(s=>Fr.chiave(v,s));
+        if(chiavi.length>=3) aggiungi(chiavi,0);
+        if(chiavi.length>=2&&chiavi.length<=3) aggiungi(chiavi,1);
+      }
+    }
+  }
+  cand.sort((a,b)=>b.score-a.score);
+  let jd=jol.length, best={score:0,sel:[]}, nodi=0;
+  const prendi=c=>{
+    for(const k of c.chiavi) disp.set(k,disp.get(k)-1);
+    let ok=c.chiavi.every(k=>disp.get(k)>=0), usata=null;
+    if(ok&&c.wild){
+      if(jd>0){ jd--; usata='JK'; }
+      else if(bur){ for(const s of V.SEMI_FRANCESI){ const kk=Fr.chiave(2,s); if(ha(kk)){ disp.set(kk,disp.get(kk)-1); usata=kk; break; } } }
+      if(!usata) ok=false;
+    }
+    if(!ok){ for(const k of c.chiavi) disp.set(k,disp.get(k)+1); return null; }
+    return {c,usata};
+  };
+  const rendi=x=>{
+    for(const k of x.c.chiavi) disp.set(k,disp.get(k)+1);
+    if(x.usata==='JK') jd++; else if(x.usata) disp.set(x.usata,disp.get(x.usata)+1);
+  };
+  const sel=[];
+  const rec=(i,score)=>{
+    if(score>best.score) best={score,sel:sel.slice()};
+    if(++nodi>LIMITE) return;
+    for(let j=i;j<cand.length&&nodi<=LIMITE;j++){
+      const x=prendi(cand[j]); if(!x) continue;
+      sel.push(x); rec(j,score+cand[j].score); sel.pop(); rendi(x);
+    }
+  };
+  rec(0,0);
+  // Dalle chiavi alle carte vere.
+  const pool=new Map([...copie].map(([k,a])=>[k,a.slice()])), jp=jol.slice(), out=[];
+  for(const x of best.sel){
+    const carte=x.c.chiavi.map(k=>pool.get(k).shift());
+    if(x.usata==='JK') carte.push(jp.shift()); else if(x.usata) carte.push(pool.get(x.usata).shift());
+    const r=valida(carte,regole);
+    if(r) out.push(r.ordine);
+  }
+  return out;
+}
+
+V.combinazioni={valida,valore,punti,puoAttaccare,suggerisci,selvaggia:(id,regole)=>selvaggia(id,gioco(regole))};
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/scala40.js
+(function(V){'use strict';
+// Regole della Scala 40: funzioni pure, lo stato non si modifica mai sul posto.
+// Turno: pesca → cala/attacca quante volte vuole → scarta. Ognuno gioca per sé (squadra = posto).
+const R={gioco:'scala40'};
+const MAX_RIMESCOLATE=3;   // poi, a mazzo finito, la smazzata si chiude senza chi chiude (evita partite infinite)
+const C=()=>V.combinazioni;
+const squadra=(st,posto)=>posto;
+const attivi=st=>st.eliminati.flatMap((e,i)=>e?[]:[i]);
+const dopo=(st,p)=>{ for(let k=1;k<=st.n;k++){ const q=(p+k)%st.n; if(!st.eliminati[q]) return q; } return p; };
+const togli=(mano,carte)=>{ for(const c of carte) mano.splice(mano.indexOf(c),1); };
+const penalita=mano=>mano.reduce((a,c)=>a+C().punti(c,R),0);
+
+function smazza(st){
+  st.mazzo=V.mescola(V.mazzoFrancese(),st.seme+':'+st.smazzata);
+  st.mani=Array.from({length:st.n},()=>[]);
+  const primo=dopo(st,st.mazziere), gira=attivi(st).length;
+  for(let k=0;k<13;k++){ let q=primo; for(let i=0;i<gira;i++){ st.mani[q].push(st.mazzo.shift()); q=dopo(st,q); } }
+  st.scarti=[st.mazzo.shift()];
+  st.giochi=[]; st.aperto=new Array(st.n).fill(false);
+  st.turno=primo; st.fase='pesca'; st.presaScarto=null; st.azioniTurno=0; st.rimescolate=0;
+}
+
+function nuovaPartita(seme,{giocatori=2,breve=false}={}){
+  if(giocatori<2||giocatori>4) throw new Error('la scala 40 si gioca da 2 a 4');
+  const st={gioco:'scala40',n:giocatori,obiettivo:breve?51:101,seme:String(seme),smazzata:0,mazziere:0,
+    punti:new Array(giocatori).fill(0),eliminati:new Array(giocatori).fill(false),
+    ultimaMossa:null,ultimaSmazzata:null,finita:false,vincitore:null,abbandono:null};
+  smazza(st); return st;
+}
+
+// Apertura possibile con la mano (se deve è data, deve servire a calare quella carta): gruppi o null.
+function apertura(mano,deve){
+  const gr=C().suggerisci(mano,R).sort((a,b)=>C().valore(b,R)-C().valore(a,R));
+  if(deve&&!gr.some(g=>g.includes(deve))) return null;
+  while(gr.flat().length>=mano.length){
+    let i=gr.length-1; while(i>=0&&deve&&gr[i].includes(deve)) i--;
+    if(i<0) return null; gr.splice(i,1);
+  }
+  return gr.reduce((a,g)=>a+C().valore(g,R),0)>=40?gr:null;
+}
+
+function puoPescareScarto(st,posto){
+  if(!st.scarti.length) return false;
+  if(st.aperto[posto]) return true;
+  const top=st.scarti[st.scarti.length-1];
+  return !!apertura([...st.mani[posto],top],top);
+}
+
+// Dopo aver calato deve restare in mano una carta scartabile (non quella appena presa dagli scarti).
+function controllaResto(st,posto,usate){
+  const pr=st.presaScarto;
+  if(!st.mani[posto].some(c=>!usate.includes(c)&&(!pr||c!==pr.carta))) throw new Error('deve restare una carta da scartare');
+}
+
+// Controlla una calata; se non va lancia l'errore col motivo.
+function controllaCala(st,posto,gruppi){
+  const mano=st.mani[posto];
+  if(!Array.isArray(gruppi)||!gruppi.length||!gruppi.every(Array.isArray)) throw new Error('calata non valida');
+  const tutte=gruppi.flat();
+  if(new Set(tutte).size!==tutte.length) throw new Error('carta ripetuta');
+  if(!tutte.every(c=>mano.includes(c))) throw new Error('carta non in mano');
+  const esiti=gruppi.map(g=>C().valida(g,R));
+  if(esiti.some(r=>!r)) throw new Error('combinazione non valida');
+  controllaResto(st,posto,tutte);
+  if(!st.aperto[posto]&&gruppi.reduce((a,g)=>a+C().valore(g,R),0)<40) throw new Error('per aprire servono 40 punti');
+  return esiti;
+}
+
+function puoCalare(st,posto,gruppi){
+  if(st.finita||st.turno!==posto||st.fase!=='gioca') return false;
+  try{ controllaCala(st,posto,gruppi); return true; }catch(e){ return false; }
+}
+
+function controllaAttacca(st,posto,i,carte){
+  const mano=st.mani[posto], g=st.giochi[i];
+  if(!g) throw new Error('combinazione inesistente');
+  if(!st.aperto[posto]) throw new Error('prima bisogna aprire');
+  if(!Array.isArray(carte)||!carte.length||new Set(carte).size!==carte.length) throw new Error('carte non valide');
+  if(!carte.every(c=>mano.includes(c))) throw new Error('carta non in mano');
+  controllaResto(st,posto,carte);
+  const r=C().puoAttaccare(g,carte,R);
+  if(!r) throw new Error('non si attacca');
+  return r;
+}
+
+function puoAttaccare(st,posto,i,carte){
+  if(st.finita||st.turno!==posto||st.fase!=='gioca') return false;
+  try{ controllaAttacca(st,posto,i,carte); return true; }catch(e){ return false; }
+}
+
+function scartiLegali(st,posto){
+  const mano=st.mani[posto], pr=st.presaScarto;
+  if(pr&&pr.obbligo&&mano.includes(pr.carta)) return [];
+  if(mano.length===1&&!st.aperto[posto]) return [];
+  return mano.filter(c=>!pr||c!==pr.carta);
+}
+
+function mosseLegali(st,posto){
+  if(st.finita||st.turno!==posto) return [];
+  if(st.fase==='pesca'){
+    const m=[];
+    if(st.mazzo.length) m.push({tipo:'pesca',da:'mazzo'});
+    if(puoPescareScarto(st,posto)) m.push({tipo:'pesca',da:'scarto'});
+    return m;
+  }
+  return scartiLegali(st,posto).map(carta=>({tipo:'scarta',carta}));
+}
+
+// Mazzo finito: si rimescolano gli scarti tranne quello in cima.
+function rimescola(st){
+  if(st.mazzo.length||st.scarti.length<2) return;
+  const cima=st.scarti.pop();
+  st.mazzo=V.mescola(st.scarti,st.seme+':'+st.smazzata+':r'+(st.rimescolate++));
+  st.scarti=[cima];
+}
+
+function passaTurno(st,p){
+  st.turno=dopo(st,p); st.fase='pesca'; st.presaScarto=null; st.azioniTurno=0;
+  if(!st.mazzo.length&&st.rimescolate<MAX_RIMESCOLATE) rimescola(st);
+  if(!st.mazzo.length) chiudiSmazzata(st,null);
+}
+
+function chiudiSmazzata(st,chi){
+  const totale=new Array(st.n).fill(0), carte=new Array(st.n).fill(0);
+  for(const p of attivi(st)){
+    carte[p]=st.mani[p].length;
+    totale[p]=p===chi?0:!st.aperto[p]?100:penalita(st.mani[p]);
+    st.punti[p]+=totale[p];
+  }
+  const prima=attivi(st);
+  st.ultimaSmazzata={smazzata:st.smazzata,chiude:chi,aperto:st.aperto.slice(),carte,totale,
+    eliminati:st.eliminati.slice(),partita:st.punti.slice()};
+  for(const p of prima) if(st.punti[p]>st.obiettivo) st.eliminati[p]=true;
+  const rimasti=attivi(st);
+  if(rimasti.length===1){ st.finita=true; st.vincitore=rimasti[0]; return; }
+  if(!rimasti.length){
+    // Tutti fuori insieme: vince chi ha meno punti, a pari punti il primo di mano.
+    const min=Math.min(...prima.map(p=>st.punti[p]));
+    for(let k=1;k<=st.n;k++){ const q=(st.mazziere+k)%st.n; if(prima.includes(q)&&st.punti[q]===min){ st.vincitore=q; break; } }
+    st.finita=true; return;
+  }
+  st.smazzata++; st.mazziere=dopo(st,st.mazziere); smazza(st);
+}
+
+function applica(st0,m){
+  if(st0.finita) throw new Error('partita finita');
+  if(!m||typeof m!=='object') throw new Error('mossa non valida');
+  const st=structuredClone(st0), p=st.turno, mano=st.mani[p];
+  const base={posto:p,tipo:m.tipo,smazzata:st.smazzata};
+  if(m.tipo==='pesca'){
+    if(st.fase!=='pesca') throw new Error('hai già pescato');
+    if(m.da==='mazzo'){
+      if(!st.mazzo.length) throw new Error('mazzo finito');
+      mano.push(st.mazzo.shift());
+      st.ultimaMossa={...base,da:'mazzo'};
+    } else if(m.da==='scarto'){
+      if(!puoPescareScarto(st0,p)) throw new Error('non puoi prendere lo scarto');
+      const c=st.scarti.pop(); mano.push(c);
+      st.presaScarto={carta:c,obbligo:!st.aperto[p]};
+      st.ultimaMossa={...base,da:'scarto',carta:c};
+    } else throw new Error('mossa non valida');
+    st.fase='gioca'; return st;
+  }
+  if(st.fase!=='gioca') throw new Error('prima bisogna pescare');
+  if(m.tipo==='cala'){
+    const esiti=controllaCala(st,p,m.gruppi);
+    const apre=!st.aperto[p];
+    for(const r of esiti){ togli(mano,r.ordine); st.giochi.push({squadra:p,posto:p,carte:r.ordine,tipo:r.tipo,jolly:r.jolly}); }
+    st.aperto[p]=true; st.azioniTurno++;
+    st.ultimaMossa={...base,gruppi:esiti.map(r=>r.ordine),apre};
+    return st;
+  }
+  if(m.tipo==='attacca'){
+    const r=controllaAttacca(st,p,m.gioco,m.carte);
+    togli(mano,m.carte);
+    Object.assign(st.giochi[m.gioco],{carte:r.ordine,jolly:r.jolly});
+    st.azioniTurno++;
+    st.ultimaMossa={...base,gioco:m.gioco,carte:m.carte.slice()};
+    return st;
+  }
+  if(m.tipo==='scarta'){
+    if(!mano.includes(m.carta)) throw new Error('carta non in mano');
+    if(!scartiLegali(st,p).includes(m.carta)) throw new Error(st.presaScarto&&st.presaScarto.obbligo
+      &&mano.includes(st.presaScarto.carta)?'devi aprire usando lo scarto preso':'scarto non valido');
+    togli(mano,[m.carta]); st.scarti.push(m.carta);
+    st.ultimaMossa={...base,carta:m.carta,chiude:mano.length===0};
+    if(!mano.length) chiudiSmazzata(st,p); else passaTurno(st,p);
+    return st;
+  }
+  throw new Error('mossa non valida');
+}
+
+// Abbandono (tre tempi scaduti): vince l'avversario, a 3-4 quello con meno punti.
+function abbandona(st0,posto){
+  const st=structuredClone(st0);
+  st.finita=true; st.abbandono=posto; st.eliminati[posto]=true;
+  let best=null;
+  for(let k=1;k<st.n;k++){ const q=(posto+k)%st.n; if(!st.eliminati[q]&&(best===null||st.punti[q]<st.punti[best])) best=q; }
+  st.vincitore=best;
+  return st;
+}
+
+// Quando scade il tempo: pesca dal mazzo, poi scarta la carta che pesa di più (il jolly per ultimo).
+function mossaDiRiserva(st,posto){
+  if(st.finita||st.turno!==posto) return null;
+  if(st.fase==='pesca') return mosseLegali(st,posto)[0]||null;
+  const leg=scartiLegali(st,posto);
+  if(!leg.length){
+    const pr=st.presaScarto, gr=pr&&apertura(st.mani[posto],pr.carta);
+    return gr?{tipo:'cala',gruppi:gr}:null;
+  }
+  const k=c=>V.francese.jolly(c)?-1:C().punti(c,R);
+  const carta=leg.slice().sort((a,b)=>k(b)-k(a))[0];
+  return {tipo:'scarta',carta};
+}
+
+function riepilogo(st){
+  const d=st.ultimaSmazzata; if(!d) return null;
+  const fuori=i=>d.eliminati[i];
+  return {righe:[
+    {nome:'Aperto',valori:d.aperto.map((a,i)=>fuori(i)?'—':a?'sì':'no')},
+    {nome:'Carte in mano',valori:d.carte.map((x,i)=>fuori(i)?'—':x)},
+    {nome:'Chiude',valori:d.carte.map((_,i)=>fuori(i)?'—':d.chiude===i?'sì':'·')},
+    {nome:'Penalità',valori:d.totale.map((x,i)=>fuori(i)?'—':x)}],
+    totale:d.totale.slice()};
+}
+
+V.giochi=V.giochi||{};
+V.giochi.scala40={id:'scala40',nome:'Scala 40',giocatori:[2,4],nuovaPartita,mosseLegali,applica,abbandona,
+  finita:st=>st.finita,punteggio:st=>st.punti,squadra,mossaDiRiserva,riepilogo,
+  puoCalare,puoAttaccare,puoPescareScarto,apertura,penalita,regole:R,MAX_RIMESCOLATE};
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/burraco.js
+(function(V){'use strict';
+// Regole del Burraco: funzioni pure, lo stato non si modifica mai sul posto.
+// Turno: pesca (dal mazzo una carta, dagli scarti tutto il monte) → cala/attacca → scarta.
+// A 4 si gioca in coppia (0 e 2 contro 1 e 3); a 2 ognuno per sé.
+const R={gioco:'burraco'};
+const C=()=>V.combinazioni;
+const squadra=(st,posto)=>st.n===4?posto%2:posto;
+const togli=(mano,carte)=>{ for(const c of carte) mano.splice(mano.indexOf(c),1); };
+const valoreCarte=carte=>carte.reduce((a,c)=>a+C().punti(c,R),0);
+const haBurraco=(st,sq)=>st.giochi.some(g=>g.squadra===sq&&g.carte.length>=7);
+
+function smazza(st){
+  st.mazzo=V.mescola(V.mazzoFrancese(),st.seme+':'+st.smazzata);
+  st.mani=Array.from({length:st.n},()=>[]);
+  const primo=(st.mazziere+1)%st.n;
+  for(let k=0;k<11;k++) for(let i=0;i<st.n;i++) st.mani[(primo+i)%st.n].push(st.mazzo.shift());
+  st.pozzetti=[st.mazzo.splice(0,11),st.mazzo.splice(0,11)];
+  st.pozzettoPreso=[false,false];
+  st.scarti=[st.mazzo.shift()];
+  st.giochi=[];
+  st.turno=primo; st.fase='pesca'; st.azioniTurno=0; st.scartoPreso=null;
+}
+
+function nuovaPartita(seme,{giocatori=2,breve=false}={}){
+  if(giocatori!==2&&giocatori!==4) throw new Error('il burraco si gioca in 2 o in 4');
+  const st={gioco:'burraco',n:giocatori,obiettivo:breve?1005:2005,seme:String(seme),smazzata:0,mazziere:0,
+    punti:[0,0],ultimaMossa:null,ultimaSmazzata:null,finita:false,vincitore:null,abbandono:null};
+  smazza(st); return st;
+}
+
+// Quante carte possono restare in mano dopo aver calato/attaccato.
+// 0 solo se il pozzetto è ancora da prendere; 1 solo se poi si può chiudere (pozzetto preso e un burraco).
+function controllaResto(st,posto,resto,burracoDopo){
+  const sq=squadra(st,posto);
+  if(st.pozzettoPreso[sq]){
+    if(resto<1) throw new Error('per chiudere bisogna scartare');
+    if(resto<2&&!burracoDopo) throw new Error('per chiudere serve un burraco');
+  }
+}
+
+// Mano vuota a metà turno: si prende il pozzetto e si continua.
+function prendiPozzetto(st,posto){
+  const sq=squadra(st,posto);
+  st.mani[posto]=st.pozzetti[sq]; st.pozzetti[sq]=[]; st.pozzettoPreso[sq]=true;
+}
+
+function controllaCala(st,posto,gruppi){
+  const mano=st.mani[posto];
+  if(!Array.isArray(gruppi)||!gruppi.length||!gruppi.every(Array.isArray)) throw new Error('calata non valida');
+  const tutte=gruppi.flat();
+  if(new Set(tutte).size!==tutte.length) throw new Error('carta ripetuta');
+  if(!tutte.every(c=>mano.includes(c))) throw new Error('carta non in mano');
+  const esiti=gruppi.map(g=>C().valida(g,R));
+  if(esiti.some(r=>!r)) throw new Error('combinazione non valida');
+  controllaResto(st,posto,mano.length-tutte.length,haBurraco(st,squadra(st,posto))||gruppi.some(g=>g.length>=7));
+  return esiti;
+}
+
+function controllaAttacca(st,posto,i,carte){
+  const mano=st.mani[posto], g=st.giochi[i];
+  if(!g) throw new Error('combinazione inesistente');
+  if(g.squadra!==squadra(st,posto)) throw new Error('si attacca solo alle proprie combinazioni');
+  if(!Array.isArray(carte)||!carte.length||new Set(carte).size!==carte.length) throw new Error('carte non valide');
+  if(!carte.every(c=>mano.includes(c))) throw new Error('carta non in mano');
+  const r=C().puoAttaccare(g,carte,R);
+  if(!r) throw new Error('non si attacca');
+  controllaResto(st,posto,mano.length-carte.length,haBurraco(st,g.squadra)||r.ordine.length>=7);
+  return r;
+}
+
+const prova=f=>{ try{ f(); return true; }catch(e){ return false; } };
+function puoCalare(st,posto,gruppi){
+  return !st.finita&&st.turno===posto&&st.fase==='gioca'&&prova(()=>controllaCala(st,posto,gruppi));
+}
+function puoAttaccare(st,posto,i,carte){
+  return !st.finita&&st.turno===posto&&st.fase==='gioca'&&prova(()=>controllaAttacca(st,posto,i,carte));
+}
+
+// Chi ha preso un monte di una carta sola non può riscartarla subito.
+function scartiLegali(st,posto){
+  const mano=st.mani[posto], sq=squadra(st,posto);
+  if(mano.length===1&&st.pozzettoPreso[sq]&&!haBurraco(st,sq)) return [];
+  return mano.filter(c=>c!==st.scartoPreso||mano.length===1);
+}
+
+function mosseLegali(st,posto){
+  if(st.finita||st.turno!==posto) return [];
+  if(st.fase==='pesca'){
+    const m=[];
+    if(st.mazzo.length) m.push({tipo:'pesca',da:'mazzo'});
+    if(st.scarti.length) m.push({tipo:'pesca',da:'scarto'});
+    return m;
+  }
+  return [...new Set(scartiLegali(st,posto))].map(carta=>({tipo:'scarta',carta}));
+}
+
+function passaTurno(st,p){
+  st.turno=(p+1)%st.n; st.fase='pesca'; st.azioniTurno=0; st.scartoPreso=null;
+  if(st.mazzo.length<2) chiudiSmazzata(st,null);
+}
+
+// Punti della smazzata per squadra.
+function contaSmazzata(st,chi){
+  const z=()=>[0,0];
+  const d={calate:z(),mano:z(),puliti:z(),sporchi:z(),burraco:z(),chiusura:z(),pozzetto:z(),totale:z()};
+  for(const g of st.giochi){
+    d.calate[g.squadra]+=valoreCarte(g.carte);
+    if(g.carte.length>=7){
+      const pulito=!(C().valida(g.carte,R)||{jolly:[1]}).jolly.length;
+      if(pulito){ d.puliti[g.squadra]++; d.burraco[g.squadra]+=200; }
+      else { d.sporchi[g.squadra]++; d.burraco[g.squadra]+=100; }
+    }
+  }
+  st.mani.forEach((h,p)=>{ d.mano[squadra(st,p)]-=valoreCarte(h); });
+  if(chi!==null) d.chiusura[squadra(st,chi)]=100;
+  for(let s=0;s<2;s++){
+    if(!st.pozzettoPreso[s]) d.pozzetto[s]=-100;
+    d.totale[s]=d.calate[s]+d.mano[s]+d.burraco[s]+d.chiusura[s]+d.pozzetto[s];
+  }
+  return d;
+}
+
+function chiudiSmazzata(st,chi){
+  const d=contaSmazzata(st,chi);
+  d.totale.forEach((x,i)=>{ st.punti[i]+=x; });
+  d.smazzata=st.smazzata; d.chiude=chi; d.partita=st.punti.slice(); st.ultimaSmazzata=d;
+  const max=Math.max(...st.punti), primi=st.punti.flatMap((x,i)=>x===max?[i]:[]);
+  if(max>=st.obiettivo&&primi.length===1){ st.finita=true; st.vincitore=primi[0]; }
+  else { st.smazzata++; st.mazziere=(st.mazziere+1)%st.n; smazza(st); }
+}
+
+function applica(st0,m){
+  if(st0.finita) throw new Error('partita finita');
+  if(!m||typeof m!=='object') throw new Error('mossa non valida');
+  const st=structuredClone(st0), p=st.turno, sq=squadra(st,p);
+  const base={posto:p,tipo:m.tipo,smazzata:st.smazzata};
+  if(m.tipo==='pesca'){
+    if(st.fase!=='pesca') throw new Error('hai già pescato');
+    if(m.da==='mazzo'){
+      if(!st.mazzo.length) throw new Error('mazzo finito');
+      st.mani[p].push(st.mazzo.shift());
+      st.ultimaMossa={...base,da:'mazzo'};
+    } else if(m.da==='scarto'){
+      if(!st.scarti.length) throw new Error('niente scarti');
+      const presi=st.scarti; st.scarti=[];
+      st.mani[p].push(...presi);
+      st.scartoPreso=presi.length===1?presi[0]:null;
+      st.ultimaMossa={...base,da:'scarto',carte:presi.slice()};
+    } else throw new Error('mossa non valida');
+    st.fase='gioca'; return st;
+  }
+  if(st.fase!=='gioca') throw new Error('prima bisogna pescare');
+  if(m.tipo==='cala'||m.tipo==='attacca'){
+    if(m.tipo==='cala'){
+      const esiti=controllaCala(st,p,m.gruppi);
+      for(const r of esiti){ togli(st.mani[p],r.ordine); st.giochi.push({squadra:sq,posto:p,carte:r.ordine,tipo:r.tipo,jolly:r.jolly}); }
+      st.ultimaMossa={...base,gruppi:esiti.map(r=>r.ordine)};
+    } else {
+      const r=controllaAttacca(st,p,m.gioco,m.carte);
+      togli(st.mani[p],m.carte);
+      Object.assign(st.giochi[m.gioco],{carte:r.ordine,jolly:r.jolly});
+      st.ultimaMossa={...base,gioco:m.gioco,carte:m.carte.slice()};
+    }
+    st.azioniTurno++;
+    if(!st.mani[p].length){ prendiPozzetto(st,p); st.ultimaMossa.pozzetto=true; }
+    return st;
+  }
+  if(m.tipo==='scarta'){
+    const mano=st.mani[p];
+    if(!mano.includes(m.carta)) throw new Error('carta non in mano');
+    if(!scartiLegali(st,p).includes(m.carta)) throw new Error(m.carta===st.scartoPreso?'non si riscarta la carta appena presa':'per chiudere serve un burraco');
+    togli(mano,[m.carta]); st.scarti.push(m.carta);
+    st.ultimaMossa={...base,carta:m.carta,chiude:false,pozzetto:false};
+    if(!mano.length){
+      if(!st.pozzettoPreso[sq]){ prendiPozzetto(st,p); st.ultimaMossa.pozzetto=true; }   // lo guarda al prossimo turno
+      else { st.ultimaMossa.chiude=true; chiudiSmazzata(st,p); return st; }
+    }
+    passaTurno(st,p);
+    return st;
+  }
+  throw new Error('mossa non valida');
+}
+
+// Abbandono (tre tempi scaduti): vince la squadra avversaria.
+function abbandona(st0,posto){
+  const st=structuredClone(st0);
+  st.finita=true; st.abbandono=posto; st.vincitore=1-squadra(st,posto);
+  return st;
+}
+
+// Quando scade il tempo: pesca dal mazzo, poi scarta la carta che vale di più (matte per ultime).
+function mossaDiRiserva(st,posto){
+  if(st.finita||st.turno!==posto) return null;
+  if(st.fase==='pesca') return mosseLegali(st,posto)[0]||null;
+  const k=c=>C().selvaggia(c,R)?-1:C().punti(c,R);
+  const carta=scartiLegali(st,posto).sort((a,b)=>k(b)-k(a))[0];
+  return carta?{tipo:'scarta',carta}:null;
+}
+
+function riepilogo(st){
+  const d=st.ultimaSmazzata; if(!d) return null;
+  const segno=a=>a.map(x=>x>0?'+'+x:x<0?String(x):'·');
+  return {righe:[
+    {nome:'Carte calate',valori:segno(d.calate)},
+    {nome:'Carte in mano',valori:segno(d.mano)},
+    {nome:'Burraco',valori:d.burraco.map((x,i)=>(x?'+'+x:'·')+` (${d.puliti[i]} puliti, ${d.sporchi[i]} sporchi)`)},
+    {nome:'Chiusura',valori:segno(d.chiusura)},
+    {nome:'Pozzetto non preso',valori:segno(d.pozzetto)}],
+    totale:d.totale.slice()};
+}
+
+V.giochi=V.giochi||{};
+V.giochi.burraco={id:'burraco',nome:'Burraco',giocatori:[2,4],nuovaPartita,mosseLegali,applica,abbandona,
+  finita:st=>st.finita,punteggio:st=>st.punti,squadra,mossaDiRiserva,riepilogo,
+  puoCalare,puoAttaccare,contaSmazzata,haBurraco,regole:R};
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/bot-combinazioni.js
+(function(V){'use strict';
+// Bot di Scala 40 e Burraco. Usa solo ciò che vedrebbe un giocatore al suo posto: la propria mano,
+// le combinazioni sul tavolo, gli scarti, i pozzetti già presi. Mai le mani degli altri, il mazzo o i pozzetti.
+// Ogni chiamata restituisce UNA mossa della fase in corso; chi lo usa lo richiama finché il turno non cambia.
+const C=()=>V.combinazioni, Fr=()=>V.francese;
+const MAX_AZIONI=30;
+const val=id=>Fr().valore(id), seme=id=>Fr().seme(id), jolly=id=>Fr().jolly(id);
+const alto=v=>v===1?14:v;
+const distanza=(a,b)=>Math.min(Math.abs(a-b),Math.abs(alto(a)-alto(b)));
+
+// Quanto conviene tenere la carta c: matte sempre, poi carte vicine o uguali ad altre della mano.
+function utilita(c,mano,R){
+  if(C().selvaggia(c,R)) return 100;
+  const v=val(c), s=seme(c); let u=0;
+  for(const x of mano){
+    if(x===c||C().selvaggia(x,R)) continue;
+    const vx=val(x), sx=seme(x);
+    if(vx===v){ if(sx!==s||R.gioco==='burraco') u+=2; }   // doppione nella Scala 40: non serve
+    else if(sx===s){ const d=distanza(v,vx); if(d===1) u+=2; else if(d===2) u+=1; }
+  }
+  return u;
+}
+
+// La carta entrerebbe in una combinazione che può usare chi gioca dopo?
+function servirebbeAlProssimo(G,st,posto,c){
+  const q=(posto+1)%st.n;
+  if(st.gioco==='scala40'&&!st.aperto[q]) return false;
+  const sq=G.squadra(st,q);
+  return st.giochi.some(g=>(st.gioco==='scala40'||g.squadra===sq)&&C().puoAttaccare(g,[c],G.regole));
+}
+
+function attaccabile(G,st,posto,c){
+  const sq=G.squadra(st,posto);
+  return st.giochi.some(g=>(st.gioco==='scala40'||g.squadra===sq)&&C().puoAttaccare(g,[c],G.regole));
+}
+
+function sceltaPesca(G,st,posto,livello,rng){
+  const mosse=G.mosseLegali(st,posto), dalMazzo=mosse.find(m=>m.da==='mazzo')||mosse[0];
+  const scarto=mosse.find(m=>m.da==='scarto');
+  if(!scarto||livello<=1) return dalMazzo;
+  const R=G.regole, mano=st.mani[posto];
+  let prendi;
+  if(st.gioco==='scala40'){
+    const top=st.scarti[st.scarti.length-1];
+    if(!st.aperto[posto]) prendi=true;   // offerto solo se con lui si apre
+    else prendi=jolly(top)||attaccabile(G,st,posto,top)||C().suggerisci([...mano,top],R).some(g=>g.includes(top));
+  } else {
+    const monte=st.scarti, gr=C().suggerisci([...mano,...monte],R).flat();
+    let utili=monte.filter(c=>gr.includes(c)||attaccabile(G,st,posto,c)||C().selvaggia(c,R)).length;
+    prendi=utili>=(livello>=5?1:2)||monte.length>=6&&livello>=5;
+    // Con pozzetto preso e poche carte il monte non si riesce a calare: si ripescherebbe e riscarterebbe.
+    if(st.pozzettoPreso[G.squadra(st,posto)]&&mano.length+monte.length<4) prendi=false;
+  }
+  if(rng()<(10-livello)*0.03) prendi=!prendi;
+  return prendi?scarto:dalMazzo;
+}
+
+// Toglie gruppi dal fondo finché la calata non diventa ammessa.
+function calataAmmessa(G,st,posto,gr){
+  gr=gr.slice();
+  while(gr.length&&!G.puoCalare(st,posto,gr)) gr.pop();
+  return gr.length?gr:null;
+}
+
+function bot(st,posto,livello=5,rng=Math.random){
+  const G=V.giochi[st.gioco];
+  if(!G||st.finita||st.turno!==posto) return null;
+  if(st.fase==='pesca') return sceltaPesca(G,st,posto,livello,rng);
+  const R=G.regole, mano=st.mani[posto], mosse=G.mosseLegali(st,posto);
+  if(livello<=1) return mosse.length?mosse[Math.floor(rng()*mosse.length)]:G.mossaDiRiserva(st,posto);
+  if(st.azioniTurno<MAX_AZIONI){
+    // Calare.
+    let gr=null;
+    if(st.gioco==='scala40'&&!st.aperto[posto]) gr=G.apertura(mano,st.presaScarto&&st.presaScarto.carta);
+    else if(st.gioco!=='scala40'||st.aperto[posto]) gr=C().suggerisci(mano,R);
+    if(gr&&gr.length&&(gr=calataAmmessa(G,st,posto,gr))) return {tipo:'cala',gruppi:gr};
+    // Attaccare (le matte solo a fine mano).
+    const puoAttaccare=st.gioco!=='scala40'||st.aperto[posto];
+    if(puoAttaccare) for(const c of mano){
+      if(C().selvaggia(c,R)&&mano.length>3) continue;
+      for(let i=0;i<st.giochi.length;i++) if(G.puoAttaccare(st,posto,i,[c])) return {tipo:'attacca',gioco:i,carte:[c]};
+    }
+  }
+  if(!mosse.length) return G.mossaDiRiserva(st,posto);
+  // Scartare la carta meno utile.
+  let best=null, punti=Infinity;
+  for(const m of mosse){
+    let u=utilita(m.carta,mano,R)-C().punti(m.carta,R)*(st.gioco==='scala40'?0.05:0.02);
+    if(livello>=6&&servirebbeAlProssimo(G,st,posto,m.carta)) u+=5;
+    u+=(rng()-0.5)*(10-livello)*0.8;
+    if(u<punti){ punti=u; best=m; }
+  }
+  return best;
+}
+
+V.giochi.scala40.bot=bot;
+V.giochi.burraco.bot=bot;
+V.botCombinazioni={bot,utilita};
+})(globalThis.V=globalThis.V||{});
+
 // ---- zone/piano-terra/tavolo.js
 (function(V){'use strict';
 // Il tavolo da carte: disegno, gesti, orologio, turni dei bot.
@@ -1802,7 +2611,7 @@ class Tavolo{
     const visibili=bersagli.filter(b=>!b.basso||b.mosso).map(b=>b.id).sort((a,b)=>this.pos[a].z-this.pos[b].z);
     const ok=this.giocabili(), mano=new Set(this.st.mani[0]);
     for(const id of visibili){ const p=this.pos[id];
-      V.disegnaCarta(c,p.su?id:null,p.x,p.y,this.cw*p.s,this.ch*p.s,{r:p.r,luce:forte.has(id)?2:luce.has(id)?1:0,
+      this.disegnaUna(c,p.su?id:null,p.x,p.y,this.cw*p.s,this.ch*p.s,{r:p.r,luce:forte.has(id)?2:luce.has(id)?1:0,
         spenta:!!(ok&&mano.has(id)&&!ok.has(id))}); }
     this.disegnaExtra(c,t);
 
@@ -1812,6 +2621,7 @@ class Tavolo{
     this.disegnaScritte(t);
   }
   disegnaExtra(){}
+  disegnaUna(c,id,x,y,w,h,op){ V.disegnaCarta(c,id,x,y,w,h,op); }
   puntiInGioco(){ return this.st.punti; }
 
   luci(){
@@ -1843,8 +2653,8 @@ class Tavolo{
     st.mani.forEach((_,p)=>{
       const lt=this.lati[p], turno=attivo&&st.turno===p;
       let x,y,al='center';
-      if(lt==='giu'){ if(this.basso){ x=this.W/2-cw*1.6-12; y=this.yManoGiu()-ch*0.12; al='right'; } else { x=this.W/2; y=this.yManoGiu()-ch/2-ch*0.16-18; } }
-      else if(lt==='su'){ if(this.basso){ x=this.W/2+cw*0.42+ch*this.sTop()/2+12; y=this.yManoSu(); al='left'; } else { x=this.W/2; y=this.yManoSu()+ch*this.sTop()/2+14; } }
+      if(lt==='giu'){ if(this.xyEtichettaGiu){ ({x,y,al}=this.xyEtichettaGiu()); } else if(this.basso){ x=this.W/2-cw*1.6-12; y=this.yManoGiu()-ch*0.12; al='right'; } else { x=this.W/2; y=this.yManoGiu()-ch/2-ch*0.16-18; } }
+      else if(lt==='su'){ if(this.xEtichettaSu){ x=this.xEtichettaSu(); y=this.yManoSu()+ch*this.sTop()/2+10; } else if(this.basso){ x=this.W/2+cw*0.42+ch*this.sTop()/2+12; y=this.yManoSu(); al='left'; } else { x=this.W/2; y=this.yManoSu()+ch*this.sTop()/2+14; } }
       else if(lt==='sinistra'){ x=this.pad; y=cen.y+(this.basso?cw*0.75+16:-cw*0.75-16); al='left'; }
       else { x=this.W-this.pad; y=cen.y+(this.basso?cw*0.75+16:-cw*0.75-16); al='right'; }
       const nome=(p===0?'Tu':corto(nomi[p],12))+(st.n===4&&p===2?' (compagno)':'');
@@ -2017,6 +2827,266 @@ class TavoloMano extends V.Tavolo{
 }
 
 V.TavoloMano=TavoloMano;
+})(globalThis.V=globalThis.V||{});
+
+// ---- zone/piano-terra/tavolo-combinazioni.js
+(function(V){'use strict';
+// Tavolo di Scala 40 e Burraco: si pesca, si calano combinazioni, si attacca, si scarta.
+// Le carte si selezionano con un tocco; i pulsanti Cala / Scarta / Ordina / Aiuto sono sul tavolo.
+const ORA=()=>performance.now();
+const MAX_AZIONI_BOT=40;
+
+class TavoloCombinazioni extends V.Tavolo{
+  opzioniPartita(op){ return {giocatori:op.giocatori,breve:!!op.breve}; }
+  tutteLeCarte(){ return V.mazzoFrancese(); }
+  regole(){ return {gioco:this.st.gioco}; }
+
+  misura(){
+    super.misura();
+    this.cw*=this.basso?0.74:0.8; this.ch=this.cw*1.45;
+    this.sel=this.sel||new Set(); this.ordine=this.ordine||'seme';
+    this.mosseFatte=true;   // niente suggerimento della Scopa: qui ci sono i pulsanti
+  }
+  larghezzaBottoni(){ return this.basso?Math.min(112,this.W*0.16):0; }
+  riservaLati(st){ return st.n===4?this.ch*this.sTop()*0.9+this.pad*2+6:0; }
+  xyScarti(){ const m=this.xyMazzo(); return {x:m.x+this.cw*0.95,y:m.y,s:m.s}; }
+  xyPozzetti(){ const m=this.xyMazzo(), s=m.s*0.8; return {x:this.W-this.pad-this.ch*s/2-4,y:m.y,s}; }
+
+  // ---- disposizione ------------------------------------------------------
+  disponiMazzo(st,out){
+    super.disponiMazzo(st,out);
+    const sc=this.xyScarti(), n=st.scarti.length, vis=Math.min(n,6);
+    st.scarti.forEach((id,i)=>{ const k=i-(n-vis); const dentro=k>=0;
+      out.push({id,x:sc.x+(dentro?k:0)*this.cw*sc.s*0.26,y:sc.y,r:0,s:sc.s,su:dentro,z:200+i,basso:!dentro&&i<n-vis-1}); });
+    this.rettScarti={x:sc.x-this.cw*sc.s/2,y:sc.y-this.ch*sc.s/2,w:this.cw*sc.s*(1+0.26*Math.max(0,vis-1)),h:this.ch*sc.s};
+    if(st.pozzetti){ const q=this.xyPozzetti();
+      st.pozzetti.forEach((pz,k)=>pz.forEach((id,i)=>out.push({id,x:q.x-k*this.cw*q.s*0.5,y:q.y+k*6-i*0.4,
+        r:Math.PI/2,s:q.s,su:false,z:40+k*20+i,basso:i<pz.length-2}))); }
+  }
+  disponiPrese(){}
+  xEtichettaSu(){ return this.W*0.64; }
+  xyEtichettaGiu(){ return this.basso?{x:this.pad,y:this.yManoGiu()-this.ch/2-30,al:'left'}:{x:this.W/2,y:this.yManoGiu()-this.ch/2-this.ch*0.22-16,al:'center'}; }
+
+  disponiCentro(st,out){
+    const mio=this.S.squadra(st,0), sc=this.xyScarti();
+    const alto=sc.y+this.ch*0.36+30, basso=this.basso?this.yManoGiu()-this.ch/2-12:this.yBottoni()-52;
+    const ris=this.riservaLati(st), destra=this.basso?this.larghezzaBottoni()+10:0;
+    const x0=this.pad+ris, w=this.W-2*this.pad-2*ris-destra, giochi=st.giochi.map((g,i)=>({g,i}));
+    const loro=giochi.filter(x=>x.g.squadra!==mio), miei=giochi.filter(x=>x.g.squadra===mio);
+    let s=0.62, righe;
+    for(;s>=0.34;s-=0.04){
+      const larg=g=>this.cw*s*(1+0.3*(g.carte.length-1))+8, h=this.ch*s+6;
+      const flusso=lista=>{ let rr=[], x=0; for(const e of lista){ const lw=larg(e.g); if(x+lw>w&&x>0){ rr.push(x); x=0; } x+=lw; } if(x) rr.push(x); return rr.length; };
+      righe=flusso(loro)+flusso(miei);
+      if(righe*h<=basso-alto) break;
+    }
+    const larg=g=>this.cw*s*(1+0.3*(g.carte.length-1)), h=this.ch*s+6;
+    this.rettGiochi=[];
+    const posa=(lista,y0,dir)=>{ let x=x0, y=y0;
+      for(const {g,i} of lista){
+        const lw=larg(g);
+        if(x+lw>x0+w&&x>x0){ x=x0; y+=dir*h; }
+        const yc=y+(dir>0?this.ch*s/2:-this.ch*s/2);
+        g.carte.forEach((id,k)=>out.push({id,x:x+this.cw*s/2+k*this.cw*s*0.3,y:yc,r:0,s,su:true,z:320+i*20+k}));
+        this.rettGiochi.push({i,x,y:yc-this.ch*s/2,w:lw,h:this.ch*s});
+        x+=lw+8;
+      }
+    };
+    posa(loro,alto,1);
+    posa(miei,basso,-1);
+  }
+
+  ordinata(mano){
+    const F=V.francese, OS={C:0,Q:1,F:2,P:3};
+    const k=id=>F.jolly(id)?[9,99]:this.ordine==='seme'?[OS[F.seme(id)],F.valore(id)]:[F.valore(id),OS[F.seme(id)]];
+    return mano.slice().sort((a,b)=>{ const x=k(a), y=k(b); return x[0]-y[0]||x[1]-y[1]||(a<b?-1:1); });
+  }
+  disponiMani(st,out){
+    const cw=this.cw, ch=this.ch, c=this.centro();
+    st.mani.forEach((mano,p)=>{
+      const lt=this.lati[p], n=mano.length;
+      if(lt==='giu'){
+        const largo=this.W-2*this.pad-this.larghezzaBottoni()-(this.basso?10:0), cx=this.pad+largo/2;
+        const sp=Math.min(cw*0.62,(largo-cw)/Math.max(n-1,1));
+        this.ordinata(mano).forEach((id,i)=>{ const o=i-(n-1)/2;
+          out.push({id,x:cx+o*sp,y:this.yManoGiu()-(this.sel.has(id)?ch*0.22:0),r:0,s:1,su:true,z:600+i}); });
+        return;
+      }
+      const s=this.sTop()*0.9;
+      mano.forEach((id,i)=>{ const o=i-(n-1)/2; let q;
+        if(lt==='su'){ const sp=Math.min(cw*0.26,this.W*0.3/Math.max(n,1)); q={x:this.W*0.64+o*sp,y:this.yManoSu(),r:Math.PI,s}; }
+        else { const sp=Math.min(cw*0.24,this.H*0.3/Math.max(n,1)); q={x:lt==='sinistra'?this.pad+ch*s/2:this.W-this.pad-ch*s/2,y:c.y+o*sp,r:lt==='sinistra'?Math.PI/2:-Math.PI/2,s}; }
+        out.push(Object.assign(q,{id,su:false,z:500+i}));
+      });
+    });
+  }
+  disegnaUna(c,id,x,y,w,h,op){
+    if(id&&this.sel.has(id)) op.selezionata=true;
+    V.disegnaCartaFrancese(c,id,x,y,w,h,op);
+  }
+  luci(){ return {luce:new Set(),forte:new Set()}; }
+  giocabili(){ return null; }
+
+  // ---- pulsanti ----------------------------------------------------------
+  yBottoni(){ return this.yManoGiu()-this.ch/2-0.3*this.ch-40; }
+  bottoni(){
+    if(!this.mioTurno()) return [];
+    const st=this.st, gioca=st.fase==='gioca', sel=[...this.sel];
+    const gruppi=gioca&&sel.length>=3?this.dividi(sel):null;
+    const scarta=gioca&&sel.length===1&&this.S.mosseLegali(st,0).some(m=>m.carta===sel[0]);
+    const voci=[
+      {k:'cala',testo:'Cala',ok:!!(gruppi&&this.S.puoCalare(st,0,gruppi))},
+      {k:'scarta',testo:'Scarta',ok:scarta},
+      {k:'ordina',testo:this.ordine==='seme'?'Per valore':'Per seme',ok:true},
+      {k:'aiuto',testo:'Aiuto',ok:gioca}
+    ];
+    if(this.basso){ const w=this.larghezzaBottoni(), h=36, y0=this.xyMazzo().y-this.ch*0.3+4;
+      return voci.map((v,i)=>Object.assign(v,{x:this.W-this.pad-w,y:y0+i*(h+6)+34,w,h})); }
+    const w=Math.min(96,(this.W-2*this.pad-24)/4), h=38, y=this.yBottoni()-h/2, x0=this.W/2-(w*4+24)/2;
+    return voci.map((v,i)=>Object.assign(v,{x:x0+i*(w+8),y,w,h}));
+  }
+  dividi(sel){
+    const R=this.regole();
+    if(V.combinazioni.valida(sel,R)) return [sel];
+    const sug=V.combinazioni.suggerisci(sel,R), usate=sug.flat();
+    return usate.length===sel.length?sug:null;
+  }
+  disegnaExtra(c){
+    for(const b of this.bottoni()){
+      c.globalAlpha=b.ok?1:0.4;
+      c.fillStyle=b.k==='cala'&&b.ok?'#e0b75a':'#0b1a12dd'; V.tondo(c,b.x,b.y,b.w,b.h,10); c.fill();
+      c.strokeStyle='#e0b75a'; c.lineWidth=1.5; c.stroke();
+      c.fillStyle=b.k==='cala'&&b.ok?'#2a1a10':'#f4ead2'; c.font='600 14px system-ui,sans-serif'; c.textAlign='center'; c.textBaseline='middle';
+      c.fillText(b.testo,b.x+b.w/2,b.y+b.h/2+1);
+      c.globalAlpha=1;
+    }
+    const st=this.st, mz=this.xyMazzo();
+    if(this.mioTurno()){
+      const t=st.fase==='pesca'?'Pesca: tocca il mazzo o gli scarti':'Scegli le carte · tocca una combinazione per attaccare';
+      if(this.basso) this.pillola(st.fase==='pesca'?'Pesca':'Scegli le carte',this.pad,this.yManoGiu()-this.ch/2-2,'left',false);
+      else this.pillola(t,this.W/2,this.yBottoni()-32,'center',false);
+      if(st.fase==='pesca'){ c.strokeStyle='#ffd66b'; c.lineWidth=2; c.setLineDash([6,5]);
+        V.tondo(c,mz.x-this.cw*mz.s/2-4,mz.y-this.ch*mz.s/2-4,this.cw*mz.s+8,this.ch*mz.s+8,8); c.stroke();
+        const r=this.rettScarti; if(r&&this.S.mosseLegali(st,0).some(m=>m.da==='scarto')){ V.tondo(c,r.x-4,r.y-4,r.w+8,r.h+8,8); c.stroke(); }
+        c.setLineDash([]); }
+    }
+    const yStato=this.basso?this.pad+12:mz.y+this.ch*0.36+12;
+    if(st.gioco==='scala40'){
+      const a=st.aperto&&st.aperto[0];
+      this.pillola(a?'Hai aperto':'Apertura: 40 punti',this.W-this.pad,yStato,'right',false);
+    } else if(st.pozzettoPreso){
+      const mio=this.S.squadra(st,0);
+      this.pillola(st.pozzettoPreso[mio]?'Pozzetto preso':'Pozzetto da prendere',this.W-this.pad,yStato,'right',false);
+    }
+  }
+
+  // ---- gesti -------------------------------------------------------------
+  dentro(r,x,y,m=6){ return r&&x>=r.x-m&&x<=r.x+r.w+m&&y>=r.y-m&&y<=r.y+r.h+m; }
+  premi(e){
+    V.audio.attiva();
+    if(!this.mioTurno()) return;
+    const {x,y}=this.punto(e), st=this.st;
+    const b=this.bottoni().find(q=>this.dentro(q,x,y,4));
+    if(b){ e.preventDefault(); if(b.ok) this.pulsante(b.k); return; }
+    if(st.fase==='pesca'){
+      const mz=this.xyMazzo(), rm={x:mz.x-this.cw*mz.s/2,y:mz.y-this.ch*mz.s/2,w:this.cw*mz.s,h:this.ch*mz.s};
+      if(this.dentro(rm,x,y,10)) return this.agisci({tipo:'pesca',da:'mazzo'});
+      if(this.dentro(this.rettScarti,x,y,10)){
+        if(this.S.mosseLegali(st,0).some(m=>m.da==='scarto')) return this.agisci({tipo:'pesca',da:'scarto'});
+        return this.scritta(st.gioco==='scala40'?'Gli scarti si prendono solo per aprire subito':'Adesso non puoi prendere gli scarti',1600);
+      }
+    }
+    const id=this.sotto(st.mani[0],x,y);
+    if(id){ this.drag={id,x,y,sx:x,sy:y,mosso:false,pid:e.pointerId}; try{ this.tela.setPointerCapture(e.pointerId); }catch(_){} e.preventDefault(); return; }
+    const g=(this.rettGiochi||[]).find(r=>this.dentro(r,x,y));
+    if(g&&this.sel.size) this.attacca(g.i,[...this.sel]);
+  }
+  rilascia(e){
+    const d=this.drag; if(!d||e.pointerId!==d.pid) return;
+    this.drag=null;
+    if(!this.mioTurno()) return;
+    const {x,y}=this.punto(e);
+    if(!d.mosso){ if(this.sel.has(d.id)) this.sel.delete(d.id); else this.sel.add(d.id); V.suono('clic'); return; }
+    if(this.st.fase!=='gioca') return;
+    if(this.dentro(this.rettScarti,x,y,16)){ this.sel.clear(); return this.agisci({tipo:'scarta',carta:d.id}); }
+    const g=(this.rettGiochi||[]).find(r=>this.dentro(r,x,y,8));
+    if(g){ const carte=this.sel.has(d.id)?[...this.sel]:[d.id]; this.attacca(g.i,carte); }
+  }
+  attacca(i,carte){
+    if(this.st.fase!=='gioca') return;
+    if(!this.S.puoAttaccare(this.st,0,i,carte)) return this.scritta('Non si attacca lì',1300);
+    this.agisci({tipo:'attacca',gioco:i,carte});
+  }
+  pulsante(k){
+    V.suono('clic');
+    const st=this.st, sel=[...this.sel];
+    if(k==='ordina'){ this.ordine=this.ordine==='seme'?'valore':'seme'; return; }
+    if(k==='scarta') return this.agisci({tipo:'scarta',carta:sel[0]});
+    if(k==='cala') return this.agisci({tipo:'cala',gruppi:this.dividi(sel)});
+    if(k==='aiuto'){
+      const sug=V.combinazioni.suggerisci(st.mani[0],this.regole());
+      if(!sug.length){ this.scritta('Nessuna combinazione in mano',1400); return; }
+      const scelta=st.gioco==='scala40'&&!st.aperto[0]?sug.flat():sug[0];
+      this.sel=new Set(scelta);
+      if(st.gioco==='scala40'&&!st.aperto[0]&&!this.S.puoCalare(st,0,sug)) this.scritta('Non arrivi ancora a 40 punti',1600);
+    }
+  }
+
+  // ---- mosse ---------------------------------------------------------------
+  agisci(m){
+    if(!m) return;
+    const S=this.S, prev=this.st, p=prev.turno;
+    let next;
+    try{ next=S.applica(prev,m); }
+    catch(err){ if(p===0){ this.scritta(err.message.charAt(0).toUpperCase()+err.message.slice(1),1800); V.vibra('forte'); return; } throw err; }
+    this.st=next;
+    if(p===0){ this.mosseFatte=true; V.vibra('leggera'); for(const id of [...this.sel]) if(!next.mani[0].includes(id)) this.sel.delete(id); }
+    V.suono(m.tipo==='cala'||m.tipo==='attacca'?'presa':'carta');
+    if(m.tipo==='cala'||m.tipo==='attacca'){
+      const nuovi=next.giochi.filter((g,i)=>g.carte.length>=7&&!(prev.giochi[i]&&prev.giochi[i].carte.length>=7));
+      if(prev.gioco==='burraco'&&nuovi.length){ this.scritta('BURRACO!',1400,true); V.suono('scopa'); V.vibra('forte'); }
+    }
+    if(next.pozzettoPreso&&prev.pozzettoPreso&&next.pozzettoPreso.some((v,i)=>v&&!prev.pozzettoPreso[i])) this.scritta(`${p===0?'Hai':this.op.nomi[p]+' ha'} preso il pozzetto`,1600);
+    if(prev.gioco==='scala40'&&next.aperto&&!prev.aperto[p]&&next.aperto[p]) this.scritta(`${p===0?'Hai aperto!':this.op.nomi[p]+' ha aperto'}`,1400);
+    const chiusa=next.finita||next.smazzata!==prev.smazzata;
+    if(chiusa){
+      this.vista=prev; this.sel.clear();
+      if(!next.finita||next.abbandono==null) this.scritta(next.ultimaSmazzata&&next.finita?'Partita finita':'Smazzata chiusa',1400);
+      this.dopo(1100,()=>{
+        if(next.finita) return this.termina();
+        this.pausa=true;
+        const continua=()=>{ if(this.chiuso) return; this.pausa=false; this.vista=null; this.azioniBot=0; this.iniziaTurno(); };
+        if(this.op.alSmazzata) this.op.alSmazzata(next.ultimaSmazzata,next,continua); else continua();
+      });
+      return;
+    }
+    if(next.turno!==p){ this.azioniBot=0; this.iniziaTurno(); }
+    else if(p!==0) this.botAl=ORA()+(m.tipo==='pesca'?700:550);
+  }
+
+  logica(t){
+    const st=this.st;
+    if(st.finita) return this.termina();
+    if(st.turno===0){
+      const resta=this.scadenza-t, sec=Math.ceil(resta/1000);
+      if(sec<=5&&sec>0&&sec!==this.ultimoTic){ this.ultimoTic=sec; V.suono('tic'); }
+      if(resta<=0) this.tempoScaduto();
+    } else if(t>=this.botAl){
+      const p=st.turno;
+      this.azioniBot=(this.azioniBot||0)+1;
+      const m=this.azioniBot>MAX_AZIONI_BOT?this.S.mossaDiRiserva(st,p):this.S.bot(st,p,this.op.livelli[p]||5,this.rng);
+      this.agisci(m||this.S.mossaDiRiserva(st,p));
+    }
+  }
+  tempoScaduto(){
+    this.scaduti++; this.sel.clear(); this.drag=null; V.vibra('forte');
+    if(this.scaduti>=3){ this.scritta('Tre volte senza giocare: partita persa',2200); this.st=this.S.abbandona(this.st,0); return this.termina(); }
+    this.scritta(`Tempo scaduto (${this.scaduti}/3)`,1500);
+    for(let k=0;k<4&&this.st.turno===0&&!this.st.finita&&!this.coda.length;k++) this.agisci(this.S.mossaDiRiserva(this.st,0));
+  }
+}
+
+V.TavoloCombinazioni=TavoloCombinazioni;
 })(globalThis.V=globalThis.V||{});
 
 // ---- zone/piano-terra/zona.js
