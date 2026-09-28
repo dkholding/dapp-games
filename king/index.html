@@ -30,129 +30,416 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
 #cv.sopra{background:transparent}
 #cv.grab{cursor:grab}
 
-#hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+/* ═══════════════════════════════════════════════════════════════════
+   IL MENU DEL GIOCO — LEGNO, FERRO E PERGAMENA
+   La pelle sta tutta nelle variabili --hud-: cambi un colore qui e cambia
+   ovunque. Le icone sono uno sprite SVG in cima al body (niente emoji: su
+   ogni telefono uguali, e mai vuote). Il carattere dei titoli è Cinzel,
+   capitali romane, incorporato qui sotto (SIL Open Font License 1.1,
+   Copyright 2020 The Cinzel Project Authors): ridotto alle lettere
+   italiane, peso 700, 13 KB. Se manca, la pila ripiega sui serif del
+   sistema e il disegno regge lo stesso.
+   ═══════════════════════════════════════════════════════════════════ */
+@font-face{font-family:'Cinzel';font-style:normal;font-weight:400 900;font-display:swap;
+  src:url(data:font/woff;base64,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) format('woff')}
+:root{
+  --hud-font-titoli:'Cinzel','Trajan Pro','Perpetua Titling MT','Sitka Display','Constantia','Palatino Linotype','Hoefler Text','Iowan Old Style','Noto Serif',Georgia,serif;
+  --hud-font-numeri:-apple-system,'Segoe UI Variable Text','Segoe UI',Roboto,'Noto Sans','Helvetica Neue',Arial,sans-serif;
+  /* legno (barra, targhe, scorte): quasi pieno, il contrasto lo fa il fondo e non la scena */
+  --hud-legno-1:rgba(92,58,30,.95); --hud-legno-2:rgba(58,36,18,.95); --hud-legno-3:rgba(30,18,9,.96);
+  --hud-legno-bordo:#120a04; --hud-legno-luce:rgba(255,214,150,.20); --hud-targa:rgba(30,18,9,.88);
+  /* ferro brunito (tasti, fasce, umbone) */
+  --hud-ferro-1:#5d574e; --hud-ferro-2:#3d3933; --hud-ferro-3:#262320;
+  --hud-ferro-bordo:#0d0b09; --hud-ferro-luce:rgba(255,244,220,.24); --hud-ferro-chiodo:#aaa294;
+  /* oro, brace, testo */
+  --hud-oro:#e2b04a; --hud-oro-chiaro:#ffe2a0; --hud-brace:#ff8c28;
+  --hud-testo:#f4e8cc; --hud-testo-2:#cfbf9a; --hud-testo-spento:#90897c;
+  /* pergamena (le carte del vassoio): inchiostro seppia su avorio */
+  --hud-perg-1:#f5e9c6; --hud-perg-2:#e3cf9d; --hud-perg-bordo:#8a5a2b; --hud-perg-bruciato:rgba(122,68,22,.50);
+  --hud-inchiostro:#34230f; --hud-inchiostro-2:#5e3615;
+  --hud-perg-grigia-1:#d2cdc0; --hud-perg-grigia-2:#b5afa1; --hud-inchiostro-grigio:#3b3731;
+  /* ceralacca e pericolo */
+  --hud-cera:#a8241b; --hud-cera-chiara:#e0574b; --hud-cera-scura:#6e120e;
+  --hud-pericolo:#8f1d14; --hud-pericolo-chiaro:#ff9a86;
+  /* i quattro gruppi del cantiere */
+  --hud-g-casa:#5f7d3a; --hud-g-lavoro:#b07a2a; --hud-g-guerra:#9c2f22; --hud-g-mura:#5d6770;
+  /* misure */
+  --hud-tasto-h:58px; --hud-tasto-min:52px; --hud-fisso-w:46px;
+  --hud-barra-h:74px; --hud-barra-su:0px; --hud-dono:60px; --hud-ic:24px;
+  --hud-raggio:6px; --hud-ombra:0 3px 9px rgba(0,0,0,.55);
+  /* cornice della minimappa: legno con squadrette di ferro, 36×36, taglio 12 */
+  --hud-cornice-mappa:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Crect width='36' height='36' fill='%233a2413'/%3E%3Cpath d='M0 3.5h36M0 32.5h36M3.5 0v36M32.5 0v36' stroke='%23603f21' stroke-width='1'/%3E%3Cpath d='M0 8.5h36M0 27.5h36M8.5 0v36M27.5 0v36' stroke='%231a0e06' stroke-width='1'/%3E%3Crect x='.5' y='.5' width='35' height='35' fill='none' stroke='%23120a04'/%3E%3Crect x='11.5' y='11.5' width='13' height='13' fill='none' stroke='%230c0703'/%3E%3Cpath d='M0 0h12v6H6v6H0zM36 0v12h-6V6h-6V0zM0 36V24h6v6h6v6zM36 36H24v-6h6v-6h6z' fill='%234b4740' stroke='%2315120f' stroke-width='1'/%3E%3Ccircle cx='3.5' cy='3.5' r='1.4' fill='%23b0a898'/%3E%3Ccircle cx='32.5' cy='3.5' r='1.4' fill='%23b0a898'/%3E%3Ccircle cx='3.5' cy='32.5' r='1.4' fill='%23b0a898'/%3E%3Ccircle cx='32.5' cy='32.5' r='1.4' fill='%23b0a898'/%3E%3C/svg%3E");
+}
+@media (min-width:700px){
+  :root{ --hud-tasto-h:62px; --hud-tasto-min:66px; --hud-fisso-w:60px;
+    --hud-barra-h:80px; --hud-barra-su:10px; --hud-dono:68px; --hud-ic:26px }
+}
 
-/* ── L'indirizzo. Non e' un'interfaccia, e' un cartello ── */
-#addr{position:absolute;top:calc(10px + env(safe-area-inset-top));left:12px;
-  font-size:11px;font-weight:600;color:var(--dim);letter-spacing:.4px;opacity:.75;
-  text-shadow:0 1px 3px rgba(0,0,0,.8);line-height:1.45}
-#addr b{color:var(--txt);font-weight:700;display:block;font-size:12.5px;letter-spacing:-.1px}
+/* LE ICONE. Due toni: pieno = currentColor, ombra = lo stesso colore al 35%.
+   Il contorno da 1 a giunti tondi ammorbidisce gli spigoli di mezzo punto. */
+#hud .n{font-family:var(--hud-font-numeri);font-weight:700;font-variant-numeric:tabular-nums lining-nums;letter-spacing:0}
+.ic{width:var(--hud-ic);height:var(--hud-ic);display:block;flex:0 0 auto;overflow:visible;pointer-events:none;
+  fill:currentColor;stroke:currentColor;stroke-width:1;stroke-linejoin:round;stroke-linecap:round}
 
-/* ── Le scorte. Prima si vedevano solo al fuoco, perche' il gioco era
-   una passeggiata; ora si comanda, e chi comanda deve sapere sempre
-   quanto ha in magazzino. ── */
-#store{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px;
-  display:flex;flex-direction:column;gap:3px;align-items:flex-end;
-  opacity:1;transition:opacity .35s}
-#store.on{opacity:1}
-#store div{font-size:12px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.85);
-  display:flex;gap:5px;align-items:center}
-#store small{color:var(--dim2);font-size:9.5px;font-weight:600;text-transform:uppercase;
-  letter-spacing:.5px}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:5;color:var(--hud-testo)}
+#hud button{-webkit-appearance:none;appearance:none;margin:0;cursor:pointer}
+#hud button:focus-visible{outline:2px solid var(--hud-oro-chiaro);outline-offset:2px}
 
-/* ── La minimappa: una spia, non una plancia. Ti dice dove sono i
-   quattro della partita e chi marcia; un tocco ci porta lo sguardo. ── */
-#mappa{position:absolute;left:12px;top:calc(50px + env(safe-area-inset-top));
-  width:92px;height:92px;border-radius:12px;pointer-events:auto;cursor:pointer;
-  border:1px solid rgba(243,236,224,.24);background:rgba(16,22,14,.62);
-  box-shadow:0 4px 14px rgba(0,0,0,.35);touch-action:none}
-@media (min-width:700px){ #mappa{width:150px;height:150px} }
+/* ── L'INDIRIZZO: una targa di legno appesa ── */
+#addr{position:absolute;top:calc(48px + env(safe-area-inset-top));left:calc(6px + env(safe-area-inset-left));
+  min-width:106px;max-width:calc(100% - 124px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  padding:5px 10px 6px;border-radius:4px;border:1px solid var(--hud-legno-bordo);
+  background:
+    radial-gradient(circle at 5px 5px,var(--hud-ferro-chiodo) 0 1.2px,#1a120a 1.4px 2.3px,transparent 2.5px),
+    radial-gradient(circle at calc(100% - 5px) 5px,var(--hud-ferro-chiodo) 0 1.2px,#1a120a 1.4px 2.3px,transparent 2.5px),
+    repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0 1px,transparent 1px 4px),
+    linear-gradient(180deg,var(--hud-legno-2),var(--hud-legno-3));
+  box-shadow:inset 0 1px 0 var(--hud-legno-luce),var(--hud-ombra);line-height:1.25}
+#addr b{display:block;font:700 13px/1.2 var(--hud-font-titoli);letter-spacing:.03em;color:var(--hud-oro-chiaro);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px}
+#addr span{display:block;font:600 11px/1.3 var(--hud-font-numeri);color:var(--hud-testo-2);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;padding:0 6px;font-variant-numeric:tabular-nums lining-nums}
 
-/* ── Una riga sola, un secondo, poi sparisce ── */
-#say{position:absolute;left:0;right:0;top:calc(52px + env(safe-area-inset-top));
-  padding-left:110px !important;padding-right:60px !important;
-  text-align:center;font-size:13px;font-weight:600;color:var(--txt);
-  text-shadow:0 2px 8px rgba(0,0,0,.9);opacity:0;transition:opacity .5s;
-  padding:0 24px;line-height:1.5}
-#say.on{opacity:1}
+/* ── LA MINIMAPPA: è un canvas, qui c'è solo la cornice ── */
+#mappa{position:absolute;box-sizing:content-box;left:calc(6px + env(safe-area-inset-left));
+  top:calc(92px + env(safe-area-inset-top));width:92px;height:92px;pointer-events:auto;cursor:pointer;touch-action:none;
+  background:#15241c;border:7px solid #3a2413;border-image:var(--hud-cornice-mappa) 12 / 7px stretch;border-radius:0;
+  box-shadow:0 0 0 1px #0a0603,0 4px 12px rgba(0,0,0,.6)}
 
-/* ── LA BARRA DI COMANDO ───────────────────────────────────────────
-   Il posto di un tempo dei due tasti. Qui non si guida un uomo: si
-   comanda un popolo. Tre pezzi, sempre gli stessi: a sinistra chi
-   scegli con un dito solo (l'eroe, i soldati, gli operai), al centro
-   che cosa sai fare adesso con quello che hai scelto, a destra il
-   dono dell'eroe. Tutto alto 46 px o piu': sotto il pollice sbaglia. */
-#barra{position:absolute;left:0;right:0;bottom:0;pointer-events:auto;
-  padding:6px calc(6px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left));
-  display:flex;gap:6px;align-items:flex-end;
-  background:linear-gradient(to top,rgba(10,8,6,.86) 34%,rgba(10,8,6,0));
+/* ── LE SCORTE. Sul telefono un'asse sola in alto, sei doghe, icona e numero:
+   copre 36 px di mondo invece di una colonna. Da 700 px in su diventa una
+   targa a colonna con i nomi scritti. ── */
+#store{position:absolute;top:calc(6px + env(safe-area-inset-top));
+  left:calc(6px + env(safe-area-inset-left));right:calc(6px + env(safe-area-inset-right));
+  height:36px;display:flex;align-items:stretch;padding:0 9px;border-radius:4px;border:1px solid var(--hud-legno-bordo);
+  background:
+    repeating-linear-gradient(0deg,rgba(0,0,0,.13) 0 1px,transparent 1px 4px,rgba(255,200,130,.035) 4px 5px,transparent 5px 9px),
+    linear-gradient(180deg,var(--hud-legno-1),var(--hud-legno-2) 55%,var(--hud-legno-3));
+  box-shadow:inset 0 1px 0 var(--hud-legno-luce),inset 0 -2px 0 rgba(0,0,0,.4),var(--hud-ombra)}
+#store::before,#store::after{content:"";position:absolute;top:-1px;bottom:-1px;width:7px;border-radius:2px;
+  border:1px solid var(--hud-ferro-bordo);
+  background:
+    radial-gradient(circle at 50% 7px,var(--hud-ferro-chiodo) 0 1.2px,#14110e 1.4px 2.2px,transparent 2.4px),
+    radial-gradient(circle at 50% calc(100% - 7px),var(--hud-ferro-chiodo) 0 1.2px,#14110e 1.4px 2.2px,transparent 2.4px),
+    linear-gradient(90deg,var(--hud-ferro-1),var(--hud-ferro-3))}
+#store::before{left:1px}
+#store::after{right:1px}
+#store div{position:relative;flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:3px}
+#store div+div{border-left:1px solid rgba(0,0,0,.42);box-shadow:-1px 0 0 rgba(255,214,150,.08)}
+#store .ic{width:18px;height:18px;color:var(--hud-oro-chiaro)}
+#store small{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+#store span{font:700 13.5px/1 var(--hud-font-numeri);font-variant-numeric:tabular-nums lining-nums;
+  color:var(--hud-testo);letter-spacing:.01em;text-shadow:0 1px 0 rgba(0,0,0,.6)}
+
+/* ── SUONO E PENNA: due placchette di ferro da 46 ── */
+#zitto,#salva{position:absolute;top:calc(48px + env(safe-area-inset-top));pointer-events:auto;
+  width:46px;height:46px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:var(--hud-raggio);border:1px solid var(--hud-ferro-bordo);color:var(--hud-testo);
+  background:
+    radial-gradient(circle at 5px 5px,var(--hud-ferro-chiodo) 0 1px,#14110e 1.2px 2px,transparent 2.2px),
+    radial-gradient(circle at calc(100% - 5px) calc(100% - 5px),var(--hud-ferro-chiodo) 0 1px,#14110e 1.2px 2px,transparent 2.2px),
+    linear-gradient(180deg,var(--hud-ferro-1),var(--hud-ferro-2) 45%,var(--hud-ferro-3));
+  box-shadow:inset 0 1px 0 var(--hud-ferro-luce),inset 0 -2px 0 rgba(0,0,0,.45),0 2px 0 #0b0907,var(--hud-ombra);
+  transition:transform .09s;touch-action:manipulation}
+#zitto{right:calc(6px + env(safe-area-inset-right))}
+#salva{right:calc(58px + env(safe-area-inset-right))}
+#zitto .ic,#salva .ic{width:22px;height:22px}
+#zitto.muto{color:var(--hud-testo-spento)}
+#zitto:active,#salva:active{transform:translateY(2px)}
+
+/* ── IL MESSAGGIO: un nastro scuro a coda di rondine ── */
+#say{position:absolute;top:calc(101px + env(safe-area-inset-top));left:124px;right:calc(6px + env(safe-area-inset-right));
+  width:-moz-fit-content;width:fit-content;max-width:calc(100% - 136px);margin:0 auto;
+  padding:6px 18px;text-align:center;font:700 12.5px/1.3 var(--hud-font-titoli);letter-spacing:.04em;color:var(--hud-testo);
+  background:linear-gradient(180deg,rgba(226,176,74,.85) 0 1px,transparent 1px calc(100% - 1px),rgba(226,176,74,.85) calc(100% - 1px)),
+    linear-gradient(180deg,rgba(44,27,13,.93),rgba(24,14,7,.93));
+  clip-path:polygon(0 0,100% 0,calc(100% - 8px) 50%,100% 100%,0 100%,8px 50%);
+  opacity:0;transform:translateY(-4px);transition:opacity .3s,transform .3s;pointer-events:none}
+#say:empty{display:none}
+#say.on{opacity:1;transform:none}
+
+/* ═════════════════════ LA BARRA DI COMANDO ═════════════════════
+   Un'asse di legno scuro con una fascia di ferro chiodata sul filo alto.
+   I tasti sono placche di ferro brunito: il contrasto dell'etichetta lo
+   garantisce la placca, non la scena che c'è dietro. Tre pezzi, sempre
+   gli stessi: a sinistra chi scegli con un dito solo, al centro cosa sai
+   fare adesso (scorre), a destra il dono dell'eroe. */
+#barra{position:absolute;left:0;right:0;bottom:var(--hud-barra-su);pointer-events:auto;
+  display:flex;align-items:flex-end;gap:4px;
+  padding:9px calc(3px + env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) calc(3px + env(safe-area-inset-left));
+  border-top:1px solid var(--hud-legno-bordo);
+  background:
+    repeating-linear-gradient(0deg,rgba(0,0,0,.13) 0 1px,transparent 1px 4px,rgba(255,200,130,.035) 4px 5px,transparent 5px 9px),
+    repeating-linear-gradient(90deg,transparent 0 139px,rgba(0,0,0,.30) 139px 140px,rgba(255,214,150,.06) 140px 141px),
+    linear-gradient(180deg,var(--hud-legno-1),var(--hud-legno-2) 50%,var(--hud-legno-3));
+  box-shadow:0 -5px 16px rgba(0,0,0,.45);
   touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-.bt{flex:0 0 auto;min-width:46px;height:50px;border-radius:13px;padding:0 6px;
-  border:1.5px solid rgba(243,236,224,.26);background:rgba(28,23,17,.72);
-  color:var(--txt);font:800 9px/1.1 inherit;letter-spacing:.3px;text-transform:uppercase;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  backdrop-filter:blur(3px);transition:transform .07s,background .12s,opacity .18s;
-  touch-action:none;cursor:pointer;white-space:nowrap}
-.bt i{font-style:normal;font-size:18px;line-height:1}
-.bt:active{transform:scale(.94);background:rgba(224,164,74,.34)}
-.bt.on{border-color:#e0a44a;background:rgba(224,164,74,.28)}
-.bt.spento{opacity:.3}
-#bsx{display:flex;gap:5px;flex:0 0 auto}
-#bcentro{flex:1 1 auto;min-width:0;display:flex;align-items:flex-end}
-/* Chi hai in mano adesso: una riga sopra la barra, larga tutto lo
-   schermo. In mezzo ai tasti veniva schiacciata a tre parole. */
-#bsel{position:absolute;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));
-  text-align:center;font-size:11.5px;font-weight:700;color:var(--txt);
-  text-shadow:0 1px 4px #000,0 0 12px rgba(0,0,0,.8);padding:0 10px;line-height:1.3;
-  pointer-events:none}
-#bsel em{font-style:normal;color:#b8c9d2;font-weight:600}
-#bcmd{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;width:100%}
+/* la fascia di ferro battuto, con un chiodo ogni 28 px */
+#barra::before{content:"";position:absolute;left:0;right:0;top:0;height:5px;pointer-events:none;
+  background:
+    radial-gradient(circle at 14px 2.5px,var(--hud-ferro-chiodo) 0 1px,#14110e 1.2px 1.9px,transparent 2.1px) 0 0/28px 5px repeat-x,
+    linear-gradient(180deg,var(--hud-ferro-1),var(--hud-ferro-3));
+  box-shadow:0 1px 0 rgba(0,0,0,.55)}
+
+.bt{position:relative;flex:0 0 auto;min-width:var(--hud-tasto-min);height:var(--hud-tasto-h);padding:6px 4px;
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  border:1px solid var(--hud-ferro-bordo);border-radius:var(--hud-raggio);color:var(--hud-testo);
+  font:700 10.5px/1 var(--hud-font-titoli);letter-spacing:.01em;white-space:nowrap;
+  background:
+    radial-gradient(circle at 4.5px 4.5px,var(--hud-ferro-chiodo) 0 .9px,#14110e 1.1px 1.9px,transparent 2.1px),
+    radial-gradient(circle at calc(100% - 4.5px) 4.5px,var(--hud-ferro-chiodo) 0 .9px,#14110e 1.1px 1.9px,transparent 2.1px),
+    repeating-linear-gradient(115deg,rgba(255,255,255,.028) 0 2px,transparent 2px 5px),
+    linear-gradient(180deg,var(--hud-ferro-1) 0,var(--hud-ferro-2) 46%,var(--hud-ferro-3) 100%);
+  box-shadow:inset 0 1px 0 var(--hud-ferro-luce),inset 0 -2px 0 rgba(0,0,0,.45),0 2px 0 #0b0907,0 3px 6px rgba(0,0,0,.5);
+  text-shadow:0 1px 0 rgba(0,0,0,.7);transition:transform .09s,box-shadow .09s,color .15s;touch-action:none}
+.bt i{display:block;font-style:normal;line-height:0}
+.bt:active{transform:translateY(2px);box-shadow:inset 0 2px 5px rgba(0,0,0,.6),0 0 0 #0b0907,0 1px 2px rgba(0,0,0,.5)}
+/* acceso: cornice d'ottone, brace che sale dal basso, tasto premuto di un punto */
+.bt.on{color:var(--hud-oro-chiaro);border-color:#5a3d0e;transform:translateY(1px);
+  background:linear-gradient(0deg,rgba(255,140,40,.34),rgba(255,140,40,0) 62%),
+    linear-gradient(180deg,#4d463b 0,#34302a 46%,var(--hud-ferro-3) 100%);
+  box-shadow:inset 0 0 0 1.5px var(--hud-oro),inset 0 3px 6px rgba(0,0,0,.55),0 1px 0 #0b0907,0 0 12px rgba(255,140,40,.38)}
+.bt.on::after{content:"";position:absolute;left:9px;right:9px;bottom:-1px;height:2px;border-radius:2px;
+  background:var(--hud-brace);box-shadow:0 0 6px var(--hud-brace)}
+.bt.spento{color:var(--hud-testo-spento);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 1px 0 #0b0907}
+.bt.spento .ic{opacity:.5}
+
+/* i tre tasti fissi: una sola lamiera divisa in tre da due scanalature */
+#bsx{display:flex;flex:0 0 auto}
+#bsx .bt{min-width:0;width:var(--hud-fisso-w);padding-left:1px;padding-right:1px;border-radius:0}
+#bsx .bt:first-child{border-radius:var(--hud-raggio) 0 0 var(--hud-raggio)}
+#bsx .bt:last-child{border-radius:0 var(--hud-raggio) var(--hud-raggio) 0}
+#bsx .bt+.bt{margin-left:-1px}
+
+/* i comandi: scorrono col dito, e a destra sfumano finché c'è altro da vedere */
+#bcentro{position:relative;flex:1 1 auto;min-width:0;display:flex;align-items:flex-end}
+#bcmd{display:flex;gap:4px;width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+  padding:0 1px 4px;margin-bottom:-4px;touch-action:pan-x;overscroll-behavior-x:contain;
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 14px),transparent);
+          mask-image:linear-gradient(90deg,#000 calc(100% - 14px),transparent)}
 #bcmd::-webkit-scrollbar{display:none}
-#bdono{flex:0 0 auto;width:62px;height:62px;border-radius:50%;
-  border:2px solid rgba(224,164,74,.5);background:rgba(30,24,17,.62);
-  color:var(--txt);display:flex;flex-direction:column;align-items:center;justify-content:center;
-  font:800 8.5px/1.05 inherit;letter-spacing:0;gap:1px;
-  backdrop-filter:blur(3px);touch-action:none;cursor:pointer;position:relative;overflow:hidden;
-  text-align:center;padding:0 2px}
-#bdono span{max-width:60px;overflow:hidden;white-space:nowrap}
-#bdono i{font-style:normal;font-size:21px;line-height:1}
-#bdono:active{transform:scale(.94)}
-#bdono.pronto{border-color:#ff9d3c;box-shadow:0 0 18px rgba(255,140,40,.45)}
-#bdono .ric{position:absolute;left:0;right:0;bottom:0;background:rgba(10,8,6,.72);
-  pointer-events:none;height:0%}
-/* il vassoio: edifici da costruire, unita' da addestrare. Sale dalla barra,
-   scorre col dito, si chiude toccando fuori. Non e' un menu: e' la barra
-   che si allunga di una riga. */
-#vassoio{position:absolute;left:0;right:0;bottom:calc(84px + env(safe-area-inset-bottom));
-  display:none;flex-direction:column;gap:4px;padding:6px 10px;
-  pointer-events:auto;background:linear-gradient(to top,rgba(10,8,6,.55),rgba(10,8,6,0))}
-#vassoio.on{display:flex}
-.vriga{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;touch-action:pan-x;padding-bottom:2px}
+#bcmd .bt{touch-action:pan-x}
+#bcmd.fine{-webkit-mask-image:none;mask-image:none}
+/* la freccetta d'oro: "di là ce n'è ancora" */
+#bcentro::after{content:"";position:absolute;right:1px;top:50%;width:7px;height:7px;margin-top:-6px;pointer-events:none;
+  border-top:2px solid var(--hud-oro-chiaro);border-right:2px solid var(--hud-oro-chiaro);
+  transform:rotate(45deg);filter:drop-shadow(0 1px 1px #000);opacity:.95;transition:opacity .2s}
+#bcentro.fine::after{opacity:0}
+
+/* ── IL DONO: scudo tondo di legno e ferro, con l'umbone al centro ── */
+#bdono{position:relative;flex:0 0 var(--hud-dono);width:var(--hud-dono);height:var(--hud-dono);
+  margin-top:-14px;margin-bottom:-1px;padding:0;overflow:hidden;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  border:5px solid;border-color:#77716a #46423c #2a2724 #57524a;color:var(--hud-testo);
+  font:700 10.5px/1 var(--hud-font-titoli);
+  background:
+    radial-gradient(circle at 18% 50%,var(--hud-ferro-chiodo) 0 1.1px,#120c07 1.3px 2.1px,transparent 2.3px),
+    radial-gradient(circle at 82% 50%,var(--hud-ferro-chiodo) 0 1.1px,#120c07 1.3px 2.1px,transparent 2.3px),
+    repeating-linear-gradient(90deg,rgba(0,0,0,.5) 0 1px,rgba(255,214,150,.07) 1px 2px,transparent 2px 11px),
+    linear-gradient(180deg,#7a5230,#452a15 60%,#2e1b0d);
+  box-shadow:0 0 0 1px var(--hud-ferro-bordo),inset 0 0 0 1px var(--hud-ferro-bordo),0 4px 10px rgba(0,0,0,.6);
+  transition:transform .09s;touch-action:none}
+/* il dono sporge sopra l'asse: la regola #hud button{margin:0} è più forte di #bdono */
+#hud #bdono{margin-top:-14px;margin-bottom:-1px}
+#bdono::before{content:"";position:absolute;left:50%;top:2px;width:34px;height:34px;margin-left:-17px;border-radius:50%;
+  background:radial-gradient(circle at 38% 30%,#928b7f 0,#56514a 42%,#23201d 100%);
+  box-shadow:0 0 0 1px var(--hud-ferro-bordo),0 2px 3px rgba(0,0,0,.6)}
+#bdono i{position:relative;z-index:2;display:block;font-style:normal;line-height:0;margin-top:-3px}
+#bdono i .ic{width:22px;height:22px}
+#bdono span:not(.ric){position:relative;z-index:2;max-width:100%;padding:1px 4px 2px;border-radius:2px;
+  background:rgba(20,12,6,.80);white-space:nowrap;letter-spacing:.01em;text-shadow:0 1px 0 #000}
+#bdono:not(.pronto) span:not(.ric){font:700 13px/1 var(--hud-font-numeri);font-variant-numeric:tabular-nums lining-nums}
+#bdono:not(.pronto) i{opacity:.6}
+#bdono .ric{position:absolute;z-index:1;left:0;right:0;bottom:0;height:0%;pointer-events:none;
+  background:rgba(8,6,4,.72);border-top:1px solid rgba(255,140,40,.6)}
+#bdono.pronto .ric{border-top:0}
+#bdono:active{transform:scale(.95)}
+#bdono.pronto{border-color:#f5cf72 #c8922e #8a5f1c #dba945;color:var(--hud-oro-chiaro);animation:hud-dono 2.4s ease-out infinite}
+@keyframes hud-dono{
+  0%{box-shadow:0 0 0 1px var(--hud-ferro-bordo),inset 0 0 0 1px var(--hud-ferro-bordo),0 4px 10px rgba(0,0,0,.6),0 0 14px 1px rgba(255,140,40,.55),0 0 0 0 rgba(255,150,50,.65)}
+  70%,100%{box-shadow:0 0 0 1px var(--hud-ferro-bordo),inset 0 0 0 1px var(--hud-ferro-bordo),0 4px 10px rgba(0,0,0,.6),0 0 14px 1px rgba(255,140,40,.55),0 0 0 10px rgba(255,150,50,0)}
+}
+
+/* ── CHI HAI IN MANO: una targhetta tra la barra e il vassoio ── */
+#bsel{position:absolute;left:0;right:0;pointer-events:none;
+  bottom:calc(var(--hud-barra-h) + var(--hud-barra-su) + env(safe-area-inset-bottom) + 5px);
+  width:-moz-fit-content;width:fit-content;max-width:calc(100% - 96px);margin:0 auto;padding:4px 14px 5px;
+  text-align:center;font:600 11.5px/1.25 var(--hud-font-numeri);color:var(--hud-testo);
+  border-radius:3px;border:1px solid rgba(226,176,74,.45);background:var(--hud-targa);box-shadow:0 2px 6px rgba(0,0,0,.5)}
+#bsel:empty{display:none}
+#bsel b{font:700 12px/1.25 var(--hud-font-titoli);letter-spacing:.03em;color:var(--hud-oro-chiaro)}
+#bsel em{font-style:normal;color:var(--hud-testo-2)}
+
+/* ═════════════════════ IL VASSOIO ═════════════════════
+   Sale dalla barra quando si tocca Costruisci, un edificio, l'eroe o il
+   foro. Niente pannello: un velo scuro che sfuma verso l'alto e, sopra,
+   carte di pergamena. Qui il testo è inchiostro su avorio: la carta porta
+   il suo contrasto anche sulla neve e sul deserto. */
+#vassoio{position:absolute;left:0;right:0;display:none;pointer-events:auto;touch-action:none;
+  bottom:calc(var(--hud-barra-h) + var(--hud-barra-su) + env(safe-area-inset-bottom) + 34px);
+  grid-template-columns:minmax(0,1fr) auto;align-items:end;column-gap:6px;row-gap:5px;
+  padding:16px calc(6px + env(safe-area-inset-right)) 6px calc(6px + env(safe-area-inset-left));
+  background:linear-gradient(to top,rgba(12,8,4,.66),rgba(12,8,4,.40) 62%,rgba(12,8,4,0))}
+#vassoio.on{display:grid;animation:hud-sale .18s ease-out}
+@keyframes hud-sale{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.vtit{grid-column:1;justify-self:start;max-width:100%;min-width:0;padding:5px 10px 6px;border-radius:3px;
+  font:600 11.5px/1.3 var(--hud-font-numeri);color:var(--hud-testo-2);
+  border:1px solid rgba(226,176,74,.45);background:var(--hud-targa);box-shadow:0 2px 6px rgba(0,0,0,.45)}
+.vtit b{font:700 13px/1.2 var(--hud-font-titoli);letter-spacing:.03em;color:var(--hud-oro-chiaro)}
+.vtit em{font-style:normal;color:var(--hud-testo)}
+
+/* le linguette dei gruppi: saltano al gruppo, quella accesa dice dove sei */
+.vgr{grid-column:2;display:flex;gap:2px}
+.vg{position:relative;width:46px;height:32px;padding:0;display:flex;align-items:center;justify-content:center;gap:5px;
+  border:1px solid var(--hud-ferro-bordo);border-bottom:3px solid var(--g,var(--hud-oro));border-radius:4px 4px 0 0;
+  color:var(--hud-testo);font:700 11px/1 var(--hud-font-titoli);letter-spacing:.03em;
+  background:linear-gradient(180deg,var(--hud-ferro-1),var(--hud-ferro-3));
+  box-shadow:inset 0 1px 0 var(--hud-ferro-luce);touch-action:manipulation}
+.vg::after{content:"";position:absolute;left:0;right:0;top:-14px;bottom:0}   /* il dito ne prende 46 */
+.vg .ic{width:18px;height:18px}
+.vg span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.vg.on{color:var(--hud-oro-chiaro);background:linear-gradient(180deg,#4d463b,#2b2622);box-shadow:inset 0 0 0 1px var(--hud-oro)}
+[data-g="casa"]{--g:var(--hud-g-casa)}
+[data-g="lavoro"]{--g:var(--hud-g-lavoro)}
+[data-g="guerra"]{--g:var(--hud-g-guerra)}
+[data-g="mura"]{--g:var(--hud-g-mura)}
+
+.vriga{grid-column:1/-1;position:relative;display:flex;align-items:stretch;gap:6px;min-width:0;
+  overflow-x:auto;overflow-y:hidden;scrollbar-width:none;touch-action:pan-x;overscroll-behavior-x:contain;padding:6px 2px 7px;
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent);
+          mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent)}
 .vriga::-webkit-scrollbar{display:none}
-.vc{flex:0 0 auto;min-width:76px;max-width:128px;min-height:62px;border-radius:12px;padding:5px 8px;
-  border:1.5px solid rgba(243,236,224,.24);background:rgba(24,20,15,.9);
-  color:var(--txt);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  font:800 9.5px/1.15 inherit;text-align:center;cursor:pointer;touch-action:none}
-.vc i{font-style:normal;font-size:17px;line-height:1}
-.vc b{font-size:8.5px;font-weight:700;color:#c8a94a;letter-spacing:.2px}
-.vc.caro{opacity:.42}
-.vc.su{border-color:rgba(224,164,74,.6)}
-.vc:active{transform:scale(.95);background:rgba(224,164,74,.3)}
-/* il titolo della scheda: chi sei e a che livello, prima delle carte */
-.vtit{font-size:11.5px;color:var(--txt);padding:2px 2px 0;
-  text-shadow:0 1px 4px #000;line-height:1.35}
-.vtit b{font-weight:800}
-.vtit em{font-style:normal;color:#b8c9d2;font-weight:600}
+.vriga.fine{-webkit-mask-image:none;mask-image:none}
+
+/* il paletto del gruppo: resta attaccato a sinistra mentre scorri */
+.vsep{position:sticky;left:0;z-index:3;flex:0 0 26px;display:flex;align-items:center;justify-content:center;
+  border-radius:3px;border:1px solid var(--hud-legno-bordo);border-top:4px solid var(--g);
+  background:repeating-linear-gradient(90deg,rgba(0,0,0,.14) 0 1px,transparent 1px 4px),linear-gradient(90deg,#4a2f18,#2a190c);
+  box-shadow:inset 1px 0 0 var(--hud-legno-luce),2px 0 6px rgba(0,0,0,.55)}
+.vsep span{writing-mode:vertical-rl;transform:rotate(180deg);font:700 10.5px/1 var(--hud-font-titoli);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--hud-testo);white-space:nowrap}
+
+/* la carta di pergamena */
+.vc{position:relative;flex:0 0 auto;min-width:86px;max-width:132px;min-height:90px;padding:7px;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;text-align:center;
+  font:700 11.5px/1.15 var(--hud-font-titoli);letter-spacing:.01em;color:var(--hud-inchiostro);
+  border:1px solid var(--hud-perg-bordo);border-radius:4px 6px 5px 7px;
+  background:
+    radial-gradient(ellipse at 22% 12%,rgba(255,255,255,.42),transparent 55%),
+    radial-gradient(ellipse at 88% 92%,rgba(150,95,40,.24),transparent 52%),
+    linear-gradient(170deg,var(--hud-perg-1),var(--hud-perg-2));
+  box-shadow:inset 0 0 0 1px rgba(255,250,230,.42),inset 0 0 12px var(--hud-perg-bruciato),0 2px 0 #3d2610,0 4px 9px rgba(0,0,0,.5);
+  transition:transform .09s,box-shadow .09s;touch-action:pan-x}
+.vc[data-g]{border-top:3px solid var(--g)}
+.vc i{display:block;font-style:normal;line-height:0;margin-bottom:1px;color:var(--hud-inchiostro)}
+.vc i .ic{width:28px;height:28px}
+.vc b{display:block;margin-top:auto;padding-top:3px;max-width:118px;
+  font:700 11px/1.2 var(--hud-font-numeri);font-variant-numeric:tabular-nums lining-nums;letter-spacing:0;
+  color:var(--hud-inchiostro-2);border-top:1px solid rgba(94,54,21,.28);align-self:stretch}
+.vc:active{transform:translateY(2px);
+  box-shadow:inset 0 0 0 1px rgba(255,250,230,.42),inset 0 0 14px var(--hud-perg-bruciato),0 0 0 #3d2610,0 1px 3px rgba(0,0,0,.5)}
+/* .caro — pergamena ingrigita, il costo che manca in rosso */
+.vc.caro{color:var(--hud-inchiostro-grigio);border-color:#6f6a60;
+  background:radial-gradient(ellipse at 22% 12%,rgba(255,255,255,.28),transparent 55%),
+    linear-gradient(170deg,var(--hud-perg-grigia-1),var(--hud-perg-grigia-2));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),inset 0 0 12px rgba(60,55,48,.35),0 2px 0 #2a2622,0 3px 7px rgba(0,0,0,.45)}
+.vc.caro i{color:var(--hud-inchiostro-grigio);opacity:.72}
+.vc.caro b{color:var(--hud-pericolo);border-top-color:rgba(60,55,48,.3)}
+/* .chiusa — non è questione di soldi: serve il foro. Il costo diventa un sigillo */
+.vc.chiusa b{align-self:center;margin-top:auto;padding:2px 7px;border:1.5px solid currentColor;border-radius:3px;
+  font:700 10.5px/1.1 var(--hud-font-titoli);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--hud-cera-scura);transform:rotate(-4deg);box-shadow:inset 0 0 0 1px rgba(110,18,14,.25)}
+/* .su — il miglioramento: nastro e ceralacca rossa, filo d'oro */
+.vc.su{border-color:var(--hud-cera-scura);padding-left:22px;
+  box-shadow:inset 0 0 0 1px rgba(255,250,230,.42),inset 0 0 12px var(--hud-perg-bruciato),0 0 0 2px var(--hud-oro),0 2px 0 2px #3d2610,0 5px 12px rgba(0,0,0,.55)}
+.vc.su::before{content:"";position:absolute;left:6px;top:-4px;width:12px;height:38px;
+  background:linear-gradient(90deg,var(--hud-cera-chiara),var(--hud-cera) 45%,var(--hud-cera-scura));
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 80%,0 100%)}
+.vc.su::after{content:"";position:absolute;left:3px;top:30px;width:18px;height:18px;border-radius:50%;
+  background:radial-gradient(circle at 36% 30%,var(--hud-cera-chiara) 0,var(--hud-cera) 50%,var(--hud-cera-scura) 100%);
+  box-shadow:inset 0 0 0 2.5px rgba(110,18,14,.55),0 1px 2px rgba(0,0,0,.55)}
+.vc.su b{color:var(--hud-cera-scura)}
+/* .info — un cartiglio da leggere: pergamena col bordo tratteggiato, non si alza né si abbassa */
+.vc.info{cursor:default;border-style:dashed;
+  box-shadow:inset 0 0 0 1px rgba(255,250,230,.42),inset 0 0 12px var(--hud-perg-bruciato)}
+.vc.info:active,.vc.info:hover{transform:none}
 
 /* ── La manina del primo avvio: l'unico insegnamento del gioco ── */
+/* l'animazione anima anche l'opacità: accesa sempre, la teneva visibile
+   da spenta, piantata nell'angolo in alto a sinistra. Pulsa solo se serve. */
 #manina{position:absolute;width:54px;height:54px;border-radius:50%;
-  border:2px solid rgba(243,236,224,.85);pointer-events:none;opacity:0;
-  transition:opacity .6s;animation:pulsa 1.6s infinite ease-in-out}
-#manina.on{opacity:.9}
+  border:2px solid rgba(243,236,224,.85);pointer-events:none;opacity:0;visibility:hidden;
+  transition:opacity .6s}
+#manina.on{opacity:.9;visibility:visible;animation:pulsa 1.6s infinite ease-in-out}
 @keyframes pulsa{0%,100%{transform:scale(1);opacity:.35}50%{transform:scale(1.28);opacity:.9}}
 
-/* ── Il simbolo del salvataggio, al fuoco ── */
-/* Il suono si taglia con un glifo, non con un pannello di cursori. */
-#zitto{position:absolute;right:12px;top:calc(112px + env(safe-area-inset-top));
-  pointer-events:auto;width:40px;height:40px;border-radius:11px;
-  border:1px solid rgba(243,236,224,.22);background:rgba(30,24,17,.5);
-  display:flex;align-items:center;justify-content:center;font-size:16px;opacity:.7}
-#zitto.muto{opacity:.4}
-#salva{position:absolute;right:12px;top:calc(158px + env(safe-area-inset-top));
-  pointer-events:auto;width:40px;height:40px;border-radius:11px;
-  border:1px solid rgba(243,236,224,.22);background:rgba(30,24,17,.5);
-  display:flex;align-items:center;justify-content:center;font-size:17px;opacity:.7}
-#salva.on{display:flex}
+/* ═════════════════════ TABLET E PC ═════════════════════ */
+@media (min-width:700px){
+  #addr{top:calc(12px + env(safe-area-inset-top));left:calc(12px + env(safe-area-inset-left));min-width:168px;max-width:240px;padding:7px 12px 8px}
+  #addr b{font-size:15px}
+  #addr span{font-size:12px}
+  #mappa{left:calc(12px + env(safe-area-inset-left));top:calc(66px + env(safe-area-inset-top));width:150px;height:150px;
+    border-width:9px;border-image:var(--hud-cornice-mappa) 12 / 9px stretch}
+  #store{left:auto;right:calc(12px + env(safe-area-inset-right));top:calc(12px + env(safe-area-inset-top));
+    width:178px;height:auto;flex-direction:column;padding:11px 10px}
+  #store::before,#store::after{left:-1px;right:-1px;width:auto;height:7px;top:auto;bottom:auto;
+    background:
+      radial-gradient(circle at 8px 50%,var(--hud-ferro-chiodo) 0 1.2px,#14110e 1.4px 2.2px,transparent 2.4px),
+      radial-gradient(circle at calc(100% - 8px) 50%,var(--hud-ferro-chiodo) 0 1.2px,#14110e 1.4px 2.2px,transparent 2.4px),
+      linear-gradient(180deg,var(--hud-ferro-1),var(--hud-ferro-3))}
+  #store::before{top:1px}
+  #store::after{bottom:1px}
+  #store div{flex:0 0 28px;justify-content:flex-start;gap:8px}
+  #store div+div{border-left:0;border-top:1px solid rgba(0,0,0,.42);box-shadow:0 -1px 0 rgba(255,214,150,.08)}
+  #store .ic{width:20px;height:20px}
+  #store small{position:static;width:auto;height:auto;overflow:visible;clip-path:none;flex:1 1 auto;
+    font:700 11px/1 var(--hud-font-titoli);letter-spacing:.04em;color:var(--hud-testo-2);text-align:left}
+  #store span{font-size:15px}
+  #zitto,#salva{top:calc(234px + env(safe-area-inset-top))}
+  #zitto{right:calc(12px + env(safe-area-inset-right))}
+  #salva{right:calc(64px + env(safe-area-inset-right))}
+  /* sotto la targa dell'indirizzo, non accanto: su tablet un messaggio a due righe la copriva */
+  #say{top:calc(72px + env(safe-area-inset-top));left:204px;right:204px;max-width:calc(100% - 408px);font-size:13.5px;padding:8px 24px}
+  #barra{left:calc(10px + env(safe-area-inset-left));right:calc(10px + env(safe-area-inset-right));
+    bottom:calc(var(--hud-barra-su) + env(safe-area-inset-bottom));max-width:820px;margin:0 auto;gap:8px;padding:11px 12px 8px;
+    border:1px solid var(--hud-legno-bordo);border-radius:7px;box-shadow:0 6px 20px rgba(0,0,0,.6)}
+  #barra::before{border-radius:6px 6px 0 0}
+  .bt{font-size:11.5px;padding:7px 8px}
+  #bsx .bt{padding-left:2px;padding-right:2px}
+  #bcmd{gap:6px}
+  #bcentro{padding-left:12px}
+  /* sul largo c'è posto per una fascia di ferro verticale tra i fissi e i comandi */
+  #bcentro::before{content:"";position:absolute;left:0;top:-6px;bottom:-8px;width:6px;border-radius:1px;
+    border:1px solid var(--hud-ferro-bordo);background:linear-gradient(90deg,var(--hud-ferro-1),var(--hud-ferro-3))}
+  #bdono{font-size:11.5px}
+  #hud #bdono{margin-top:-18px}
+  #bdono::before{width:38px;height:38px;margin-left:-19px;top:3px}
+  #bdono i .ic{width:24px;height:24px}
+  #bsel{font-size:12.5px}
+  #bsel b{font-size:13.5px}
+  #vassoio{left:calc(10px + env(safe-area-inset-left));right:calc(10px + env(safe-area-inset-right));max-width:820px;margin:0 auto;padding:18px 10px 8px;border-radius:8px 8px 0 0;
+    bottom:calc(var(--hud-barra-h) + var(--hud-barra-su) + env(safe-area-inset-bottom) + 38px)}
+  .vtit{font-size:12.5px}
+  .vtit b{font-size:15px}
+  .vg{width:auto;padding:0 12px 0 9px}
+  .vg span{position:static;width:auto;height:auto;overflow:visible;clip-path:none}
+  .vriga{gap:8px}
+  .vc{min-width:98px;max-width:150px;min-height:100px;font-size:12.5px;padding:9px 9px 8px}
+  .vc i .ic{width:32px;height:32px}
+  .vc b{font-size:11.5px;max-width:132px}
+  .vsep{flex-basis:28px}
+  .vsep span{font-size:11px}
+}
+@media (hover:hover) and (pointer:fine){
+  .bt:hover,#zitto:hover,#salva:hover,.vg:hover{filter:brightness(1.14)}
+  .vc:hover{transform:translateY(-2px)}
+  #bdono:hover{filter:brightness(1.1)}
+}
+@media (prefers-reduced-motion:reduce){
+  #hud *,#hud *::before,#hud *::after{animation:none !important;transition:none !important}
+  #bdono.pronto{box-shadow:0 0 0 1px var(--hud-ferro-bordo),inset 0 0 0 1px var(--hud-ferro-bordo),0 4px 10px rgba(0,0,0,.6),0 0 14px 2px rgba(255,140,40,.7)}
+}
 
 /* ── L'unica finestra del gioco: il codice del villaggio ── */
 /* ── La porta d'ingresso ─────────────────────────────────────────────
@@ -272,16 +559,12 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
   background:#2a2118;border:1px solid #3d2f21;color:var(--txt)}
 #foglio button.forte{background:var(--ac);color:#241601;border-color:var(--ac)}
 
-@media (min-width:900px){
-  #barra{max-width:820px;margin:0 auto;left:0;right:0}
-  #bdono{width:66px;height:66px}
-  #addr{font-size:12px}
-}
 @media (hover:hover) and (pointer:fine){
-  .bt:hover,.vc:hover{background:rgba(224,164,74,.22)}
   #foglio button:hover{filter:brightness(1.12)}
 }
 @media (prefers-reduced-motion:reduce){#manina{animation:none}}
+/* i titoli della porta e della caduta parlano con la stessa voce del menu */
+#ptitolo h1,#pcorpo h2,#caduta h2{font-family:var(--hud-font-titoli);font-weight:700;letter-spacing:.01em}
 </style>
 </head>
 <body>
@@ -289,23 +572,279 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
 <canvas id="gl"></canvas>
 <canvas id="cv"></canvas>
 
+<!-- Le icone del menu: griglia 24x24, pieno = currentColor, ombra = opacity .35. -->
+<svg id="hud-icone" xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <symbol id="i-eroe" viewBox="0 0 24 24">
+    <path opacity=".35" d="M4.5 18.5h15V21h-15z"/>
+    <path d="M4.5 16.5 3.5 8.5 8.2 12.1 12 5.5 15.8 12.1 20.5 8.5 19.5 16.5z"/>
+    <circle cx="3.5" cy="7" r="1"/><circle cx="12" cy="4" r="1"/><circle cx="20.5" cy="7" r="1"/>
+  </symbol>
+  <symbol id="i-armati" viewBox="0 0 24 24">
+    <g opacity=".35"><path d="M3 3 4.15 5.85 15.65 17.35 17.35 15.65 5.85 4.15z"/><path fill="none" stroke-width="2" d="M19.5 14.5 14.5 19.5M17.6 17.6 20 20"/><circle cx="20.6" cy="20.6" r="1"/></g>
+    <path d="M21 3 19.85 5.85 8.35 17.35 6.65 15.65 18.15 4.15z"/><path fill="none" stroke-width="2" d="M4.5 14.5 9.5 19.5M6.4 17.6 4 20"/><circle cx="3.4" cy="20.6" r="1"/>
+  </symbol>
+  <symbol id="i-gente" viewBox="0 0 24 24">
+    <g transform="rotate(-35 12 12)"><path opacity=".35" d="M11 6h2v15.5h-2z"/><path d="M2.5 10C6 4.5 18 4.5 21.5 10 17 7.2 7 7.2 2.5 10z"/></g>
+  </symbol>
+  <symbol id="i-costruisci" viewBox="0 0 24 24">
+    <g transform="rotate(40 12 12)"><path opacity=".35" d="M11 11h2v10.5h-2z"/><path d="M5 5.5h10.5L19 7.5V9l-3.5 2H5z"/></g>
+  </symbol>
+  <symbol id="i-borgo" viewBox="0 0 24 24">
+    <path opacity=".35" fill="none" stroke-width="2.6" d="M4.5 17.5 19.5 20.5M19.5 17.5 4.5 20.5"/>
+    <path d="M12 2.5c.8 3 4.5 5 4.5 9.2a4.5 4.5 0 0 1-9 0c0-2 .9-3.2 1.8-4.4.3 1.4.9 2.2 1.6 2.5C10.5 7.2 11 4.8 12 2.5z"/>
+  </symbol>
+  <symbol id="i-fermi" viewBox="0 0 24 24">
+    <circle opacity=".35" cx="12" cy="12" r="9.5"/>
+    <path d="M7.6 6h1.2v7.5H7.6zM10.5 4.5h1.2v9h-1.2zM13.4 5.5h1.2v8h-1.2zM16.3 7.5h1.2v6h-1.2z"/>
+    <path d="M7.6 13.5h9.9V16c0 2.8-2 4.5-5 4.5S7.6 18.800 7.600 16z"/>
+    <path d="M7.6 16.5 5 13.2c-.6-.8.5-1.8 1.300-1.100L7.600 13.500z"/>
+  </symbol>
+  <symbol id="i-alfuoco" viewBox="0 0 24 24">
+    <path opacity=".35" d="M6 15h12v6.5H6z"/>
+    <path opacity=".35" fill="none" stroke-width="1.6" d="M16.8 6c-1.300-1 1.300-1.900 0-3.200"/>
+    <path d="M3 13.5 12 6.500 21 13.500z"/><path d="M15.5 8H18v4h-2.500z"/><path d="M10.5 17h3v4.500h-3z"/>
+  </symbol>
+  <symbol id="i-arma" viewBox="0 0 24 24">
+    <path opacity=".35" d="M12 2 14.500 5.500V14H12z"/><path opacity=".35" d="M11 18.500h2v1h-2z"/>
+    <path d="M12 2 9.500 5.500V14H12z"/><path d="M7.500 15.500h9V17h-9z"/><circle cx="12" cy="20.800" r="1"/>
+  </symbol>
+  <symbol id="i-linea" viewBox="0 0 24 24">
+    <path opacity=".35" d="M3 16.500h18v.600H3z"/>
+    <circle cx="4" cy="11" r="1.400"/><circle cx="8" cy="11" r="1.400"/><circle cx="12" cy="11" r="1.400"/><circle cx="16" cy="11" r="1.400"/><circle cx="20" cy="11" r="1.400"/>
+  </symbol>
+  <symbol id="i-fronte" viewBox="0 0 24 24">
+    <g opacity=".35"><circle cx="5" cy="15.500" r="1.500"/><circle cx="9.700" cy="15.500" r="1.500"/><circle cx="14.300" cy="15.500" r="1.500"/><circle cx="19" cy="15.500" r="1.500"/></g>
+    <circle cx="5" cy="8.500" r="1.500"/><circle cx="9.700" cy="8.500" r="1.500"/><circle cx="14.300" cy="8.500" r="1.500"/><circle cx="19" cy="8.500" r="1.500"/>
+  </symbol>
+  <symbol id="i-blocco" viewBox="0 0 24 24">
+    <path opacity=".35" d="M10.300 10.300h3.400v3.400h-3.400z"/>
+    <path d="M4.500 4.500h3.400v3.400H4.500zM10.300 4.500h3.400v3.400h-3.400zM16.100 4.500h3.400v3.400h-3.400zM4.500 10.300h3.400v3.400H4.500zM16.100 10.300h3.400v3.400h-3.400zM4.500 16.100h3.400v3.400H4.500zM10.300 16.100h3.400v3.400h-3.400zM16.100 16.100h3.400v3.400h-3.400z"/>
+  </symbol>
+  <symbol id="i-cavalleria" viewBox="0 0 24 24">
+    <g opacity=".35"><circle cx="12" cy="12" r="1.500"/><circle cx="12" cy="18" r="1.500"/></g>
+    <circle cx="12" cy="5" r="1.600"/><circle cx="8" cy="10.500" r="1.600"/><circle cx="16" cy="10.500" r="1.600"/><circle cx="4.500" cy="16.500" r="1.600"/><circle cx="19.500" cy="16.500" r="1.600"/>
+  </symbol>
+  <symbol id="i-abilita" viewBox="0 0 24 24">
+    <circle opacity=".35" cx="12" cy="12" r="9.500"/>
+    <path d="M12 4.500l2 4.600 5 .500-3.800 3.300 1.100 4.900L12 15.300l-4.300 2.500 1.100-4.900L5 9.600l5-.500z"/>
+  </symbol>
+  <symbol id="i-capanna" viewBox="0 0 24 24">
+    <path opacity=".35" d="M6 15.500h12v6H6z"/>
+    <path d="M12 3 2.500 14h19z"/><path d="M10.300 21.500V18a1.700 1.700 0 0 1 3.400 0v3.500z"/>
+  </symbol>
+  <symbol id="i-granaio" viewBox="0 0 24 24">
+    <path opacity=".35" d="M6.500 12h11v9.500h-11z"/>
+    <path d="M5.500 10.500a6.500 6.500 0 0 1 13 0z"/><circle cx="12" cy="3" r=".600"/>
+    <path fill="none" stroke-width="1" d="M6.500 14.800h11"/>
+    <path d="M10.300 21.500v-3.300a1.700 1.700 0 0 1 3.400 0v3.300z"/>
+  </symbol>
+  <symbol id="i-tempio" viewBox="0 0 24 24">
+    <path opacity=".35" d="M5 12.500h14v7H5z"/>
+    <path d="M2.500 9 12 3l9.500 6z"/><path d="M3.500 10.800h17v.600h-17z"/>
+    <path d="M5 12.500h1.400V20H5zM9 12.500h1.400V20H9zM13.600 12.500H15V20h-1.400zM17.600 12.500H19V20h-1.400z"/>
+    <path d="M3 20.800h18v.700H3z"/>
+  </symbol>
+  <symbol id="i-mercato" viewBox="0 0 24 24">
+    <g opacity=".35" fill="none" stroke-width="1"><path d="M5 7 3.200 13M5 7 6.800 13M19 7 17.200 13M19 7 20.800 13"/></g>
+    <path d="M11.400 5h1.200v14h-1.200z"/><path d="M7.500 21.500h9L15 19.500H9z"/><circle cx="12" cy="4" r="1"/>
+    <path fill="none" stroke-width="1.600" d="M5 7h14"/>
+    <path d="M2.700 13.500h4.600a2.300 2.300 0 0 1-4.600 0zM16.700 13.500h4.600a2.300 2.300 0 0 1-4.600 0z"/>
+  </symbol>
+  <symbol id="i-segheria" viewBox="0 0 24 24">
+    <path opacity=".35" d="M4 18.500h16V21H4z"/>
+    <path d="M2.500 10.500 15.500 8v7l-1.300 1.200-.900-1.600-1.300 1.200-.900-1.600-1.300 1.200-.900-1.600-1.300 1.200-.900-1.600-1.300 1.200-.900-1.600-1.300 1.200-.500-.900z"/>
+    <path fill-rule="evenodd" d="M16.500 7H20a1.500 1.500 0 0 1 1.500 1.500v6A1.500 1.500 0 0 1 20 16h-3.500zM17.800 9.500V14h2V9.500z"/>
+  </symbol>
+  <symbol id="i-mulino" viewBox="0 0 24 24">
+    <path opacity=".35" d="M9 21.500 10 11h4l1 10.500z"/>
+    <path d="M11 21.500v-3h2v3z"/>
+    <path d="M10.200 7.700 6.500 4 7.900 2.600 11.600 6.300z"/>
+    <path transform="rotate(90 12 9.500)" d="M10.200 7.700 6.500 4 7.900 2.600 11.600 6.300z"/>
+    <path transform="rotate(180 12 9.500)" d="M10.200 7.700 6.500 4 7.900 2.600 11.600 6.300z"/>
+    <path transform="rotate(270 12 9.500)" d="M10.200 7.700 6.500 4 7.900 2.600 11.600 6.300z"/>
+    <path fill="none" stroke-width="1.200" d="M6.500 4l11 11M17.500 4l-11 11"/><circle cx="12" cy="9.500" r="1"/>
+  </symbol>
+  <symbol id="i-cava" viewBox="0 0 24 24">
+    <path opacity=".35" d="M2.500 21.500 6 14.500l5-2 5.500 1.500 5 7.500z"/>
+    <g transform="translate(5.200 -1.200) scale(.72) rotate(-35 12 12)" stroke-width="1.400"><path d="M11 6h2v15.500h-2z"/><path d="M2.500 10C6 4.500 18 4.500 21.500 10 17 7.200 7 7.200 2.500 10z"/></g>
+  </symbol>
+  <symbol id="i-forgia" viewBox="0 0 24 24">
+    <path opacity=".35" d="M9.800 15.500h4.400l1.300 2.500H19v3.500H5V18h3.500z"/>
+    <path d="M2.500 8H21v2.500c-3 0-5 1-5.500 3.500h-6C9 11.500 6.500 10 2.500 8z"/>
+    <path d="M18.500 2.200l.500 1.300 1.300.500-1.300.500-.500 1.300-.500-1.300-1.300-.500 1.300-.500z"/>
+  </symbol>
+  <symbol id="i-rastrelliera" viewBox="0 0 24 24">
+    <g opacity=".35"><path d="M3 7h1.400v14.500H3zM19.600 7H21v14.500h-1.400z"/><path d="M3 10h18v.800H3zM3 17.500h18v.800H3z"/></g>
+    <path fill="none" stroke-width="1.400" d="M7.500 5v15.500M15.500 4v16.500"/><path d="M7.500 2.500 8.700 5.500H6.300z"/>
+    <path d="M15.500 4.500c2 0 3 1.300 3 3s-1 3-3 3z"/>
+    <path d="M11.500 3.500l1 1.500v8.500h-2V5z"/><path fill="none" stroke-width="1.400" d="M9.500 14.800h4M11.500 15.500V20"/>
+  </symbol>
+  <symbol id="i-caserma" viewBox="0 0 24 24">
+    <g opacity=".35"><path fill="none" stroke-width="1.600" d="M4.500 20.500 19 4M19.500 20.500 5 4"/><path d="M20.500 2.500 20 5.500 17.800 3.400zM3.500 2.500 4 5.500 6.200 3.400z"/></g>
+    <path fill-rule="evenodd" d="M6.500 6.500h11V12c0 4-2.700 6.700-5.500 8-2.800-1.300-5.500-4-5.500-8zM12 9.300a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+  </symbol>
+  <symbol id="i-bersagli" viewBox="0 0 24 24">
+    <circle opacity=".35" cx="10.500" cy="13.500" r="8"/>
+    <path fill-rule="evenodd" d="M10.500 8.500a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM10.500 11a2.500 2.500 0 1 1 0 5 2.500 2.500 0 0 1 0-5z"/>
+    <circle cx="10.500" cy="13.500" r=".600"/>
+    <path fill="none" stroke-width="1.600" d="M10.500 13.500 20.500 3.500"/><path fill="none" stroke-width="1.400" d="M18.200 5.800h3M18.200 5.800v-3"/>
+  </symbol>
+  <symbol id="i-stalla" viewBox="0 0 24 24">
+    <path opacity=".35" fill="none" stroke-width="2" d="M16.500 3.800C19.800 5.800 21 9.500 21 13v8"/>
+    <path fill-rule="evenodd" d="M7 21.500c0-4.500 1.500-6.500 3-8.500-2 .800-3.500 1.500-5 1-.900-.300-1.400-1.300-1-2.200L7.500 6.500C8.500 4.500 10.500 3.500 13 3.500l1-1.500 1.200 2.200C17.800 5.500 19 9 19 13v8.500zM9.600 7.200a1.200 1.200 0 1 0 0 2.400 1.200 1.200 0 0 0 0-2.400z"/>
+  </symbol>
+  <symbol id="i-torre" viewBox="0 0 24 24">
+    <path opacity=".35" d="M7.500 10.500h9v11h-9z"/>
+    <path d="M5.500 3.500h2.600v2h2.300v-2h3.200v2h2.300v-2h2.600V9h-13z"/>
+    <path d="M10.500 21.500V18a1.500 1.500 0 0 1 3 0v3.500z"/><path d="M11.600 12h.800v2.500h-.800z"/>
+  </symbol>
+  <symbol id="i-palizzata" viewBox="0 0 24 24">
+    <path opacity=".35" d="M6.800 21.500v-13L8 6l1.200 2.500v13zM14.800 21.500v-13L16 6l1.200 2.500v13z"/>
+    <path d="M2.800 21.500v-15L4 4l1.200 2.500v15zM10.800 21.500v-15L12 4l1.200 2.500v15zM18.800 21.500v-15L20 4l1.200 2.500v15z"/>
+    <path d="M2.800 13h18.400v.800H2.800z"/>
+  </symbol>
+  <symbol id="i-porta" viewBox="0 0 24 24">
+    <path opacity=".35" d="M8.500 21.500v-7a3.500 3.500 0 0 1 7 0v7z"/>
+    <path fill-rule="evenodd" d="M3.500 21.500v-15h2.800v-2h2.600v2h6.200v-2h2.600v2h2.800v15zM8.500 21.500v-7a3.500 3.500 0 0 1 7 0v7z"/>
+    <path fill="none" stroke-width="1" d="M12 11.500v10"/>
+  </symbol>
+  <symbol id="i-mura" viewBox="0 0 24 24">
+    <path opacity=".35" d="M2.500 13.500h19v8h-19z"/>
+    <path d="M2.500 6.500h4V9H9V6.500h6V9h2.500V6.500h4V12h-19z"/>
+    <path fill="none" stroke-width="1" d="M2.500 17.500h19M8 13.500v4M16 13.500v4M12 17.500v4"/>
+  </symbol>
+  <symbol id="i-grano" viewBox="0 0 24 24">
+    <g opacity=".35"><ellipse cx="14.600" cy="9" rx="1.300" ry="2.400" transform="rotate(32 14.600 9)"/><ellipse cx="14.600" cy="12.700" rx="1.300" ry="2.400" transform="rotate(32 14.600 12.700)"/><ellipse cx="14.600" cy="16.400" rx="1.300" ry="2.400" transform="rotate(32 14.600 16.400)"/></g>
+    <path fill="none" stroke-width="1.400" d="M12 21.500V8"/><ellipse cx="12" cy="4.800" rx="1.300" ry="2.300"/>
+    <ellipse cx="9.400" cy="9" rx="1.300" ry="2.400" transform="rotate(-32 9.400 9)"/><ellipse cx="9.400" cy="12.700" rx="1.300" ry="2.400" transform="rotate(-32 9.400 12.700)"/><ellipse cx="9.400" cy="16.400" rx="1.300" ry="2.400" transform="rotate(-32 9.400 16.400)"/>
+  </symbol>
+  <symbol id="i-legno" viewBox="0 0 24 24">
+    <g opacity=".35"><circle cx="7.200" cy="16.800" r="1.400"/><circle cx="16.800" cy="16.800" r="1.400"/><circle cx="12" cy="8.200" r="1.400"/></g>
+    <path fill-rule="evenodd" d="M7.200 12.800a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM7.200 14.400a2.400 2.400 0 1 1 0 4.800 2.400 2.400 0 0 1 0-4.800z"/>
+    <path fill-rule="evenodd" d="M16.800 12.800a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM16.800 14.400a2.400 2.400 0 1 1 0 4.800 2.400 2.400 0 0 1 0-4.800z"/>
+    <path fill-rule="evenodd" d="M12 4.200a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 5.800a2.400 2.400 0 1 1 0 4.800 2.400 2.400 0 0 1 0-4.800z"/>
+  </symbol>
+  <symbol id="i-ferro" viewBox="0 0 24 24">
+    <path opacity=".35" d="M7.500 10.500 9 7h6l1.500 3.500z"/><path d="M3.500 19.500 6.500 12h11l3 7.500z"/>
+  </symbol>
+  <symbol id="i-sale" viewBox="0 0 24 24">
+    <g opacity=".35"><path d="M4 20.500v-8L6.500 10 9 12.500v8z"/><path d="M15 20.500v-7l2.500-2.500 2.500 2.500v7z"/></g>
+    <path d="M9 20.500V7l3-4 3 4v13.500z"/>
+    <path d="M19.500 3.200l.400 1.100 1.100.400-1.100.400-.400 1.100-.400-1.100-1.100-.400 1.100-.400z"/>
+  </symbol>
+  <symbol id="i-pietra" viewBox="0 0 24 24">
+    <path opacity=".35" d="M13.500 13h8v8h-8z"/><path d="M7 5h10v6H7z"/><path d="M2.500 13h9v8h-9z"/>
+  </symbol>
+  <symbol id="i-cibo" viewBox="0 0 24 24">
+    <path opacity=".35" d="M15.500 5H20v2.500l1.500 3V21H14V10.500l1.500-3z"/><path d="M15 3.200h5.500v.600H15z"/>
+    <path d="M8 9c2.500 0 4.500 4 4.500 7.200a4.500 4.500 0 0 1-9 0C3.500 13 5.500 9 8 9z"/>
+  </symbol>
+  <symbol id="i-suono" viewBox="0 0 24 24">
+    <path opacity=".35" fill="none" stroke-width="1.800" d="M17.800 6a8.500 8.500 0 0 1 0 12"/>
+    <path d="M3.500 9.500H7l4.500-4v13L7 14.500H3.500z"/><path fill="none" stroke-width="1.800" d="M15 9a4.200 4.200 0 0 1 0 6"/>
+  </symbol>
+  <symbol id="i-muto" viewBox="0 0 24 24">
+    <path opacity=".35" d="M3.500 9.500H7l4.500-4v13L7 14.500H3.500z"/>
+    <path fill="none" stroke-width="1.800" d="M15.500 9.500l5 5M20.500 9.500l-5 5"/>
+  </symbol>
+  <symbol id="i-penna" viewBox="0 0 24 24">
+    <path opacity=".35" d="M20.500 3c-.500 7-5 12-11.500 13.500z"/>
+    <path d="M20.500 3C13.500 3.500 8.500 8 7.200 15.500z"/><path fill="none" stroke-width="1.200" d="M20.500 3 4 21"/>
+  </symbol>
+  <symbol id="i-livello-su" viewBox="0 0 24 24">
+    <path opacity=".35" d="M3 21.500v-4h5.500v-4H14v-4h7v12z"/>
+    <path d="M7.500 2.500 12 7.500H9.200V11H5.800V7.500H3z"/>
+  </symbol>
+  <symbol id="i-annulla" viewBox="0 0 24 24">
+    <path opacity=".35" fill-rule="evenodd" d="M12 2.500a9.500 9.500 0 1 0 0 19 9.500 9.500 0 0 0 0-19zM12 5a7 7 0 1 1 0 14 7 7 0 0 1 0-14z"/>
+    <path fill="none" stroke-width="2.600" d="M8.500 8.500l7 7M15.500 8.500l-7 7"/>
+  </symbol>
+  <symbol id="i-corno" viewBox="0 0 24 24">
+    <path opacity=".35" fill="none" stroke-width="1" d="M4.5 6.5C7 2.8 13.8 3.2 16.8 11.8"/>
+    <path opacity=".35" fill="none" stroke-width="1.4" d="M21.2 12.2a5.6 5.6 0 0 1 0 8.2"/>
+    <path d="M2.5 6.2 4.6 5.3C6.8 10.2 10.8 12.8 16.6 13.2V19.4C9.3 18.8 4.3 14.2 2.5 6.2z"/>
+    <ellipse cx="17.4" cy="16.3" rx="1.7" ry="3.9"/>
+  </symbol>
+  <symbol id="i-frecce" viewBox="0 0 24 24">
+    <g opacity=".35"><path fill="none" stroke-width="1.600" d="M3.500 6.500l8 8"/><path d="M14 17 9.500 15.700 12.700 12.500z"/></g>
+    <path fill="none" stroke-width="1.600" d="M9 3l9 9M9 13l6 6"/><path d="M20.500 14.500 16 13.200 19.200 10zM17.500 21.500 13 20.200 16.200 17z"/>
+  </symbol>
+  <symbol id="i-furore" viewBox="0 0 24 24">
+    <path opacity=".35" d="M12 13.500c1.200 1.200 2 2.200 2 3.500a2 2 0 0 1-4 0c0-1.300.800-2.300 2-3.500z"/>
+    <path fill-rule="evenodd" d="M12 2c1 3.500 6 6 6 11.500a6 6 0 0 1-12 0c0-2.600 1.200-4.200 2.400-5.800.400 1.800 1.200 2.900 2.100 3.300C10 8 10.700 4.800 12 2zM12 13.500c1.200 1.200 2 2.200 2 3.500a2 2 0 0 1-4 0c0-1.300.800-2.300 2-3.500z"/>
+  </symbol>
+  <symbol id="i-soldato" viewBox="0 0 24 24">
+    <path opacity=".35" d="M5 8C7.500 2 16.500 2 19 8l-1.800.600C15.500 4.500 8.500 4.500 6.800 8.600z"/>
+    <path d="M5.500 13.500a6.500 6.500 0 0 1 13 0V15h-13z"/>
+    <path d="M5.500 16.500h3.200V21H7.500a2 2 0 0 1-2-2zM18.500 16.500h-3.200V21h1.200a2 2 0 0 0 2-2z"/>
+    <path d="M11.500 16h1v3.500h-1z"/>
+  </symbol>
+  <symbol id="i-lanciere" viewBox="0 0 24 24">
+    <circle opacity=".35" cx="8.500" cy="13" r="5.500"/><circle cx="8.500" cy="13" r="1"/>
+    <path fill="none" stroke-width="1.600" d="M3.500 21.500 18.500 5"/><path d="M21.500 2 20.700 6.400 17 3z"/>
+  </symbol>
+  <symbol id="i-scudato" viewBox="0 0 24 24">
+    <path opacity=".35" d="M4.5 21.8h15v.8h-15z"/>
+    <path fill-rule="evenodd" d="M6.2 2.6h11.6c1 6.2 1 12.2 0 18.4H6.2c-1-6.2-1-12.2 0-18.4zM12 8.4a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zM7.5 11.1h2.3v1.4H7.5zM14.2 11.1h2.3v1.4h-2.3z"/>
+    <circle cx="12" cy="11.8" r="1.8"/>
+  </symbol>
+  <symbol id="i-corazza" viewBox="0 0 24 24">
+    <path opacity=".35" d="M12 5.800c.900 0 1.800-.300 2.500-.800L17 3.500l3 3-2 3V20h-6z"/>
+    <path d="M12 5.800c-.900 0-1.800-.300-2.500-.800L7 3.500l-3 3 2 3V20h6z"/>
+  </symbol>
+  <symbol id="i-tempra" viewBox="0 0 24 24">
+    <path opacity=".35" d="M12 20.500C5 15.500 3 12 3 8.800A4.300 4.300 0 0 1 7.300 4.500c1.900 0 3.600 1 4.700 2.700 1.100-1.700 2.800-2.700 4.700-2.700A4.300 4.300 0 0 1 21 8.800c0 3.200-2 6.700-9 11.700z"/>
+    <path d="M12 20.500C5 15.500 3 12 3 8.800A4.300 4.300 0 0 1 7.300 4.500c1.900 0 3.600 1 4.700 2.700z"/>
+  </symbol>
+  <symbol id="i-marcia" viewBox="0 0 24 24">
+    <g opacity=".35"><path fill="none" stroke-width="1.400" d="M2.500 8h3M2.500 12h3M2.500 16h3"/><path d="M8 21h13.500v.500H8z"/></g>
+    <path d="M8.500 3h5.500v9.500l5.500 3c1 .600 1.500 1.500 1.500 2.500v1.500H8.500z"/>
+  </symbol>
+  <symbol id="i-testuggine" viewBox="0 0 24 24">
+    <path opacity=".35" d="M3 3.5h5.4v6.3H3zM9.3 3.5h5.4v6.3H9.3zM15.6 3.5H21v6.3h-5.4z"/>
+    <path fill-rule="evenodd" d="M3 11h5.4v7.4l-2.7 2.3L3 18.4zM5.7 13.6a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2zM9.3 11h5.4v7.4L12 20.7l-2.7-2.3zM12 13.6a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2zM15.6 11H21v7.4l-2.7 2.3-2.7-2.3zM18.3 13.6a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"/>
+  </symbol>
+  <symbol id="i-arco" viewBox="0 0 24 24">
+    <path opacity=".35" fill="none" stroke-width="1" d="M6.5 2.8v18.4"/>
+    <path opacity=".35" d="M2 9.8 4.9 12 2 14.2 3.3 12z"/>
+    <path fill="none" stroke-width="2.2" d="M6.5 2.8c8.4 2.6 8.4 15.8 0 18.4"/>
+    <path fill="none" stroke-width="1.4" d="M3.5 12h13.8"/>
+    <path d="M21.5 12 16.6 9.5v5z"/>
+  </symbol>
+  <symbol id="i-randello" viewBox="0 0 24 24">
+    <g transform="rotate(38 12 12)">
+      <path opacity=".35" d="M11.1 13.2h1.8v8.8h-1.8z"/>
+      <path d="M8.8 3.4C8.8 2.4 10.2 1.8 12 1.8s3.2.6 3.2 1.6L13.9 14h-3.8z"/>
+      <circle cx="8.7" cy="6.2" r="1"/><circle cx="15.4" cy="8.4" r="1"/>
+    </g>
+  </symbol>
+  <symbol id="i-falce" viewBox="0 0 24 24">
+    <path opacity=".35" d="M4.3 21.8 3 20.6l5.6-7.4 1.4 1.1z"/>
+    <path d="M9.4 14.4C6.6 9.6 9.6 3.2 16 3.2c3 0 5.1 1.6 5.6 3.6-1.5-1-3.3-1.5-5.2-1.2-4.6.6-6.9 4.6-5.4 8.2z"/>
+  </symbol>
+  <symbol id="i-apre" viewBox="0 0 24 24">
+    <path opacity=".35" fill="none" stroke-width="2.2" d="M8 11V7.2a4 4 0 0 1 7.7-1.5"/>
+    <path fill-rule="evenodd" d="M5 11h14v10.5H5zM12 13.8a1.6 1.6 0 0 0-.8 3V19h1.6v-2.2a1.6 1.6 0 0 0-.8-3z"/>
+  </symbol>
+</svg>
+
 <div id="hud">
   <div id="addr"><b id="aNome">—</b><span id="aCoord">—</span></div>
 
   <div id="store">
-    <div><small>grano</small><span id="sGrano">0</span></div>
-    <div><small>legno</small><span id="sLegno">0</span></div>
-    <div><small>ferro</small><span id="sFerro">0</span></div>
-    <div><small>sale</small><span id="sSale">0</span></div>
-    <div><small>pietra</small><span id="sPietra">0</span></div>
-    <div id="sCiboR"><small>uova e latte</small><span id="sCibo">0</span></div>
+    <div><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-grano"/></svg><small>grano</small><span id="sGrano">0</span></div>
+    <div><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-legno"/></svg><small>legno</small><span id="sLegno">0</span></div>
+    <div><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-ferro"/></svg><small>ferro</small><span id="sFerro">0</span></div>
+    <div><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-sale"/></svg><small>sale</small><span id="sSale">0</span></div>
+    <div><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-pietra"/></svg><small>pietra</small><span id="sPietra">0</span></div>
+    <div id="sCiboR"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-cibo"/></svg><small>uova e latte</small><span id="sCibo">0</span></div>
   </div>
 
   <div id="say"></div>
   <div id="manina"></div>
 
-  <button id="salva">🪶</button>
-  <button id="zitto" title="Suono">🔊</button>
+  <button id="salva" type="button" title="Il codice del villaggio" aria-label="Il codice del villaggio"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-penna"/></svg></button>
+  <button id="zitto" type="button" title="Suono" aria-label="Suono acceso o spento"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-suono"/></svg></button>
 
   <canvas id="mappa" width="184" height="184"></canvas>
   <div id="vassoio"></div>
@@ -313,12 +852,12 @@ button{font:inherit;color:inherit;border:none;background:none;padding:0}
 
   <div id="barra">
     <div id="bsx">
-      <button class="bt" id="bEroe" type="button"><i>👑</i>Eroe</button>
-      <button class="bt" id="bSold" type="button"><i>⚔</i>Armati</button>
-      <button class="bt" id="bOper" type="button"><i>⛏</i>Gente</button>
+      <button class="bt" id="bEroe" type="button"><i><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-eroe"/></svg></i>Eroe</button>
+      <button class="bt" id="bSold" type="button"><i><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-armati"/></svg></i>Armati</button>
+      <button class="bt" id="bOper" type="button"><i><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-gente"/></svg></i>Gente</button>
     </div>
     <div id="bcentro"><div id="bcmd"></div></div>
-    <button id="bdono" type="button"><i>✦</i><span>Dono</span><span class="ric"></span></button>
+    <button id="bdono" type="button" aria-label="Il dono dell'eroe"><i><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-corno"/></svg></i><span>Dono</span><span class="ric"></span></button>
   </div>
 </div>
 
@@ -1006,11 +1545,11 @@ function mostraEroe(){
   const E=eroe(), l=[];
   for(const k in ABIL){
     const A=ABIL[k];
-    l.push({ic:A.ic, n:A.n+' '+abE(k)+'/'+ABIL_MAX, costo:A.d, caro:E.punti<=0||abE(k)>=ABIL_MAX, su:E.punti>0&&abE(k)<ABIL_MAX,
+    l.push({ic:IC_ABIL[k], n:A.n+' '+abE(k)+'/'+ABIL_MAX, costo:A.d, caro:E.punti<=0||abE(k)>=ABIL_MAX, su:E.punti>0&&abE(k)<ABIL_MAX,
       f:()=>{ spendiPunto(k); mostraEroe() }});
   }
   const pro=E.lv<LIV_EROE?(Math.floor(E.xp)+'/'+sogliaEroe(E.lv)+' al prossimo'):'al massimo';
-  vassoio(l,'<b>👑 '+CONDOTTIERO().nome+'</b> · livello '+E.lv+' · '+pro+' · <em>'+E.punti+' punt'+(E.punti===1?'o':'i')+' da spendere</em>');
+  vassoio(l,'<b>'+CONDOTTIERO().nome+'</b> · livello '+E.lv+' · '+pro+' · <em>'+E.punti+' punt'+(E.punti===1?'o':'i')+' da spendere</em>');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3823,7 +4362,9 @@ function disegnaComando(){
     for(const k in fuori){
       const f=fuori[k], mx=f.x/f.n, my=f.y/f.n;
       const cx=cw/2, cy=ch/2, an=Math.atan2(my-cy,mx-cx);
-      const bx=clamp(cx+Math.cos(an)*cw,28,cw-28), by=clamp(cy+Math.sin(an)*ch,70,ch-110);
+      // la freccia non deve finire sotto una targa del menu: l'avviso d'attacco si deve vedere
+      const qb=lontanoDaHud(clamp(cx+Math.cos(an)*cw,28,cw-28),clamp(cy+Math.sin(an)*ch,70,ch-110),22);
+      const bx=qb.x, by=qb.y;
       ct.save(); ct.translate(bx,by); ct.rotate(an);
       ct.fillStyle='rgba(200,52,44,.92)';
       ct.beginPath(); ct.moveTo(16,0); ct.lineTo(-8,-11); ct.lineTo(-8,11); ct.closePath(); ct.fill();
@@ -4631,12 +5172,48 @@ function unCapo(c,sx,sy,z0){
     ct.strokeStyle='rgba(255,240,200,'+(1-t)*.7+')'; ct.lineWidth=5*z0; ct.stroke();
   }
 }
+/* I pannelli del menu, misurati quattro volte al secondo (non a ogni
+   fotogramma: il layout costa). Servono a chi disegna sul bordo dello
+   schermo, sagome e frecce, per non finire sotto il legno e il ferro. */
+let HUD_RETT=[];
+function misuraHud(){
+  const l=[];
+  for(const s of ['#addr','#mappa','#store','#zitto','#salva','#say','#bsel','#barra','#vassoio']){
+    const e=$(s); if(!e) continue;
+    const r=e.getBoundingClientRect();
+    if(r.width>0&&r.height>0) l.push({l:r.left,r:r.right,t:r.top,b:r.bottom});
+  }
+  HUD_RETT=l;
+}
+/** Sposta un punto fuori dai pannelli del menu, verso il centro dello schermo. */
+function lontanoDaHud(x,y,m){
+  const cx=cw/2, cy=ch/2;
+  for(let giro=0;giro<3;giro++){
+    let mosso=false;
+    for(const r of HUD_RETT){
+      if(x<r.l-m||x>r.r+m||y<r.t-m||y>r.b+m) continue;
+      const vie=[];
+      if(cy>r.b) vie.push({x,y:r.b+m});
+      if(cy<r.t) vie.push({x,y:r.t-m});
+      if(cx>r.r) vie.push({x:r.r+m,y});
+      if(cx<r.l) vie.push({x:r.l-m,y});
+      if(!vie.length) continue;
+      let v=vie[0];
+      for(const o of vie) if(Math.hypot(o.x-x,o.y-y)<Math.hypot(v.x-x,v.y-y)) v=o;
+      x=v.x; y=v.y; mosso=true;
+    }
+    if(!mosso) break;
+  }
+  return {x,y};
+}
 /** Chi è fuori campo resta visibile come sagoma sul bordo: non un numero. */
 function disegnaBordi(){
   for(const p of ME.gente){
     const s=w2s(ix(p),iy(p));
     if(s.x>=0&&s.y>=0&&s.x<=cw&&s.y<=ch)continue;
-    const x=clamp(s.x,12,cw-12), y=clamp(s.y,42,ch-70);
+    // i piedi a y, il corpo sopra: si misura il centro della sagoma
+    const q=lontanoDaHud(clamp(s.x,12,cw-12),clamp(s.y,42,ch-70)-12,16);
+    const x=q.x, y=q.y+12;
     ct.globalAlpha=.42;
     OM.mest=p.mest; OM.dir=p.dir; OM.fase=0; OM.and=false;
     OM.carico=p.carico; OM.cap=capacita(p); OM.arma=p.arma;
@@ -12266,7 +12843,8 @@ function posaMuro(x,y){
 
 function dire(t){
   const e=$('#say');
-  e.textContent=t; e.classList.add('on');
+  e.innerHTML=String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/\d+/g,'<span class="n">$&</span>');
+  e.classList.add('on');
   clearTimeout(dire._t);
   dire._t=setTimeout(()=>e.classList.remove('on'),1900);
 }
@@ -12432,7 +13010,18 @@ function legaMani(){
   el.addEventListener('pointerleave',()=>{ bordoX=bordoY=0 });
 
   /* ── I tasti della barra ─────────────────────────────────────── */
-  const leg=(id,f)=>{ const b=$(id); if(b) b.addEventListener('pointerdown',e=>{e.preventDefault(); e.stopPropagation(); f()}) };
+  /* i tre tasti fissi e il dono non stanno in una riga che scorre: partono
+     al primo contatto, che in battaglia è mezzo secondo guadagnato. Il clic
+     senza dito (detail 0) è la tastiera: Invio o Spazio sul tasto. */
+  const leg=(id,f)=>{ const b=$(id); if(!b) return;
+    b.addEventListener('pointerdown',e=>{e.preventDefault(); e.stopPropagation(); f()});
+    b.addEventListener('click',e=>{ if(e.detail===0){ e.preventDefault(); f() } }) };
+  { const c=$('#bcmd'); if(c){ c.addEventListener('scroll',fineCmd,{passive:true}); addEventListener('resize',fineCmd);
+    // in cattura: premi() ferma il pointerdown sul tasto prima che risalga qui
+    // vale il dito sul tasto, non il pollice che intanto sposta la mappa
+    c.addEventListener('pointerdown',e=>{ _cmdGiu=e.pointerId },true);
+    addEventListener('pointerup',e=>{ if(_cmdGiu===e.pointerId) setTimeout(()=>{ if(_cmdGiu===e.pointerId) _cmdGiu=false },0) },true);
+    addEventListener('pointercancel',e=>{ if(_cmdGiu===e.pointerId) _cmdGiu=false },true) } }
   leg('#bEroe',()=>{ selMetti([ME.capo]); centraSu(ME.capo.x,ME.capo.y); aggiornaBarra() });
   leg('#bSold',()=>{ const l=armati(); if(!l.length){ dire('Non hai ancora armati'); return }
     selMetti(l); dire(l.length+' armat'+(l.length===1?'o':'i')); aggiornaBarra() });
@@ -12443,6 +13032,8 @@ function legaMani(){
   addEventListener('keydown',e=>{
     const t=e.target;
     if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'))return;
+    /* Spazio su un tasto raggiunto col Tab preme il tasto, non "vai all'eroe" */
+    if(e.code==='Space'&&t&&t.tagName==='BUTTON'){ let kb=true; try{ kb=t.matches(':focus-visible') }catch(x){} if(kb) return }
     if(e.ctrlKey||e.metaKey||e.altKey)return;
     if(e.key==='Escape'){ $('#velo').classList.remove('on'); modo=null; chiudiVassoio(); aggiornaBarra(); return }
     tasti[e.key.length===1?e.key.toLowerCase():e.key]=true;
@@ -12496,25 +13087,104 @@ function apriCodice(){
    ═══════════════════════════════════════════════════════════════ */
 const ICONA_EDIF={};
 for(const k in EDIFICI) ICONA_EDIF[k]=EDIFICI[k].ic;
-const ICONA_ARMA={randello:'🏏',gladio:'⚔️',lancia:'🔱',arco:'🏹',spada:'🛡️',lanciacav:'🐎'};
+/* Le icone del menu: il nome del simbolo nello sprite #hud-icone. Le emoji
+   di EDIFICI e UNITA restano per il vecchio disegno 2D, il menu non le usa. */
+const IC_EDIF={capanna:'capanna',granaio:'granaio',tempio:'tempio',mercato:'mercato',segheria:'segheria',
+  mulino:'mulino',miniera:'cava',forgia:'forgia',rastrell:'rastrelliera',caserma:'caserma',
+  bersagli:'bersagli',stalla:'stalla',torre:'torre'};
+const IC_MURA={palizzata:'palizzata',porta:'porta',muraglia:'mura'};
+const IC_UNITA={contadino:'falce',guerriero:'soldato',lanciere:'lanciere',spadaccino:'scudato',arciere:'arco',cavaliere:'stalla'};
+const IC_ARMA={falce:'falce',randello:'randello',gladio:'arma',lancia:'lanciere',arco:'arco',spada:'scudato',lanciacav:'stalla'};
+const IC_FORMAZ={linea:'linea',fronte:'fronte',blocco:'blocco',cavalleria:'cavalleria'};
+const IC_ABIL={forza:'arma',corazza:'corazza',tempra:'tempra',squadra:'armati',difesa:'caserma',marcia:'marcia'};
+const IC_DONO={0:'corno',1:'frecce',2:'testuggine',3:'furore'};
+const GRUPPI_COSTR={casa:{n:'Casa',ic:'capanna'},lavoro:{n:'Lavoro',ic:'gente'},guerra:{n:'Guerra',ic:'armati'},mura:{n:'Mura',ic:'mura'}};
+const CALMO=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches);
+function icona(n){ return '<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-'+(n||'costruisci')+'"/></svg>' }
+/* In Cinzel l'1 è una I romana: "1 Rosso di Corno" si leggeva "I Rosso di
+   Corno". Le cifre dentro i titoli passano al carattere dei numeri. */
+const cifre=s=>String(s).replace(/\d+/g,'<span class="n">$&</span>');
+/* Un tasto del menu parte quando il dito si ALZA, non quando tocca: così
+   si può trascinare la riga per scorrerla senza lanciare il comando sotto
+   il dito (il browser manda pointercancel appena la riga scorre). Parte al
+   pointerup e non al click perché il click non arriva con un secondo dito
+   sulla mappa o dopo una pressione lunga. Il click resta per la tastiera, e
+   _premiT gli impedisce di rifare il comando quando cade sul tasto nuovo
+   che il comando stesso ha appena ridisegnato nello stesso punto. */
+let _premiT=-1e9;
+function premi(el,f){
+  let giu=null;
+  el.addEventListener('pointerdown',e=>{ e.stopPropagation();
+    if(e.pointerType==='mouse'&&e.button!==0) return;
+    giu={id:e.pointerId,x:e.clientX,y:e.clientY} });
+  el.addEventListener('pointercancel',e=>{ if(giu&&giu.id===e.pointerId) giu=null });
+  el.addEventListener('pointerleave',e=>{ if(giu&&giu.id===e.pointerId&&e.pointerType==='mouse') giu=null });
+  el.addEventListener('pointerup',e=>{ const g=giu; giu=null;
+    if(!g||g.id!==e.pointerId) return;
+    if(Math.hypot(e.clientX-g.x,e.clientY-g.y)>TAP_PX) return;
+    _premiT=performance.now(); f() });
+  el.addEventListener('click',e=>{ e.preventDefault(); e.stopPropagation();
+    if(performance.now()-_premiT<800) return;
+    f() });
+}
 
 function chiudiVassoio(){ const v=$('#vassoio'); if(v){ v.classList.remove('on'); v.innerHTML='' } ; EDIF_SEL=null }
-function vassoio(voci,titolo){
-  const v=$('#vassoio'); v.innerHTML='';
+/* Il vassoio: una riga di carte di pergamena che scorre col dito. Ogni voce
+   è {ic:nome dell'icona, n, costo, caro, chiusa, su, g, f}: `chiusa` vuol dire
+   che non è questione di risorse ma di foro, `g` il gruppo (solo la
+   costruzione ne ha). Se si ridisegna lo stesso vassoio, la riga resta
+   dov'era: addestrare il quinto soldato non ti riporta al primo. */
+function vassoio(voci,titolo,gruppi){
+  const v=$('#vassoio');
+  const vecchia=v.querySelector('.vriga');
+  /* la chiave dice QUALE vassoio: Caserma e Mercato sono tutti e due
+     "addestra", ma la riga della Caserma non deve aprire il Mercato già scorso */
+  const chiave=String(_vass)+':'+(EDIF_SEL??'');
+  const stesso=v.classList.contains('on')&&v.dataset.k===chiave;
+  const sx=stesso&&vecchia?vecchia.scrollLeft:0;
+  v.innerHTML=''; v.dataset.k=chiave;
   if(titolo){
     const t=document.createElement('div'); t.className='vtit'; t.innerHTML=titolo;
     v.appendChild(t);
   }
+  const nav=gruppi?document.createElement('div'):null;
+  if(nav){ nav.className='vgr'; v.appendChild(nav) }
   const riga=document.createElement('div'); riga.className='vriga';
+  const salti=[]; let ultimo=null;
   for(const c of voci){
+    if(gruppi&&c.g&&c.g!==ultimo){
+      ultimo=c.g;
+      const G=gruppi[c.g], s=document.createElement('div');
+      s.className='vsep'; s.dataset.g=c.g; s.innerHTML='<span>'+G.n+'</span>';
+      riga.appendChild(s);
+      const k=document.createElement('button');
+      k.type='button'; k.className='vg'; k.dataset.g=c.g; k.title=G.n; k.setAttribute('aria-label',G.n);
+      k.innerHTML=icona(G.ic)+'<span>'+G.n+'</span>';
+      premi(k,()=>{ const p=s.nextElementSibling; if(p) riga.scrollTo({left:Math.max(0,p.offsetLeft-s.offsetWidth-8),behavior:CALMO?'auto':'smooth'}) });
+      nav.appendChild(k);
+      salti.push({sep:s,tasto:k});
+    }
     const b=document.createElement('button');
-    b.className='vc'+(c.caro?' caro':'')+(c.su?' su':''); b.type='button';
-    b.innerHTML='<i>'+c.ic+'</i>'+c.n+(c.costo?'<b>'+c.costo+'</b>':'');
-    b.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); c.f() });
+    b.className='vc'+(c.caro?' caro':'')+(c.chiusa?' chiusa':'')+(c.su?' su':'')+(c.info?' info':''); b.type='button';
+    if(c.g) b.dataset.g=c.g;
+    b.innerHTML='<i>'+icona(c.ic)+'</i><span>'+cifre(c.n)+'</span>'+(c.costo?'<b>'+c.costo+'</b>':'');
+    premi(b,c.f);
     riga.appendChild(b);
   }
   v.appendChild(riga);
   v.classList.add('on');
+  const segna=()=>{
+    const fine=riga.scrollLeft+riga.clientWidth>=riga.scrollWidth-4;
+    riga.classList.toggle('fine',fine);
+    /* in fondo alla riga si accende l'ultimo gruppo: le mura stanno tutte
+       nell'ultima schermata e la loro soglia non si raggiungerebbe mai */
+    let qui=fine&&riga.scrollLeft>0&&salti.length?salti[salti.length-1]:null;
+    if(!qui) for(const x of salti){ const p=x.sep.nextElementSibling; if(p&&p.offsetLeft-x.sep.offsetWidth-60<=riga.scrollLeft) qui=x }
+    for(const x of salti) x.tasto.classList.toggle('on',x===(qui||salti[0]));
+  };
+  riga.addEventListener('scroll',segna,{passive:true});
+  if(sx) riga.scrollLeft=sx;
+  segna();
 }
 /* ── IL VASSOIO DELLA COSTRUZIONE ─────────────────────────────────
    Tutto quello che la città sa costruire, in tre gruppi: la casa, il
@@ -12528,20 +13198,20 @@ function mostraCostruzioni(){
   for(const cat of ['casa','lavoro','guerra']) for(const k of ORD_EDIF){
     const E=EDIFICI[k]; if(E.cat!==cat) continue;
     const aperto=livForo()>=E.foro;
-    voci.push({ic:E.ic, n:E.n, costo:aperto?costoTesto(E.costo):('Foro '+E.foro),
-      caro:!aperto||!puoPagare(E.costo),
+    voci.push({g:cat, ic:IC_EDIF[k], n:E.n, costo:aperto?costoTesto(E.costo):('Foro '+E.foro),
+      caro:!aperto||!puoPagare(E.costo), chiusa:!aperto,
       f:()=>{ if(!aperto){ dire(E.n+': serve il foro al livello '+E.foro); return }
         chiudiVassoio(); _vass=null; iniziaCostruzione(k) }});
   }
   /* le difese in fondo: si costruiscono a tratti, e il costo è per tratto */
   for(const k in MURA){
     const W_=MURA[k], aperto=livForo()>=W_.foro;
-    voci.push({ic:W_.ic, n:W_.n, costo:aperto?(costoTesto(W_.costo)+(k==='porta'?'':' al tratto')):('Foro '+W_.foro),
-      caro:!aperto||!puoPagare(W_.costo),
+    voci.push({g:'mura', ic:IC_MURA[k], n:W_.n, costo:aperto?(costoTesto(W_.costo)+(k==='porta'?'':' al tratto')):('Foro '+W_.foro),
+      caro:!aperto||!puoPagare(W_.costo), chiusa:!aperto,
       f:()=>{ if(!aperto){ dire(W_.n+': serve il foro al livello '+W_.foro); return }
         chiudiVassoio(); _vass=null; iniziaMuro(k) }});
   }
-  vassoio(voci,'<b>Costruisci</b> · foro al livello '+livForo());
+  vassoio(voci,'<b>Costruisci</b> · foro al livello '+livForo(),GRUPPI_COSTR);
 }
 
 /* ── LA SCHEDA DI UN EDIFICIO ─────────────────────────────────────
@@ -12560,12 +13230,12 @@ function mostraAddestra(e){
   // 1 · salire di livello (non per la rastrelliera fissa del borgo)
   if(e.fisso){}
   else if(e.su!==undefined){
-    l.push({ic:'🏗', n:'Sale al '+(L+1)+'°', costo:Math.round(e.su*100)+'% · manda gente', su:true,
+    l.push({ic:'costruisci', n:'Sale al '+(L+1)+'°', costo:Math.round(e.su*100)+'% · manda gente', su:true,
       f:()=>mandaAlCantiere(e.eid)});
   } else if(L<LIV_MAX){
     const c=costoLiv(e.tipo,L+1), bloccato=L>=livForo();
-    l.push({ic:'⬆️', n:'Livello '+(L+1), costo:bloccato?('prima il foro al '+(L+1)):costoTesto(c),
-      caro:bloccato||!puoPagare(c), su:true,
+    l.push({ic:'livello-su', n:'Livello '+(L+1), costo:bloccato?('prima il foro al '+(L+1)):costoTesto(c),
+      caro:bloccato||!puoPagare(c), chiusa:bloccato, su:!bloccato,
       f:()=>{
         if(bloccato){ dire('Prima alza il foro al livello '+(L+1)); return }
         if(!puoPagare(c)){ dire('Serve '+costoTesto(c)); return }
@@ -12576,8 +13246,8 @@ function mostraAddestra(e){
   // 2 · le unità, se ne addestra
   for(const u of unitaDi(e.tipo)){
     const U=UNITA[u], manca=U.serve&&!livTipo(U.serve);
-    l.push({ic:U.ic, n:U.n, costo:manca?('serve la '+EDIFICI[U.serve].n.toLowerCase()):(costoTesto(U.costo)+' · '+U.t+'s'),
-      caro:manca||!puoPagare(U.costo)||e.coda.length>=CODA_MAX,
+    l.push({ic:IC_UNITA[u], n:U.n, costo:manca?('serve la '+EDIFICI[U.serve].n.toLowerCase()):(costoTesto(U.costo)+' · '+U.t+'s'),
+      caro:manca||!puoPagare(U.costo)||e.coda.length>=CODA_MAX, chiusa:!!manca,
       f:()=>{
         if(manca){ dire(U.n+': serve la '+EDIFICI[U.serve].n.toLowerCase()); return }
         if(e.coda.length>=CODA_MAX){ dire('La coda è piena'); return }
@@ -12589,14 +13259,14 @@ function mostraAddestra(e){
   // 3 · la coda, se c'è: un tocco sull'ultima la annulla e rende la spesa
   if(e.coda.length){
     const ult=e.coda[e.coda.length-1];
-    l.push({ic:'✖', n:'Annulla '+UNITA[ult.u].n.toLowerCase(), costo:'in coda: '+e.coda.length,
+    l.push({ic:'annulla', n:'Annulla '+UNITA[ult.u].n.toLowerCase(), costo:'in coda: '+e.coda.length,
       f:()=>{ const v=e.coda.pop(); if(v) rendi(UNITA[v.u].costo); salva(); mostraAddestra(e) }});
   }
   // 4 · le schede di chi non addestra: cosa fa, col suo numero
   if(e.tipo==='rastrell'||e.tipo==='forgia'){
     const conta={};
     for(const a of ME.rastrelliera) conta[a]=(conta[a]||0)+1;
-    for(const a in conta) if(a!=='falce') l.push({ic:ICONA_ARMA[a]||'🗡️', n:ARMI[a].n, costo:conta[a]+' appes'+(conta[a]===1?'a':'e'),
+    for(const a in conta) if(a!=='falce') l.push({ic:IC_ARMA[a]||'arma', n:ARMI[a].n, costo:conta[a]+' appes'+(conta[a]===1?'a':'e'),
       f:()=>{ chiudiVassoio(); _vass=null; armaUno(a) }});
   }
   const info={capanna:'Posti '+gentePiedi().length+' di '+postiTot(),
@@ -12609,11 +13279,11 @@ function mostraAddestra(e){
     mercato:'10 sale = 15 legno · 10 pietra · 8 ferro'}[e.tipo];
   if(e.tipo==='mercato'){
     for(const [r,q] of [['legno',15],['pietra',10],['ferro',8],['grano',20]])
-      l.push({ic:'⚖️', n:q+' '+r, costo:'10 sale', caro:(ME.scorte.sale||0)<10,
+      l.push({ic:r, n:q+' '+r, costo:'10 sale', caro:(ME.scorte.sale||0)<10,
         f:()=>{ if((ME.scorte.sale||0)<10){ dire('Servono 10 sale'); return }
           ME.scorte.sale-=10; ME.scorte[r]=(ME.scorte[r]||0)+q; dire('Scambiato: '+q+' '+r); salva(); mostraAddestra(e) }});
   }
-  const tit='<b>'+E.ic+' '+E.n+'</b> · livello '+L+(info?' · '+info:'')+
+  const tit='<b>'+E.n+'</b> · livello '+L+(info?' · '+info:'')+
     (unitaDi(e.tipo).length?' · <em>tocca la terra per il punto di raccolta</em>':'');
   vassoio(l,tit);
 }
@@ -12625,11 +13295,11 @@ function mostraForo(){
   _vass='foro';
   const L=livForo(), l=[];
   if(ME.foroSu!==undefined){
-    l.push({ic:'🏗', n:'Sale al '+(L+1)+'°', costo:Math.round(ME.foroSu*100)+'% · manda gente', su:true,
+    l.push({ic:'costruisci', n:'Sale al '+(L+1)+'°', costo:Math.round(ME.foroSu*100)+'% · manda gente', su:true,
       f:()=>mandaAlCantiere(-1)});
   } else if(L<LIV_MAX){
     const c=FORO_COSTO[L+1];
-    l.push({ic:'⬆️', n:'Foro livello '+(L+1), costo:costoTesto(c), caro:!puoPagare(c), su:true,
+    l.push({ic:'livello-su', n:'Foro livello '+(L+1), costo:costoTesto(c), caro:!puoPagare(c), su:true,
       f:()=>{
         if(!puoPagare(c)){ dire('Serve '+costoTesto(c)); return }
         paga(c); ME.foroSu=0; mandaAlCantiere(-1);
@@ -12637,10 +13307,13 @@ function mostraForo(){
       }});
   }
   // cosa apre il prossimo livello
-  const apre=ORD_EDIF.filter(k=>EDIFICI[k].foro===L+1).map(k=>EDIFICI[k].ic+' '+EDIFICI[k].n);
-  if(apre.length) l.push({ic:'🔓', n:'Al '+(L+1)+'° si apre', costo:apre.join(' · '), caro:true, f:()=>{}});
-  l.push({ic:'👥', n:'Posti', costo:gentePiedi().length+' di '+postiTot(), caro:true, f:()=>{}});
-  vassoio(l,'<b>🔥 Il Foro</b> · livello '+L+' · tutto il resto sale fin qui');
+  const apre=ORD_EDIF.filter(k=>EDIFICI[k].foro===L+1).map(k=>EDIFICI[k].n);
+  /* due cartigli, non tasti: si leggono, e toccati ripetono cosa dicono */
+  if(apre.length) l.push({ic:'apre', n:'Al '+(L+1)+'° si apre', costo:apre.join(' · '), info:true,
+    f:()=>dire('Al '+(L+1)+'° livello il foro apre: '+apre.join(', '))});
+  l.push({ic:'capanna', n:'Posti', costo:gentePiedi().length+' di '+postiTot(), info:true,
+    f:()=>dire('Posti al fuoco: '+gentePiedi().length+' di '+postiTot()+' · alza il foro per averne di più')});
+  vassoio(l,'<b>Il Foro</b> · livello '+L+' · tutto il resto sale fin qui');
 }
 /* Chi va a lavorare a un cantiere di miglioramento: i contadini scelti,
    o i tre più vicini. eid -1 è il foro. */
@@ -12719,7 +13392,7 @@ function aggiornaBarra(){
     for(const p of l) conta[p===ME.capo?'capo':p.mest]=(conta[p===ME.capo?'capo':p.mest]||0)+1;
     const parti=[];
     for(const k in conta) parti.push(conta[k]+' '+(k==='capo'?CONDOTTIERO().nome:nomeMest(k,conta[k])));
-    sel.innerHTML='<b>'+parti.join(' · ')+'</b>';
+    sel.innerHTML='<b>'+cifre(parti.join(' · '))+'</b>';
   }
   /* I comandi: solo quelli che hanno senso adesso. */
   const cs=[];
@@ -12730,39 +13403,63 @@ function aggiornaBarra(){
   /* L'eroe in mano: la sua scheda, coi punti da spendere in evidenza */
   if(SEL.has(EROE_UID)){
     const pt=eroe().punti;
-    cs.push({ic:'👑',n:pt?('Abilità · '+pt):'Eroe '+eroe().lv,on:pt>0,f:mostraEroe});
+    cs.push({id:'eroe',ic:pt?'abilita':'eroe',n:pt?('Abilità · '+pt):'Eroe '+eroe().lv,on:pt>0,f:mostraEroe});
   }
   if(haArmati){
     const F=formazAtt();
-    for(const k of ORD_FORMAZ) cs.push({ic:FORMAZ[k].ic,n:FORMAZ[k].n,on:k===F,f:()=>mettiFormazione(k)});
+    for(const k of ORD_FORMAZ) cs.push({id:'f-'+k,ic:IC_FORMAZ[k],n:FORMAZ[k].n,on:k===F,f:()=>mettiFormazione(k)});
   }
-  if(haOperai||!l.length) cs.push({ic:'🏗',n:'Costruisci',on:!!(modo&&modo.t==='costruisci'),f:mostraCostruzioni});
-  if(!haArmati) cs.push({ic:'🔥',n:'Borgo',f:()=>{ centraSu(ME.borgo.x,ME.borgo.y) }});
+  const vassoioCostr=_vass==='costr'&&$('#vassoio').classList.contains('on');
+  if(haOperai||!l.length) cs.push({id:'costruisci',ic:'costruisci',n:'Costruisci',on:!!(modo&&(modo.t==='costruisci'||modo.t==='muro'))||vassoioCostr,f:mostraCostruzioni});
+  if(!haArmati) cs.push({id:'borgo',ic:'borgo',n:'Borgo',f:()=>{ centraSu(ME.borgo.x,ME.borgo.y) }});
+  /* "Fermi" e "Al fuoco" rileggono la scelta quando li tocchi: il tasto
+     sopravvive ai cambi di scelta, la lista di chi comandare no. */
   if(l.length){
-    cs.push({ic:'✋',n:'Fermi',f:()=>{ for(const p of l){ if(p===ME.capo)ME.capo.ord=null; else { fineOrdine(p); p.ord={t:'presidia',x:p.x,y:p.y,tieni:p.mest!=='contadino'&&p.mest!=='bambino'} } } dire('Tengono la posizione') }});
-    cs.push({ic:'🏡',n:'Al fuoco',f:()=>{ const posti=postiSchiera(l.length,ME.borgo.x,ME.borgo.y,l[0].x,l[0].y);
+    cs.push({id:'fermi',ic:'fermi',n:'Fermi',f:()=>{ for(const p of selPersone()){ if(p===ME.capo)ME.capo.ord=null; else { fineOrdine(p); p.ord={t:'presidia',x:p.x,y:p.y,tieni:p.mest!=='contadino'&&p.mest!=='bambino'} } } dire('Tengono la posizione') }});
+    cs.push({id:'fuoco',ic:'alfuoco',n:'Al fuoco',f:()=>{ const l=selPersone(); if(!l.length) return;
+      const posti=postiSchiera(l.length,ME.borgo.x,ME.borgo.y,l[0].x,l[0].y);
       l.forEach((p,i)=>{ const q=posti[i]||ME.borgo; if(p===ME.capo)ME.capo.ord={t:'vai',x:q.x,y:q.y}; else daiOrdine(p,{t:'vai',x:q.x,y:q.y}) });
       segnoOrdine(ME.borgo.x,ME.borgo.y,'vai'); dire('Tornano al fuoco') }});
   }
-  if(ME.rastrelliera.length&&(haOperai||!l.length)) cs.push({ic:'🗡',n:'Arma',f:()=>{ _vass='addestra';
+  if(ME.rastrelliera.length&&(haOperai||!l.length)) cs.push({id:'arma',ic:'arma',n:'Arma',f:()=>{ _vass='addestra';
     mostraAddestra({tipo:'rastrell',eid:-2,liv:1,coda:[],prog:1,fisso:true,x:ME.borgo.x-64,y:ME.borgo.y-12}) }});
-  cmd.innerHTML='';
-  for(const c of cs){
-    const b=document.createElement('button');
-    b.className='bt'+(c.on?' on':''); b.type='button';
-    b.innerHTML='<i>'+c.ic+'</i>'+c.n;
-    b.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); c.f(); aggiornaBarra() });
-    cmd.appendChild(b);
+  /* La barra gira dieci volte al secondo, ma i tasti si rifanno solo quando
+     cambiano: rifarli ogni volta perdeva il tocco a metà e riportava la riga
+     all'inizio mentre la scorrevi. Il tasto chiede la voce del momento. */
+  const firma=cs.map(c=>c.id+':'+c.n).join('|');
+  /* con un dito sopra un tasto la riga non si rifà: il tasto sparirebbe
+     fra il tocco e il rilascio. Si rifà al giro dopo, a dito alzato. */
+  const rinvia=firma!==_cmdFirma&&_cmdGiu!==false;
+  if(!rinvia) _cmdOra=cs;
+  if(firma!==_cmdFirma&&!rinvia){
+    _cmdFirma=firma; cmd.innerHTML='';
+    cs.forEach((c,i)=>{
+      const b=document.createElement('button');
+      b.className='bt'; b.type='button';
+      b.innerHTML='<i>'+icona(c.ic)+'</i><span>'+cifre(c.n)+'</span>';
+      premi(b,()=>{ const x=_cmdOra[i]; if(x){ x.f(); aggiornaBarra() } });
+      cmd.appendChild(b);
+    });
+    fineCmd();
   }
+  if(!rinvia) for(let i=0;i<cs.length;i++){ const b=cmd.children[i]; if(b&&b.classList.contains('on')!==!!cs[i].on) b.classList.toggle('on',!!cs[i].on) }
   const d=$('#bdono');
   if(d){
-    const D=donoDelPopolo();
-    d.querySelector('i').textContent=D.ic;
-    d.querySelector('span').textContent=(ME.dono>0)?Math.ceil(ME.dono)+'s':(D.c||D.n);
+    const k=CONDOTTIERO().pop|0, D=donoDelPopolo();
+    if(k!==_donoPop){ _donoPop=k; d.querySelector('i').innerHTML=icona(IC_DONO[k]||'corno'); d.setAttribute('aria-label','Il dono: '+D.n+' · '+D.d) }
+    const t=(ME.dono>0)?Math.ceil(ME.dono)+'s':(D.c||D.n), sp=d.querySelector('span');
+    if(sp.textContent!==t) sp.textContent=t;
     const f=(ME.dono||0)/RIC_DONO;
     d.querySelector('.ric').style.height=(f*100)+'%';
     d.classList.toggle('pronto',!(ME.dono>0));
   }
+}
+var _cmdOra=[], _cmdFirma='', _donoPop=-1, _cmdGiu=false;
+/* la sfumatura e la freccetta a destra della riga: spariscono quando sei in fondo */
+function fineCmd(){
+  const c=$('#bcmd'), ce=$('#bcentro'); if(!c||!ce) return;
+  const f=c.scrollLeft+c.clientWidth>=c.scrollWidth-4;
+  c.classList.toggle('fine',f); ce.classList.toggle('fine',f);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -12825,15 +13522,17 @@ function legaMappa(){
   const cv2=$('#mappa'); if(!cv2) return;
   cv2.addEventListener('pointerdown',e=>{
     e.preventDefault(); e.stopPropagation();
+    /* la cornice è un bordo di legno: si misura dentro la cornice, non fuori */
     const r=cv2.getBoundingClientRect(), Q=_mappaR||riquadroMappa();
-    const u=(e.clientX-r.left)/r.width*2-1, v=(e.clientY-r.top)/r.height*2-1;
+    const w=cv2.clientWidth||r.width, h=cv2.clientHeight||r.height;
+    const u=(e.clientX-r.left-cv2.clientLeft)/w*2-1, v=(e.clientY-r.top-cv2.clientTop)/h*2-1;
     centraSu(Q.cx+u*Q.R, Q.cy+v*Q.R);
   });
 }
 
 function aggiornaHud(){
   const c=ME.capo;
-  _mappaT-=DT_ULT; if(_mappaT<=0){ _mappaT=.25; try{ disegnaMappa() }catch(e){} }
+  _mappaT-=DT_ULT; if(_mappaT<=0){ _mappaT=.25; try{ disegnaMappa() }catch(e){} misuraHud() }
   $('#aNome').textContent=ME.borgo.nome;
   $('#aCoord').textContent=gentePiedi().length+' anime · '+
     (ME.stat.giorni+1)+'° giorno'+(nemici.length?' · '+nemici.length+' nemici':'');
@@ -13062,7 +13761,8 @@ function avvio(){
   $('#zitto').onclick=()=>{
     const on=AUDIO.taci();
     const b=$('#zitto');
-    b.textContent=on?'🔊':'🔇'; b.classList.toggle('muto',!on);
+    const u=b.querySelector('use'); if(u) u.setAttribute('href',on?'#i-suono':'#i-muto');
+    b.classList.toggle('muto',!on);
   };
   legaMani();
   legaMappa();
