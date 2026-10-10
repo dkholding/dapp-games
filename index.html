@@ -295,12 +295,12 @@ const GIOCHI=[
    fatti:['Scacchi','1 contro 1','Posta libera'],
    chiavi:['scacchiarena.v2'],
    voci:[{id:'scacchi', etichetta:'Gioca', corto:'Scacchi', url:'scacchi-arena.html'}]},
-  {id:'villa', nome:'La Villa', icona:'🃏', colore:'#d8b262',
+  {id:'villa', nome:'Villa Marea', icona:'🃏', colore:'#d8b262',
    pitch:'Una villa a strapiombo sul mare. Al piano terra Scopa, Briscola, Tressette, Scala 40 e Burraco; in veranda gli scacchi; al bancone si beve coi Ducati.',
    fatti:['Carte e scacchi','Mondo da girare','Tornei a orario'],
    chiavi:['villa.generale.v1','villa.carte.v1','villa.giocatore.v1'],
    voci:[{id:'villa', etichetta:'Entra', corto:'Villa', url:'villa/'},
-         {id:'villa-carte', etichetta:'Solo carte', corto:'Carte', url:'villa/carte/'}]}
+         {id:'villa-carte', etichetta:'Solo le carte', corto:'Carte', url:'villa/carte/'}]}
 ];
 const GIOCO=Object.fromEntries(GIOCHI.map(g=>[g.id,g]));
 const VOCE={};
@@ -492,7 +492,7 @@ function tuttiMovimenti(){
       if(importi.length) out.push({t:tx.at, fonte:g, testo:TIPI[tx.type]||tx.type.replace(/_/g,' '), dove:GIOCO[g].nome, importi});
     }
   }
-  for(const [k,sigla,dove] of [['villa.generale.v1','Ducati','La Villa'],['villa.carte.v1','Fiches','Villa · carte']]){
+  for(const [k,sigla,dove] of [['villa.generale.v1','Ducati','Villa Marea'],['villa.carte.v1','Fiches','Villa Marea · le sale']]){
     const d=leggi(k); if(!d||!Array.isArray(d.movimenti)) continue;
     for(const m of d.movimenti) out.push({t:m.t, fonte:'villa', testo:m.causale, dove, importi:[[m.n,sigla]]});
   }

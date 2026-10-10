@@ -73,7 +73,7 @@ function aggiornaTesta(){
 function chiediNome(poi){
   let nome='';
   const proposta=A.giocatore().nome||(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.first_name)||'';
-  finestra(`<h2 data-obbligatoria>Benvenuto nella Villa</h2><p>Come ti chiamano ai tavoli?</p>
+  finestra(`<h2 data-obbligatoria>Benvenuto a Villa Marea</h2><p>Come ti chiamano ai tavoli?</p>
     <input id="campoNome" maxlength="16" autocomplete="nickname" value="${esc(proposta)}">`,
     [{testo:'Entra',primario:true,
       valida:()=>{ nome=$('campoNome').value.trim().slice(0,16); if(!nome){ $('campoNome').focus(); return false; } return true; },
@@ -417,7 +417,7 @@ $('menu').onclick=()=>{ V.audio.attiva(); V.suono('clic');
   if(eco&&zona.tornei) voci.push({testo:'Bacheca dei tornei',fn:pannelloTornei});
   if(eco) voci.push({testo:'Negozio',fn:pannelloNegozio});
   voci.push({testo:'Chiudi',primario:true});
-  finestra(`<h2>La Villa · ${esc(zona.nome)}</h2>`,voci); };
+  finestra(`<h2>Villa Marea · ${esc(zona.nome)}</h2>`,voci); };
 $('audio').onclick=()=>{ V.audio.attiva(); const g=A.giocatore(); g.muto=!g.muto; A.salvaGiocatore(g); aggiornaTesta(); V.suono('clic'); };
 $('esci').onclick=()=>{ V.suono('clic'); lasciaTavolo(); };
 
