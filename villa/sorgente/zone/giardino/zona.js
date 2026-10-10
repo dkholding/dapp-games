@@ -16,20 +16,20 @@ for(let y=520;y<=1320;y+=160) cipressi.push({tipo:'cipresso',x:1070,y,w:50,h:70}
 
 V.zone=V.zone||{};
 V.zone.giardino={
-  id:'giardino', nome:'Giardino dei Cipressi', salvataggio:null,
+  id:'giardino', nome:'Giardino', salvataggio:null,
   mappa:{
     id:'giardino', larghezza:LARGO, altezza:ALTO,
     partenza:{x:1250,y:1400},
     stanze:[
-      {id:'prato',nome:'Giardino dei Cipressi',tag:'Siepi, fontana e il profumo del mare',x:0,y:Y_FACCIATA,w:LARGO,h:ALTO-Y_FACCIATA,pavimento:'erba'},
-      {id:'viale',nome:'Viale dei Cipressi',tag:'In fondo, la scalinata di Villa Marea',x:1130,y:420,w:240,h:ALTO-420,pavimento:'ghiaia'},
-      {id:'piazzale',nome:'Piazzale della Villa',tag:'Dentro si gioca a carte · a est il sentiero della veranda',x:200,y:Y_FACCIATA,w:LARGO-220,h:160,pavimento:'ghiaia'},
-      {id:'sentiero',nome:'Sentiero della Scogliera',tag:'Porta alla Veranda sul Mare, dove si gioca a scacchi',x:1900,y:Y_FACCIATA,w:500,h:140,pavimento:'ghiaia'}
+      {id:'prato',nome:'Il giardino',tag:'Cipressi, siepi e il profumo del mare',x:0,y:Y_FACCIATA,w:LARGO,h:ALTO-Y_FACCIATA,pavimento:'erba'},
+      {id:'viale',nome:'Il viale dei cipressi',tag:'In fondo, la scalinata della villa',x:1130,y:420,w:240,h:ALTO-420,pavimento:'ghiaia'},
+      {id:'piazzale',nome:'Il piazzale',tag:'A nord il piano terra · a est il sentiero per la veranda',x:200,y:Y_FACCIATA,w:LARGO-220,h:160,pavimento:'ghiaia'},
+      {id:'sentiero',nome:'Il sentiero della scogliera',tag:'Porta alla veranda sul mare',x:1900,y:Y_FACCIATA,w:500,h:140,pavimento:'ghiaia'}
     ],
     muri, vetrate:[],
     porte:[
-      {x:1200,y:Y_FACCIATA-34,w:100,h:30,verso:'piano-terra',arrivo:{x:1250,y:1660},nome:'Le Sale delle Carte'},
-      {x:LARGO-18,y:Y_FACCIATA+10,w:30,h:120,verso:'veranda',arrivo:{x:120,y:400},nome:'Veranda sul Mare · Scacchi'}
+      {x:1200,y:Y_FACCIATA-34,w:100,h:30,verso:'piano-terra',arrivo:{x:1250,y:1660},nome:'Piano terra · Carte'},
+      {x:LARGO-18,y:Y_FACCIATA+10,w:30,h:120,verso:'veranda',arrivo:{x:120,y:400},nome:'Veranda · Scacchi'}
     ],
     cancelli:[],
     arredi:[
@@ -40,8 +40,8 @@ V.zone.giardino={
       {tipo:'fontana',x:1170,y:640,w:160,h:160},
       {tipo:'cancello',x:1150,y:ALTO-30,w:200,h:20,solido:false,pavimento:true},
       {tipo:'portineria',x:1400,y:1330,w:130,h:70,azione:'profilo',icona:'✉',nome:'Portineria'},
-      {tipo:'cartello',x:850,y:1320,w:60,h:60,testo:['↑ Le Sale','→ Veranda']},
-      {tipo:'cartello',x:1820,y:Y_FACCIATA+30,w:60,h:60,testo:['→ Veranda sul Mare']},
+      {tipo:'cartello',x:850,y:1320,w:60,h:60,testo:['↑ Carte','→ Scacchi']},
+      {tipo:'cartello',x:1820,y:Y_FACCIATA+30,w:60,h:60,testo:['→ Veranda']},
       ...siepi, ...cipressi,
       {tipo:'aiuola',x:300,y:700,w:360,h:180},{tipo:'aiuola',x:1760,y:700,w:360,h:180},
       {tipo:'aiuola',x:300,y:1150,w:360,h:180},{tipo:'aiuola',x:1760,y:1150,w:360,h:180},

@@ -21,7 +21,7 @@ V.NOMI_BOT=['Nonna Pina','Il Marchese','Zio Tonino','Rosetta','Il Dottore','Donn
 
 V.zone=V.zone||{};
 V.zone['piano-terra']={
-  id:'piano-terra', nome:'Le Sale delle Carte', salvataggio:'carte',
+  id:'piano-terra', nome:'Piano terra', salvataggio:'carte',
   economia:{ moneta:{nome:'Fiches',simbolo:'◉',iniziale:1000,regalo:100}, trattenuta:0.05,
     catalogo:[
       {id:'dorso-riviera',nome:'Mazzo Riviera',prezzo:300,dorso:'#1f5a8a',filo:'#bfe3ff'},
@@ -33,20 +33,20 @@ V.zone['piano-terra']={
     id:'piano-terra', larghezza:LARGO, altezza:Y_SUD+40, mare:{y:300},
     partenza:{x:1250,y:1640},
     stanze:[
-      {id:'veranda-vista',nome:'Veranda sul Mare',esterna:true,x:0,y:300,w:LARGO,h:Y_VETRATA-300,pavimento:'legno'},
-      {id:'scopa',nome:'Salone degli Specchi',tag:'Marmi, specchi e Scopa a posta',x:0,y:Y_VETRATA,w:X1,h:Y_MEZZO-Y_VETRATA,pavimento:'marmo',postaMax:200},
-      {id:'briscola',nome:'Sala delle Briscole',tag:'Briscola e Tressette · parquet e silenzio',x:X1,y:Y_VETRATA,w:X2-X1,h:Y_MEZZO-Y_VETRATA,pavimento:'parquet',postaMax:200},
-      {id:'biblioteca',nome:'Biblioteca del Marchese',tag:'Scala 40 e Burraco tra i libri',x:X2,y:Y_VETRATA,w:LARGO-X2,h:Y_MEZZO-Y_VETRATA,pavimento:'tappetoBlu',postaMax:500},
-      {id:'bar',nome:'Salotto delle Palme',tag:'Velluti e bancone · si gioca per il gusto di giocare',x:0,y:Y_MEZZO,w:X1,h:Y_SUD-Y_MEZZO,pavimento:'cotto',postaMax:0},
-      {id:'atrio',nome:'Atrio del Mosaico',tag:'Bacheca dei tornei e banco del negozio',x:X1,y:Y_MEZZO,w:X2-X1,h:Y_SUD-Y_MEZZO,pavimento:'marmoScuro'},
+      {id:'veranda-vista',nome:'Veranda',esterna:true,x:0,y:300,w:LARGO,h:Y_VETRATA-300,pavimento:'legno'},
+      {id:'scopa',nome:'Salone della Scopa',tag:'Marmi, specchi e sfide a posta',x:0,y:Y_VETRATA,w:X1,h:Y_MEZZO-Y_VETRATA,pavimento:'marmo',postaMax:200},
+      {id:'briscola',nome:'Sala di Briscola e Tressette',tag:'Parquet e silenzio: si conta ogni carta',x:X1,y:Y_VETRATA,w:X2-X1,h:Y_MEZZO-Y_VETRATA,pavimento:'parquet',postaMax:200},
+      {id:'biblioteca',nome:'Biblioteca',tag:'Scala 40 e Burraco tra i libri',x:X2,y:Y_VETRATA,w:LARGO-X2,h:Y_MEZZO-Y_VETRATA,pavimento:'tappetoBlu',postaMax:500},
+      {id:'bar',nome:'Salotto del Bar',tag:'Divani di velluto · si gioca per il gusto di giocare',x:0,y:Y_MEZZO,w:X1,h:Y_SUD-Y_MEZZO,pavimento:'cotto',postaMax:0},
+      {id:'atrio',nome:'Atrio',tag:'Bacheca dei tornei e banco del negozio',x:X1,y:Y_MEZZO,w:X2-X1,h:Y_SUD-Y_MEZZO,pavimento:'marmoScuro'},
       {id:'onore',nome:"Sala d'Onore",tag:'Tornei a orario · si entra dal livello 5',x:X2,y:Y_MEZZO,w:LARGO-X2,h:Y_SUD-Y_MEZZO,pavimento:'tappeto',livelloMin:5}
     ],
     muri, vetrate,
     porte:[
-      {x:420,y:Y_VETRATA-40,w:80,h:30,verso:'veranda',arrivo:{x:460,y:520},nome:'Veranda sul Mare'},
-      {x:1210,y:Y_VETRATA-40,w:80,h:30,verso:'veranda',arrivo:{x:1250,y:520},nome:'Veranda sul Mare'},
-      {x:1960,y:Y_VETRATA-40,w:80,h:30,verso:'veranda',arrivo:{x:2000,y:520},nome:'Veranda sul Mare'},
-      {x:1200,y:Y_SUD+8,w:100,h:30,verso:'giardino',arrivo:{x:1250,y:300},nome:'Giardino dei Cipressi'}
+      {x:420,y:Y_VETRATA-40,w:80,h:30,verso:'veranda',arrivo:{x:460,y:520},nome:'Veranda'},
+      {x:1210,y:Y_VETRATA-40,w:80,h:30,verso:'veranda',arrivo:{x:1250,y:520},nome:'Veranda'},
+      {x:1960,y:Y_VETRATA-40,w:80,h:30,verso:'veranda',arrivo:{x:2000,y:520},nome:'Veranda'},
+      {x:1200,y:Y_SUD+8,w:100,h:30,verso:'giardino',arrivo:{x:1250,y:300},nome:'Giardino'}
     ],
     cancelli:[{x:X2-8,y:1320,w:16,h:120,livelloMin:5,nome:"Sala d'Onore"}],
     arredi:[

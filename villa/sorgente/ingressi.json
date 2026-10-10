@@ -1,7 +1,7 @@
 {
   "carte": {
     "uscita": "villa/carte/index.html",
-    "titolo": "Villa Marea · Le Sale delle Carte",
+    "titolo": "La Villa · Carte",
     "file": [
       "motore/base.js",
       "motore/salvataggio.js",
@@ -32,7 +32,7 @@
   },
   "villa": {
     "uscita": "villa/index.html",
-    "titolo": "Villa Marea",
+    "titolo": "La Villa",
     "file": [
       "motore/base.js",
       "motore/salvataggio.js",
